@@ -18,7 +18,6 @@ fi
 
 NS="${NAMESPACE:-himarket}"
 
-# 默认凭据
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 
@@ -28,26 +27,7 @@ MAX_RETRIES=3
 log() { echo "[init-himarket-admin $(date +'%H:%M:%S')] $*"; }
 err() { echo "[ERROR] $*" >&2; }
 
-# 全局变量
 ADMIN_HOST=""
-
-########################################
-# 获取 Himarket Admin Service 地址
-########################################
-get_himarket_admin_host() {
-  log "获取 Himarket Admin Service 地址..." >&2
-  
-  # 优先尝试 LoadBalancer IP
-  local host=$(kubectl get svc himarket-admin -n "${NS}" -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-  
-  if [[ -z "$host" ]]; then
-    log "未检测到 LoadBalancer IP，使用 ClusterIP 模式" >&2
-    host="himarket-admin.${NS}.svc.cluster.local"
-  fi
-  
-  log "Himarket Admin 地址: ${host}" >&2
-  echo "$host"
-}
 
 ########################################
 # 调用 API 通用函数
