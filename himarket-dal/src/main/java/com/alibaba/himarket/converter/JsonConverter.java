@@ -26,9 +26,11 @@ import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.support.common.Encrypted;
 import com.alibaba.himarket.support.common.Encryptor;
 import jakarta.persistence.AttributeConverter;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -107,6 +109,36 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
 
     private void handleEncryption(Object obj, boolean isEncrypt) {
         if (obj == null) {
+            return;
+        }
+
+        if (obj.getClass().isArray()) {
+            int len = Array.getLength(obj);
+            for (int i = 0; i < len; i++) {
+                handleEncryption(Array.get(obj, i), isEncrypt);
+            }
+            return;
+        }
+
+        if (obj instanceof Iterable<?> iterable) {
+            for (Object element : iterable) {
+                handleEncryption(element, isEncrypt);
+            }
+            return;
+        }
+
+        if (obj instanceof Map<?, ?> map) {
+            for (Object value : map.values()) {
+                handleEncryption(value, isEncrypt);
+            }
+            return;
+        }
+
+        // Avoid reflecting JDK internals on Java 17+ (e.g., ArrayList.elementData).
+        String className = obj.getClass().getName();
+        if (className.startsWith("java.")
+                || className.startsWith("javax.")
+                || className.startsWith("jakarta.")) {
             return;
         }
 
