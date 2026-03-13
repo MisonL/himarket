@@ -17,22 +17,16 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.dto.result.idp;
 
-import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
-import com.alibaba.himarket.dto.result.idp.IdpResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
+import lombok.Builder;
+import lombok.Data;
 
-public interface CasService {
+@Data
+@Builder
+public class IdpAuthorizeResult {
 
-    IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+    private String redirectUrl;
 
-    AuthResult handleCallback(
-            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
-
-    List<IdpResult> getAvailableProviders();
+    private String state;
 }

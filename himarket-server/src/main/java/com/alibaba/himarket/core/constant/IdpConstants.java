@@ -62,6 +62,21 @@ public class IdpConstants {
     public static final String STATE = "state";
 
     /**
+     * State TTL, also used by OIDC/CAS callback to reject stale requests.
+     */
+    public static final long IDP_STATE_TTL_MILLIS = 10 * 60 * 1000L;
+
+    public static final int IDP_STATE_COOKIE_MAX_AGE_SECONDS = 10 * 60;
+
+    public static final String IDP_STATE_COOKIE_PATH = "/";
+
+    public static final String IDP_STATE_COOKIE_SAMESITE = "Lax";
+
+    public static final String OIDC_STATE_COOKIE_NAME = "hm_oidc_state";
+
+    public static final String CAS_STATE_COOKIE_NAME = "hm_cas_state";
+
+    /**
      * Nonce
      */
     public static final String NONCE = "nonce";

@@ -315,10 +315,17 @@ public class IdpServiceImpl implements IdpService {
 
     private void validateUrl(String url, String label) {
         try {
-            URI.create(url);
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("Unsupported scheme");
+            }
+            if (StrUtil.isBlank(uri.getHost())) {
+                throw new IllegalArgumentException("Missing host");
+            }
         } catch (Exception e) {
             throw new BusinessException(
-                    ErrorCode.INVALID_PARAMETER, label + " must be a valid URL");
+                    ErrorCode.INVALID_PARAMETER, label + " must be an absolute http/https URL");
         }
     }
 
