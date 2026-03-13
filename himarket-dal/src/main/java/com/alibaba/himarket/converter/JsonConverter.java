@@ -26,6 +26,7 @@ import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.support.common.Encrypted;
 import com.alibaba.himarket.support.common.Encryptor;
 import jakarta.persistence.AttributeConverter;
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -112,6 +113,17 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
             return;
         }
 
+        if (obj.getClass().isArray()) {
+            int len = Array.getLength(obj);
+            for (int i = 0; i < len; i++) {
+                Object element = Array.get(obj, i);
+                if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
+                    handleEncryption(element, isEncrypt);
+                }
+            }
+            return;
+        }
+
         // Process Collection elements directly to avoid StackOverflowError caused by
         // circular references in JDK collection internals (e.g. LinkedHashMap.Entry.before/after)
         if (obj instanceof Collection<?>) {
@@ -123,8 +135,17 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
             return;
         }
 
-        if (obj instanceof Map<?, ?>) {
-            for (Object value : ((Map<?, ?>) obj).values()) {
+        if (obj instanceof Iterable<?> iterable) {
+            for (Object element : iterable) {
+                if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
+                    handleEncryption(element, isEncrypt);
+                }
+            }
+            return;
+        }
+
+        if (obj instanceof Map<?, ?> map) {
+            for (Object value : map.values()) {
                 if (value != null && !ClassUtil.isSimpleValueType(value.getClass())) {
                     handleEncryption(value, isEncrypt);
                 }
@@ -132,6 +153,12 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
             return;
         }
 
+        String className = obj.getClass().getName();
+        if (className.startsWith("java.")
+                || className.startsWith("javax.")
+                || className.startsWith("jakarta.")) {
+            return;
+        }
         BeanUtil.descForEach(
                 obj.getClass(),
                 pd -> {
