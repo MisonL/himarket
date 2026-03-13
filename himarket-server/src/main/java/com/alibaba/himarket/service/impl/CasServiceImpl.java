@@ -30,6 +30,7 @@ import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.dto.result.idp.IdpState;
 import com.alibaba.himarket.service.CasService;
@@ -37,6 +38,7 @@ import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.service.idp.CasTicketValidator;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
+import com.alibaba.himarket.service.idp.IdpStateCookie;
 import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.portal.CasConfig;
@@ -71,26 +73,30 @@ public class CasServiceImpl implements CasService {
     private final IdpStateCodec idpStateCodec;
 
     @Override
-    public String buildAuthorizationUrl(
+    public IdpAuthorizeResult buildAuthorizationResult(
             String provider, String apiPrefix, HttpServletRequest request) {
         CasConfig config = findCasConfig(provider);
         String state = encodeState(createState(provider, apiPrefix));
         String serviceUrl = buildFrontendCallbackUrl(state);
-        return UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .build()
-                .toUriString();
+        String loginUrl =
+                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
+                        .queryParam(IdpConstants.SERVICE, serviceUrl)
+                        .build()
+                        .toUriString();
+        return IdpAuthorizeResult.builder().redirectUrl(loginUrl).state(state).build();
     }
 
     @Override
     public AuthResult handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response) {
+        IdpStateCookie.assertCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());
         String serviceUrl = buildFrontendCallbackUrl(state);
         Map<String, Object> userInfo = casTicketValidator.validate(config, ticket, serviceUrl);
         String developerId = createOrGetDeveloper(userInfo, config);
         String accessToken = TokenUtil.generateDeveloperToken(developerId);
+        IdpStateCookie.clearCasStateCookie(request, response);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
     }
 
@@ -162,7 +168,8 @@ public class CasServiceImpl implements CasService {
     private IdpState parseState(String encodedState) {
         IdpState idpState = idpStateCodec.decode(encodedState);
         if (idpState.getTimestamp() != null
-                && System.currentTimeMillis() - idpState.getTimestamp() > 10 * 60 * 1000L) {
+                && System.currentTimeMillis() - idpState.getTimestamp()
+                        > IdpConstants.IDP_STATE_TTL_MILLIS) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Request has expired");
         }
         if (StrUtil.isBlank(idpState.getProvider())) {

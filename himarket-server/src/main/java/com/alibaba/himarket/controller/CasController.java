@@ -20,8 +20,10 @@
 package com.alibaba.himarket.controller;
 
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.service.CasService;
+import com.alibaba.himarket.service.idp.IdpStateCookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -48,9 +50,11 @@ public class CasController {
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException {
-        String authUrl = casService.buildAuthorizationUrl(provider, apiPrefix, request);
-        log.info("Redirecting to CAS authorization URL: {}", authUrl);
-        response.sendRedirect(authUrl);
+        IdpAuthorizeResult result =
+                casService.buildAuthorizationResult(provider, apiPrefix, request);
+        IdpStateCookie.writeCasStateCookie(request, response, result.getState());
+        log.info("Redirecting to CAS login, provider={}", provider);
+        response.sendRedirect(result.getRedirectUrl());
     }
 
     @GetMapping("/callback")

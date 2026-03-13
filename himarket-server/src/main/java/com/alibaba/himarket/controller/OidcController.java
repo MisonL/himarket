@@ -20,8 +20,10 @@
 package com.alibaba.himarket.controller;
 
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.service.OidcService;
+import com.alibaba.himarket.service.idp.IdpStateCookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -48,10 +50,11 @@ public class OidcController {
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException {
-        String authUrl = oidcService.buildAuthorizationUrl(provider, apiPrefix, request);
-
-        log.info("Redirecting to OIDC authorization URL: {}", authUrl);
-        response.sendRedirect(authUrl);
+        IdpAuthorizeResult result =
+                oidcService.buildAuthorizationResult(provider, apiPrefix, request);
+        IdpStateCookie.writeOidcStateCookie(request, response, result.getState());
+        log.info("Redirecting to OIDC authorization server, provider={}", provider);
+        response.sendRedirect(result.getRedirectUrl());
     }
 
     @GetMapping("/callback")
