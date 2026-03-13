@@ -13,6 +13,7 @@ fi
 # 默认凭据
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
+HIMARKET_ADMIN_PORT="${HIMARKET_ADMIN_PORT:-5174}"
 
 # 最大重试次数
 MAX_RETRIES=3
@@ -21,7 +22,7 @@ log() { echo "[init-himarket-admin $(date +'%H:%M:%S')] $*"; }
 err() { echo "[ERROR] $*" >&2; }
 
 # 全局变量
-ADMIN_HOST="localhost:5174"
+ADMIN_HOST="localhost:${HIMARKET_ADMIN_PORT}"
 
 ########################################
 # 调用 API 通用函数

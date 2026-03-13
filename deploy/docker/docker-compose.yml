@@ -192,7 +192,7 @@ services:
     environment:
       - HIMARKET_SERVER=http://himarket-server:8080
     ports:
-      - "5175-5176:8000"
+      - "${HIMARKET_ADMIN_PORT:-5174}:8000"
     depends_on:
       himarket-server:
         condition: service_healthy
@@ -219,7 +219,7 @@ services:
     environment:
       - HIMARKET_SERVER=http://himarket-server:8080
     ports:
-      - "5173-5174:8000"
+      - "${HIMARKET_FRONTEND_PORT:-5173}:8000"
     depends_on:
       himarket-server:
         condition: service_healthy
