@@ -197,9 +197,11 @@ public class OidcServiceImpl implements OidcService {
     private IdpState parseState(String encodedState) {
         IdpState idpState = idpStateCodec.decode(encodedState);
 
-        if (idpState.getTimestamp() != null
-                && System.currentTimeMillis() - idpState.getTimestamp()
-                        > IdpConstants.IDP_STATE_TTL_MILLIS) {
+        Long timestamp = idpState.getTimestamp();
+        if (timestamp == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid state");
+        }
+        if (System.currentTimeMillis() - timestamp > IdpConstants.IDP_STATE_TTL_MILLIS) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Request has expired");
         }
         if (StrUtil.isBlank(idpState.getProvider())) {
