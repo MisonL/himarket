@@ -32,6 +32,7 @@ import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.dto.result.idp.IdpState;
 import com.alibaba.himarket.dto.result.idp.IdpTokenResult;
@@ -40,6 +41,7 @@ import com.alibaba.himarket.service.OidcService;
 import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
+import com.alibaba.himarket.service.idp.IdpStateCookie;
 import com.alibaba.himarket.service.idp.OidcIdTokenVerifier;
 import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
@@ -86,7 +88,7 @@ public class OidcServiceImpl implements OidcService {
     private final IdpStateCodec idpStateCodec;
 
     @Override
-    public String buildAuthorizationUrl(
+    public IdpAuthorizeResult buildAuthorizationResult(
             String provider, String apiPrefix, HttpServletRequest request) {
         OidcConfig oidcConfig = findOidcConfig(provider);
         AuthCodeConfig authCodeConfig = oidcConfig.getAuthCodeConfig();
@@ -107,23 +109,17 @@ public class OidcServiceImpl implements OidcService {
                         .queryParam(IdpConstants.NONCE, idpState.getNonce())
                         .build()
                         .toUriString();
-
-        log.info("Generated OIDC authorization URL: {}", authUrl);
-        return authUrl;
+        return IdpAuthorizeResult.builder().redirectUrl(authUrl).state(state).build();
     }
 
     @Override
     public AuthResult handleCallback(
             String code, String state, HttpServletRequest request, HttpServletResponse response) {
-        log.info("Processing OIDC callback with code: {}, state: {}", code, state);
+        IdpStateCookie.assertOidcStateCookieMatches(request, state);
 
         // Parse state to get provider info
         IdpState idpState = parseState(state);
         String provider = idpState.getProvider();
-
-        if (StrUtil.isBlank(provider)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing OIDC provider");
-        }
 
         OidcConfig oidcConfig = findOidcConfig(provider);
 
@@ -132,12 +128,12 @@ public class OidcServiceImpl implements OidcService {
 
         // Get user info, prefer ID Token, fallback to UserInfo endpoint
         Map<String, Object> userInfo = getUserInfo(tokenResult, oidcConfig, idpState);
-        log.info("Get OIDC user info: {}", userInfo);
 
         // Handle user authentication
         String developerId = createOrGetDeveloper(userInfo, oidcConfig);
         String accessToken = TokenUtil.generateDeveloperToken(developerId);
 
+        IdpStateCookie.clearOidcStateCookie(request, response);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
     }
 
@@ -202,12 +198,16 @@ public class OidcServiceImpl implements OidcService {
     private IdpState parseState(String encodedState) {
         IdpState idpState = idpStateCodec.decode(encodedState);
 
-        // Validate timestamp, 10 minutes validity
-        if (idpState.getTimestamp() != null) {
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - idpState.getTimestamp() > 10 * 60 * 1000) {
-                throw new BusinessException(ErrorCode.INVALID_REQUEST, "Request has expired");
-            }
+        if (idpState.getTimestamp() != null
+                && System.currentTimeMillis() - idpState.getTimestamp()
+                        > IdpConstants.IDP_STATE_TTL_MILLIS) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Request has expired");
+        }
+        if (StrUtil.isBlank(idpState.getProvider())) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing OIDC provider");
+        }
+        if (StrUtil.isBlank(idpState.getNonce())) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing OIDC nonce");
         }
 
         return idpState;
@@ -225,7 +225,10 @@ public class OidcServiceImpl implements OidcService {
         params.add(IdpConstants.CLIENT_ID, authCodeConfig.getClientId());
         params.add(IdpConstants.CLIENT_SECRET, authCodeConfig.getClientSecret());
 
-        log.info("Request tokens at: {}, params: {}", authCodeConfig.getTokenEndpoint(), params);
+        log.info(
+                "Request OIDC tokens, provider={}, tokenEndpoint={}",
+                oidcConfig.getProvider(),
+                authCodeConfig.getTokenEndpoint());
         return executeRequest(
                 authCodeConfig.getTokenEndpoint(),
                 HttpMethod.POST,
@@ -283,7 +286,9 @@ public class OidcServiceImpl implements OidcService {
                             null,
                             Map.class);
 
-            log.info("Successfully fetched user info from endpoint, sub: {}", userInfo);
+            log.info(
+                    "Successfully fetched user info from endpoint, sub: {}",
+                    userInfo == null ? null : userInfo.get("sub"));
             return userInfo;
         } catch (Exception e) {
             log.error(
@@ -352,11 +357,7 @@ public class OidcServiceImpl implements OidcService {
         ResponseEntity<String> response =
                 restTemplate.exchange(url, method, requestEntity, String.class);
 
-        log.info(
-                "Received HTTP response from: {}, status: {}, body: {}",
-                url,
-                response.getStatusCode(),
-                response.getBody());
+        log.info("Received HTTP response from: {}, status: {}", url, response.getStatusCode());
 
         return JSONUtil.toBean(response.getBody(), responseType);
     }

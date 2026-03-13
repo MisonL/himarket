@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service;
 
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,7 +36,8 @@ public interface OidcService {
      * @param request
      * @return
      */
-    String buildAuthorizationUrl(String provider, String apiPrefix, HttpServletRequest request);
+    IdpAuthorizeResult buildAuthorizationResult(
+            String provider, String apiPrefix, HttpServletRequest request);
 
     /**
      * 授权服务器回调
