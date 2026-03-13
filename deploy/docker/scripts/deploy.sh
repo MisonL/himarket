@@ -33,6 +33,9 @@ USE_AI_GATEWAY="${USE_AI_GATEWAY:-false}"
 # 内置 MySQL 开关
 USE_BUILTIN_MYSQL="${USE_BUILTIN_MYSQL:-true}"
 
+HIMARKET_ADMIN_PORT="${HIMARKET_ADMIN_PORT:-5174}"
+HIMARKET_FRONTEND_PORT="${HIMARKET_FRONTEND_PORT:-5173}"
+
 log() { echo "[deploy $(date +'%H:%M:%S')] $*"; }
 err() { echo "[ERROR] $*" >&2; }
 
@@ -226,9 +229,9 @@ deploy_himarket_only() {
   log "========================================"
   log ""
   log "服务访问地址："
-  log "  - Himarket 管理后台: http://localhost:5174"
+  log "  - Himarket 管理后台: http://localhost:${HIMARKET_ADMIN_PORT}"
   log ""
-  log "  - Himarket 开发者门户: http://localhost:5173"
+  log "  - Himarket 开发者门户: http://localhost:${HIMARKET_FRONTEND_PORT}"
   log ""
   log "  - Himarket Server: http://localhost:8081"
   log "========================================"
@@ -327,9 +330,9 @@ deploy_all() {
   log "========================================"
   log ""
   log "服务访问地址："
-  log "  - Himarket 管理后台: http://localhost:5174"
+  log "  - Himarket 管理后台: http://localhost:${HIMARKET_ADMIN_PORT}"
   log ""
-  log "  - Himarket 开发者门户: http://localhost:5173"
+  log "  - Himarket 开发者门户: http://localhost:${HIMARKET_FRONTEND_PORT}"
   log ""
   log "  - Nacos Console: http://localhost:8080"
   log ""

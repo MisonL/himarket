@@ -5,8 +5,8 @@
 AI 开放平台包含四个服务组件：
 - **mysql**: 数据库服务，为后端服务提供数据存储；
 - **himarket-server**: 后端服务，运行在 8080 端口；
-- **himarket-admin**: 管理后台界面，运行在 5174 端口，供管理员配置 Portal；
-- **himarket-frontend**: 前台用户界面，运行在 5173 端口，供用户浏览和使用 API Product。
+- **himarket-admin**: 管理后台界面，默认运行在 5174 端口，供管理员配置 Portal；
+- **himarket-frontend**: 前台用户界面，默认运行在 5173 端口，供用户浏览和使用 API Product。
 
 ## 🚀 快速部署（推荐）
 

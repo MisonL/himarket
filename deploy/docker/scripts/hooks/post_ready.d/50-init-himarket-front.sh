@@ -17,6 +17,7 @@ fi
 # 默认凭据
 FRONT_USERNAME="${FRONT_USERNAME:-demo}"
 FRONT_PASSWORD="${FRONT_PASSWORD:-demo123}"
+HIMARKET_FRONTEND_PORT="${HIMARKET_FRONTEND_PORT:-5173}"
 
 # 最大重试次数
 MAX_RETRIES=3
@@ -25,7 +26,7 @@ log() { echo "[init-himarket-front $(date +'%H:%M:%S')] $*"; }
 err() { echo "[ERROR] $*" >&2; }
 
 # 全局变量
-FRONTEND_HOST="localhost:5173"
+FRONTEND_HOST="localhost:${HIMARKET_FRONTEND_PORT}"
 
 ########################################
 # 调用 API 通用函数

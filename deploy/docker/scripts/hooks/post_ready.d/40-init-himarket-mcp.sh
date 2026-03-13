@@ -22,6 +22,8 @@ fi
 ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${ADMIN_PASSWORD:-admin}"
 HIGRESS_PASSWORD="${HIGRESS_PASSWORD:-admin}"
+HIMARKET_ADMIN_PORT="${HIMARKET_ADMIN_PORT:-5174}"
+HIMARKET_FRONTEND_PORT="${HIMARKET_FRONTEND_PORT:-5173}"
 
 # 最大重试次数
 MAX_RETRIES=3
@@ -31,8 +33,8 @@ err() { echo "[ERROR] $*" >&2; }
 
 # 全局变量
 AUTH_TOKEN=""
-HIMARKET_HOST="localhost:5174"
-FRONTEND_HOST="localhost:5173"
+HIMARKET_HOST="localhost:${HIMARKET_ADMIN_PORT}"
+FRONTEND_HOST="localhost:${HIMARKET_FRONTEND_PORT}"
 # 是否商业化 Nacos 配置
 USE_COMMERCIAL_NACOS="${USE_COMMERCIAL_NACOS:-false}"
 COMMERCIAL_NACOS_NAME="${COMMERCIAL_NACOS_NAME:-}"
@@ -478,7 +480,7 @@ get_bind_domain() {
          [[ ! "$detected_ip" =~ ^192\.168\. ]] && \
          [[ ! "$detected_ip" =~ ^127\. ]]; then
         log "自动检测到公网 IP: ${detected_ip}" >&2
-        echo "${detected_ip}:5173"
+        echo "${detected_ip}:${HIMARKET_FRONTEND_PORT}"
         return 0
       fi
     fi
