@@ -6,6 +6,17 @@ import tseslint from "typescript-eslint";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 
 export default [
+  {
+    ignores: [
+      "build/**",
+      "dist/**",
+      ".vite/**",
+      "**/*.min.js",
+      "**/*-min.js",
+      "**/*.bundle.js",
+      "tailwind.config.js",
+    ],
+  },
   ...tseslint.configs.recommended,
   eslintPluginPrettierRecommended,
   {
