@@ -75,7 +75,8 @@ export async function getProductSubscriptions(productId: string, params?: {
 // OIDC相关接口定义 - 对接OidcController
 export interface IdpResult {
   provider: string;
-  name: string;
+  name?: string;
+  displayName?: string;
 }
 
 export interface AuthResult {
@@ -89,10 +90,20 @@ export function getOidcProviders(): Promise<IdpResult[]> {
   return request.get('/developers/oidc/providers');
 }
 
+export function getCasProviders(): Promise<IdpResult[]> {
+  return request.get('/developers/cas/providers');
+}
+
 // OIDC回调处理 - 对接 /developers/oidc/callback
 export function handleOidcCallback(code: string, state: string): Promise<AuthResult> {
   return request.get('/developers/oidc/callback', {
     params: { code, state }
+  });
+}
+
+export function handleCasCallback(ticket: string, state: string): Promise<AuthResult> {
+  return request.get('/developers/cas/callback', {
+    params: { ticket, state }
   });
 }
 

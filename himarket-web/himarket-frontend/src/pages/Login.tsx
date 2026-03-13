@@ -11,6 +11,9 @@ import aliyunIcon from "../assets/aliyun.png";
 import githubIcon from "../assets/github.png";
 import googleIcon from "../assets/google.png";
 
+type LoginProvider = IdpResult & {
+  authType: "OIDC" | "CAS";
+};
 
 const oidcIcons: Record<string, React.ReactNode> = {
   google: <img src={googleIcon} alt="Google" className="w-5 h-5 mr-2" />,
@@ -19,20 +22,37 @@ const oidcIcons: Record<string, React.ReactNode> = {
 };
 
 const Login: React.FC = () => {
-  const [providers, setProviders] = useState<IdpResult[]>([]);
+  const [providers, setProviders] = useState<LoginProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // 使用OidcController的接口获取OIDC提供商
-    APIs.getOidcProviders()
-      .then(({data}) => {
-        console.log('OIDC providers response:', data);
-        setProviders(data);
+    Promise.allSettled([APIs.getOidcProviders(), APIs.getCasProviders()])
+      .then((results) => {
+        const mergedProviders: LoginProvider[] = [];
+
+        if (results[0].status === 'fulfilled') {
+          mergedProviders.push(
+            ...results[0].value.data.map((provider) => ({
+              ...provider,
+              authType: 'OIDC' as const,
+            }))
+          );
+        }
+
+        if (results[1].status === 'fulfilled') {
+          mergedProviders.push(
+            ...results[1].value.data.map((provider) => ({
+              ...provider,
+              authType: 'CAS' as const,
+            }))
+          );
+        }
+
+        setProviders(mergedProviders);
       })
-      .catch((error) => {
-        console.error('Failed to fetch OIDC providers:', error);
+      .catch(() => {
         setProviders([]);
       });
   }, []);
@@ -83,6 +103,13 @@ const Login: React.FC = () => {
     console.log('Redirecting to OIDC authorization:', authUrl.toString());
 
     // 跳转到OIDC授权服务器
+    window.location.href = authUrl.toString();
+  };
+
+  const handleCasLogin = (provider: string) => {
+    const apiPrefix = api.defaults.baseURL || '/api/v1';
+    const authUrl = new URL(`${window.location.origin}${apiPrefix}/developers/cas/authorize`);
+    authUrl.searchParams.set('provider', provider);
     window.location.href = authUrl.toString();
   };
 
@@ -166,7 +193,11 @@ const Login: React.FC = () => {
                 providers.map((provider) => (
                   <Button
                     key={provider.provider}
-                    onClick={() => handleOidcLogin(provider.provider)}
+                    onClick={() => (
+                      provider.authType === 'CAS'
+                        ? handleCasLogin(provider.provider)
+                        : handleOidcLogin(provider.provider)
+                    )}
                     className="w-full flex items-center justify-center"
                     size="large"
                     icon={oidcIcons[provider.provider.toLowerCase()] || <span></span>}

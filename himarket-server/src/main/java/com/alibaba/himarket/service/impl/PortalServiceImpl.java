@@ -51,12 +51,14 @@ import com.alibaba.himarket.service.IdpService;
 import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.support.enums.DomainType;
 import com.alibaba.himarket.support.enums.SearchEngineType;
+import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.PortalUiConfig;
 import com.alibaba.himarket.support.portal.SearchEngineConfig;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.transaction.Transactional;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -190,10 +192,19 @@ public class PortalServiceImpl implements PortalService {
         param.update(portal);
 
         PortalSettingConfig setting = portal.getPortalSettingConfig();
+        if (StrUtil.isNotBlank(setting.getFrontendRedirectUrl())) {
+            setting.setFrontendRedirectUrl(
+                    StrUtil.removeSuffix(setting.getFrontendRedirectUrl(), "/"));
+        }
 
         // Verify OIDC configs
         if (CollUtil.isNotEmpty(setting.getOidcConfigs())) {
             idpService.validateOidcConfigs(setting.getOidcConfigs());
+        }
+
+        // Verify CAS configs
+        if (CollUtil.isNotEmpty(setting.getCasConfigs())) {
+            idpService.validateCasConfigs(setting.getCasConfigs());
         }
 
         // Verify OAuth2 configs
@@ -206,15 +217,15 @@ public class PortalServiceImpl implements PortalService {
             validateSearchEngineConfig(setting.getSearchEngineConfig());
         }
 
+        boolean enabledOidc = hasEnabledOidc(setting);
+        boolean enabledCas = hasEnabledCas(setting);
+        if (enabledOidc || enabledCas) {
+            validateFrontendRedirectUrl(setting.getFrontendRedirectUrl());
+        }
+
         // At least keep one authentication method
         if (BooleanUtil.isFalse(setting.getBuiltinAuthEnabled())) {
-            boolean enabledOidc =
-                    Optional.ofNullable(setting.getOidcConfigs())
-                            .filter(CollUtil::isNotEmpty)
-                            .map(configs -> configs.stream().anyMatch(OidcConfig::isEnabled))
-                            .orElse(false);
-
-            if (!enabledOidc) {
+            if (!enabledOidc && !enabledCas) {
                 throw new BusinessException(
                         ErrorCode.INVALID_REQUEST,
                         "At least one authentication method must be configured");
@@ -358,6 +369,43 @@ public class PortalServiceImpl implements PortalService {
             return null;
         }
         return portal.getPortalId();
+    }
+
+    private boolean hasEnabledOidc(PortalSettingConfig setting) {
+        return Optional.ofNullable(setting.getOidcConfigs())
+                .filter(CollUtil::isNotEmpty)
+                .map(configs -> configs.stream().anyMatch(OidcConfig::isEnabled))
+                .orElse(false);
+    }
+
+    private boolean hasEnabledCas(PortalSettingConfig setting) {
+        return Optional.ofNullable(setting.getCasConfigs())
+                .filter(CollUtil::isNotEmpty)
+                .map(configs -> configs.stream().anyMatch(CasConfig::isEnabled))
+                .orElse(false);
+    }
+
+    private void validateFrontendRedirectUrl(String frontendRedirectUrl) {
+        if (StrUtil.isBlank(frontendRedirectUrl)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    "Frontend redirect URL is required when CAS or OIDC is enabled");
+        }
+
+        try {
+            URI uri = URI.create(frontendRedirectUrl);
+            String scheme = uri.getScheme();
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("Unsupported scheme");
+            }
+            if (StrUtil.isBlank(uri.getHost())) {
+                throw new IllegalArgumentException("Missing host");
+            }
+        } catch (Exception e) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    "Frontend redirect URL must be an absolute http/https URL");
+        }
     }
 
     private Portal findPortal(String portalId) {

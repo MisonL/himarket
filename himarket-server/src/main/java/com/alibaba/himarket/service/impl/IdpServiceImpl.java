@@ -30,13 +30,23 @@ import com.alibaba.himarket.service.IdpService;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.support.enums.GrantType;
 import com.alibaba.himarket.support.enums.PublicKeyFormat;
-import com.alibaba.himarket.support.portal.*;
+import com.alibaba.himarket.support.portal.AuthCodeConfig;
+import com.alibaba.himarket.support.portal.CasConfig;
+import com.alibaba.himarket.support.portal.JwtBearerConfig;
+import com.alibaba.himarket.support.portal.OAuth2Config;
+import com.alibaba.himarket.support.portal.OidcConfig;
+import com.alibaba.himarket.support.portal.PublicKeyConfig;
 import java.math.BigInteger;
+import java.net.URI;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.RSAPublicKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +67,6 @@ public class IdpServiceImpl implements IdpService {
             return;
         }
 
-        // Provider must be unique
         Set<String> providers =
                 oidcConfigs.stream()
                         .map(OidcConfig::getProvider)
@@ -80,7 +89,6 @@ public class IdpServiceImpl implements IdpService {
                                                                     "OIDC config {} missing auth"
                                                                             + " code config",
                                                                     config.getProvider())));
-                    // Basic parameters
                     if (StrUtil.isBlank(authConfig.getClientId())
                             || StrUtil.isBlank(authConfig.getClientSecret())
                             || StrUtil.isBlank(authConfig.getScopes())) {
@@ -92,20 +100,52 @@ public class IdpServiceImpl implements IdpService {
                                         config.getProvider()));
                     }
 
-                    // Endpoint configuration
                     if (StrUtil.isNotBlank(authConfig.getIssuer())) {
                         discoverAndSetEndpoints(config.getProvider(), authConfig);
-                    } else {
-                        if (StrUtil.isBlank(authConfig.getAuthorizationEndpoint())
-                                || StrUtil.isBlank(authConfig.getTokenEndpoint())
-                                || StrUtil.isBlank(authConfig.getUserInfoEndpoint())) {
-                            throw new BusinessException(
-                                    ErrorCode.INVALID_PARAMETER,
-                                    StrUtil.format(
-                                            "OIDC config {} missing required endpoint config",
-                                            config.getProvider()));
-                        }
+                    } else if (StrUtil.isBlank(authConfig.getAuthorizationEndpoint())
+                            || StrUtil.isBlank(authConfig.getTokenEndpoint())
+                            || StrUtil.isBlank(authConfig.getUserInfoEndpoint())) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "OIDC config {} missing required endpoint config",
+                                        config.getProvider()));
                     }
+                });
+    }
+
+    @Override
+    public void validateCasConfigs(List<CasConfig> casConfigs) {
+        if (CollUtil.isEmpty(casConfigs)) {
+            return;
+        }
+
+        Set<String> providers =
+                casConfigs.stream()
+                        .map(CasConfig::getProvider)
+                        .filter(StrUtil::isNotBlank)
+                        .collect(Collectors.toSet());
+        if (providers.size() != casConfigs.size()) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT, "Empty or duplicate provider in CAS config");
+        }
+
+        casConfigs.forEach(
+                config -> {
+                    if (StrUtil.isBlank(config.getName())
+                            || StrUtil.isBlank(config.getServerUrl())) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "CAS config {} missing required params: name or server"
+                                                + " URL",
+                                        config.getProvider()));
+                    }
+
+                    validateUrl(config.getServerUrl(), "CAS server URL");
+                    validateEndpoint(config.getLoginEndpoint(), "CAS login endpoint");
+                    validateEndpoint(config.getValidateEndpoint(), "CAS validate endpoint");
+                    validateEndpoint(config.getLogoutEndpoint(), "CAS logout endpoint");
                 });
     }
 
@@ -117,16 +157,17 @@ public class IdpServiceImpl implements IdpService {
             Map<String, Object> discovery =
                     restTemplate.exchange(discoveryUrl, HttpMethod.GET, null, Map.class).getBody();
 
-            // Validate and set endpoints
             String authEndpoint =
                     getRequiredEndpoint(discovery, IdpConstants.AUTHORIZATION_ENDPOINT);
             String tokenEndpoint = getRequiredEndpoint(discovery, IdpConstants.TOKEN_ENDPOINT);
             String userInfoEndpoint =
                     getRequiredEndpoint(discovery, IdpConstants.USERINFO_ENDPOINT);
+            String jwkSetUri = getRequiredEndpoint(discovery, IdpConstants.JWKS_URI);
 
             config.setAuthorizationEndpoint(authEndpoint);
             config.setTokenEndpoint(tokenEndpoint);
             config.setUserInfoEndpoint(userInfoEndpoint);
+            config.setJwkSetUri(jwkSetUri);
         } catch (Exception e) {
             log.error("Failed to discover OIDC endpoints from discovery URL: {}", discoveryUrl, e);
             throw new BusinessException(
@@ -152,7 +193,6 @@ public class IdpServiceImpl implements IdpService {
             return;
         }
 
-        // Provider must be unique
         Set<String> providers =
                 oauth2Configs.stream()
                         .map(OAuth2Config::getProvider)
@@ -192,7 +232,6 @@ public class IdpServiceImpl implements IdpService {
         if (publicKeys.stream()
                         .map(
                                 key -> {
-                                    // Load public key to validate
                                     loadPublicKey(key.getFormat(), key.getValue());
                                     return key.getKid();
                                 })
@@ -220,7 +259,6 @@ public class IdpServiceImpl implements IdpService {
     }
 
     private PublicKey loadPublicKeyFromPem(String pemContent) {
-        // Clean PEM format markers and whitespace
         String publicKeyPEM =
                 pemContent
                         .replace("-----BEGIN PUBLIC KEY-----", "")
@@ -234,10 +272,7 @@ public class IdpServiceImpl implements IdpService {
         }
 
         try {
-            // Base64 decode
             byte[] decoded = Base64.getDecoder().decode(publicKeyPEM);
-
-            // Public key object
             X509EncodedKeySpec spec = new X509EncodedKeySpec(decoded);
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
             return keyFactory.generatePublic(spec);
@@ -250,27 +285,20 @@ public class IdpServiceImpl implements IdpService {
 
     private PublicKey loadPublicKeyFromJwk(String jwkContent) {
         JSONObject jwk = JSONUtil.parseObj(jwkContent);
-
-        // Validate required fields
         String kty = getRequiredField(jwk, "kty");
         if (!"RSA".equals(kty)) {
             throw new IllegalArgumentException("Only RSA type JWK is supported");
         }
-
         return loadRSAPublicKeyFromJwk(jwk);
     }
 
     private PublicKey loadRSAPublicKeyFromJwk(JSONObject jwk) {
-        // Get required RSA parameters
         String nStr = getRequiredField(jwk, "n");
         String eStr = getRequiredField(jwk, "e");
 
         try {
-            // Base64 decode parameters
             byte[] nBytes = Base64.getUrlDecoder().decode(nStr);
             byte[] eBytes = Base64.getUrlDecoder().decode(eStr);
-
-            // Build RSA public key
             BigInteger modulus = new BigInteger(1, nBytes);
             BigInteger exponent = new BigInteger(1, eBytes);
 
@@ -283,6 +311,22 @@ public class IdpServiceImpl implements IdpService {
                     ErrorCode.INTERNAL_ERROR,
                     "Failed to parse JWK RSA parameters: " + e.getMessage());
         }
+    }
+
+    private void validateUrl(String url, String label) {
+        try {
+            URI.create(url);
+        } catch (Exception e) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER, label + " must be a valid URL");
+        }
+    }
+
+    private void validateEndpoint(String endpoint, String label) {
+        if (StrUtil.isBlank(endpoint) || endpoint.startsWith("/")) {
+            return;
+        }
+        validateUrl(endpoint, label);
     }
 
     private String getRequiredField(JSONObject jwk, String fieldName) {

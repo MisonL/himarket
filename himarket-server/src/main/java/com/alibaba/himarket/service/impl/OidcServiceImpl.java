@@ -19,14 +19,10 @@
 
 package com.alibaba.himarket.service.impl;
 
-import cn.hutool.core.codec.Base64;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import cn.hutool.jwt.JWT;
-import cn.hutool.jwt.JWTUtil;
-import com.alibaba.himarket.core.constant.CommonConstants;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.constant.Resources;
 import com.alibaba.himarket.core.exception.BusinessException;
@@ -43,6 +39,9 @@ import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.OidcService;
 import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
+import com.alibaba.himarket.service.idp.IdpStateCodec;
+import com.alibaba.himarket.service.idp.OidcIdTokenVerifier;
+import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.enums.GrantType;
 import com.alibaba.himarket.support.portal.AuthCodeConfig;
@@ -80,15 +79,21 @@ public class OidcServiceImpl implements OidcService {
 
     private final ContextHolder contextHolder;
 
+    private final OidcIdTokenVerifier oidcIdTokenVerifier;
+
+    private final PortalFrontendUrlResolver portalFrontendUrlResolver;
+
+    private final IdpStateCodec idpStateCodec;
+
     @Override
     public String buildAuthorizationUrl(
             String provider, String apiPrefix, HttpServletRequest request) {
         OidcConfig oidcConfig = findOidcConfig(provider);
         AuthCodeConfig authCodeConfig = oidcConfig.getAuthCodeConfig();
 
-        // State saves context info
-        String state = buildState(provider, apiPrefix);
-        String redirectUri = buildRedirectUri(request);
+        IdpState idpState = createState(provider, apiPrefix);
+        String state = encodeState(idpState);
+        String redirectUri = buildRedirectUri();
 
         // Redirect URL
         String authUrl =
@@ -99,6 +104,7 @@ public class OidcServiceImpl implements OidcService {
                         .queryParam(IdpConstants.REDIRECT_URI, redirectUri)
                         .queryParam(IdpConstants.SCOPE, authCodeConfig.getScopes())
                         .queryParam(IdpConstants.STATE, state)
+                        .queryParam(IdpConstants.NONCE, idpState.getNonce())
                         .build()
                         .toUriString();
 
@@ -125,7 +131,7 @@ public class OidcServiceImpl implements OidcService {
         IdpTokenResult tokenResult = requestToken(code, oidcConfig, request);
 
         // Get user info, prefer ID Token, fallback to UserInfo endpoint
-        Map<String, Object> userInfo = getUserInfo(tokenResult, oidcConfig);
+        Map<String, Object> userInfo = getUserInfo(tokenResult, oidcConfig, idpState);
         log.info("Get OIDC user info: {}", userInfo);
 
         // Handle user authentication
@@ -150,26 +156,15 @@ public class OidcServiceImpl implements OidcService {
                                                 config ->
                                                         IdpResult.builder()
                                                                 .provider(config.getProvider())
-                                                                .displayName(config.getName())
+                                                                .name(config.getName())
+                                                                .type("OIDC")
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());
     }
 
-    private String buildRedirectUri(HttpServletRequest request) {
-        String scheme = request.getScheme();
-        //        String serverName = "localhost";
-        //        int serverPort = 5173;
-        String serverName = request.getServerName();
-        int serverPort = request.getServerPort();
-
-        String baseUrl = scheme + "://" + serverName;
-        if (serverPort != CommonConstants.HTTP_PORT && serverPort != CommonConstants.HTTPS_PORT) {
-            baseUrl += ":" + serverPort;
-        }
-
-        // Redirect to frontend callback
-        return baseUrl + "/oidc/callback";
+    private String buildRedirectUri() {
+        return portalFrontendUrlResolver.buildCallbackUrl("/oidc/callback");
     }
 
     private OidcConfig findOidcConfig(String provider) {
@@ -191,20 +186,21 @@ public class OidcServiceImpl implements OidcService {
                                         ErrorCode.NOT_FOUND, Resources.OIDC_CONFIG, provider));
     }
 
-    private String buildState(String provider, String apiPrefix) {
-        IdpState state =
-                IdpState.builder()
-                        .provider(provider)
-                        .timestamp(System.currentTimeMillis())
-                        .nonce(IdUtil.fastSimpleUUID())
-                        .apiPrefix(apiPrefix)
-                        .build();
-        return Base64.encode(JSONUtil.toJsonStr(state));
+    private IdpState createState(String provider, String apiPrefix) {
+        return IdpState.builder()
+                .provider(provider)
+                .timestamp(System.currentTimeMillis())
+                .nonce(IdUtil.fastSimpleUUID())
+                .apiPrefix(apiPrefix)
+                .build();
+    }
+
+    private String encodeState(IdpState state) {
+        return idpStateCodec.encode(state);
     }
 
     private IdpState parseState(String encodedState) {
-        String stateJson = Base64.decodeStr(encodedState);
-        IdpState idpState = JSONUtil.toBean(stateJson, IdpState.class);
+        IdpState idpState = idpStateCodec.decode(encodedState);
 
         // Validate timestamp, 10 minutes validity
         if (idpState.getTimestamp() != null) {
@@ -220,7 +216,7 @@ public class OidcServiceImpl implements OidcService {
     private IdpTokenResult requestToken(
             String code, OidcConfig oidcConfig, HttpServletRequest request) {
         AuthCodeConfig authCodeConfig = oidcConfig.getAuthCodeConfig();
-        String redirectUri = buildRedirectUri(request);
+        String redirectUri = buildRedirectUri();
 
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
         params.add(IdpConstants.GRANT_TYPE, GrantType.AUTHORIZATION_CODE.getType());
@@ -238,11 +234,12 @@ public class OidcServiceImpl implements OidcService {
                 IdpTokenResult.class);
     }
 
-    private Map<String, Object> getUserInfo(IdpTokenResult tokenResult, OidcConfig oidcConfig) {
+    private Map<String, Object> getUserInfo(
+            IdpTokenResult tokenResult, OidcConfig oidcConfig, IdpState idpState) {
         // Prefer ID Token
         if (StrUtil.isNotBlank(tokenResult.getIdToken())) {
-            log.info("Get user info form id token: {}", tokenResult.getIdToken());
-            return parseUserInfo(tokenResult.getIdToken(), oidcConfig);
+            log.info("Get user info form id token");
+            return parseUserInfo(tokenResult.getIdToken(), oidcConfig, idpState);
         }
 
         // Fallback: use UserInfo endpoint
@@ -260,23 +257,13 @@ public class OidcServiceImpl implements OidcService {
         return requestUserInfo(tokenResult.getAccessToken(), authCodeConfig, oidcConfig);
     }
 
-    private Map<String, Object> parseUserInfo(String idToken, OidcConfig oidcConfig) {
-        JWT jwt = JWTUtil.parseToken(idToken);
+    private Map<String, Object> parseUserInfo(
+            String idToken, OidcConfig oidcConfig, IdpState idpState) {
+        Map<String, Object> userInfo =
+                oidcIdTokenVerifier.verifyAndExtractClaims(
+                        idToken, oidcConfig.getAuthCodeConfig(), idpState.getNonce());
 
-        // Validate expiration
-        Object exp = jwt.getPayload("exp");
-        if (exp != null) {
-            long expTime = Convert.toLong(exp);
-            long currentTime = System.currentTimeMillis() / 1000;
-            if (expTime <= currentTime) {
-                throw new BusinessException(ErrorCode.INVALID_REQUEST, "ID Token has expired");
-            }
-        }
-        // TODO Verify signature
-
-        Map<String, Object> userInfo = jwt.getPayload().getClaimsJson();
-
-        log.info("Successfully extracted user info from ID Token, sub: {}", userInfo);
+        log.info("Successfully extracted user info from ID Token, sub: {}", userInfo.get("sub"));
         return userInfo;
     }
 

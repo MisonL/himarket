@@ -12,6 +12,7 @@ import Agent from "./pages/Agent";
 import AgentDetail from "./pages/AgentDetail";
 import ModelDetail from "./pages/ModelDetail";
 import Callback from "./pages/Callback";
+import CasCallback from "./pages/CasCallback";
 import OidcCallback from "./pages/OidcCallback";
 import Square from "./pages/Square";
 import Chat from "./pages/Chat";
@@ -37,6 +38,7 @@ export function Router() {
       <Route path="/register" element={<Register />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/callback" element={<Callback />} />
+      <Route path="/cas/callback" element={<CasCallback />} />
       <Route path="/oidc/callback" element={<OidcCallback />} />
 
       {/* 其他页面可继续添加 */}

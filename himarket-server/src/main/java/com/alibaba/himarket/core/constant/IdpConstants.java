@@ -62,6 +62,21 @@ public class IdpConstants {
     public static final String STATE = "state";
 
     /**
+     * Nonce
+     */
+    public static final String NONCE = "nonce";
+
+    /**
+     * Ticket
+     */
+    public static final String TICKET = "ticket";
+
+    /**
+     * Service
+     */
+    public static final String SERVICE = "service";
+
+    /**
      * Subject
      */
     public static final String SUBJECT = "sub";
@@ -90,4 +105,24 @@ public class IdpConstants {
      * User info endpoint
      */
     public static final String USERINFO_ENDPOINT = "userinfo_endpoint";
+
+    /**
+     * JWK set URI
+     */
+    public static final String JWKS_URI = "jwks_uri";
+
+    /**
+     * Default CAS login path
+     */
+    public static final String CAS_LOGIN_PATH = "/login";
+
+    /**
+     * Default CAS validate path
+     */
+    public static final String CAS_VALIDATE_PATH = "/p3/serviceValidate";
+
+    /**
+     * Default CAS logout path
+     */
+    public static final String CAS_LOGOUT_PATH = "/logout";
 }
