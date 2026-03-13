@@ -21,13 +21,16 @@ package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.portal.PortalResult;
 import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.PortalService;
@@ -40,6 +43,7 @@ import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import jakarta.servlet.http.Cookie;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -122,8 +126,9 @@ class CasServiceImplTest {
         MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        String authUrl = casService.buildAuthorizationUrl("cas", "/api/v1", request);
-        URI authUri = URI.create(authUrl);
+        IdpAuthorizeResult authorizeResult =
+                casService.buildAuthorizationResult("cas", "/api/v1", request);
+        URI authUri = URI.create(authorizeResult.getRedirectUrl());
         assertEquals(
                 serverUrl + "/login",
                 authUri.getScheme() + "://" + authUri.getAuthority() + authUri.getPath());
@@ -135,6 +140,7 @@ class CasServiceImplTest {
                         + URI.create(serviceUrl).getHost()
                         + URI.create(serviceUrl).getPath());
         String state = splitQueryValue(URI.create(serviceUrl).getQuery(), "state");
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
         expectedServiceHolder[0] = serviceUrl;
 
         AuthResult authResult = casService.handleCallback("ST-1", state, request, response);
@@ -142,6 +148,42 @@ class CasServiceImplTest {
         assertNotNull(authResult);
         assertNotNull(authResult.getAccessToken());
         assertEquals("Bearer", authResult.getTokenType());
+    }
+
+    @Test
+    void handleCallbackShouldRejectWhenStateCookieMissing() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("http://localhost:12345/cas");
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser()),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        MockHttpServletRequest request = buildRequest(18080);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        String state = casService.buildAuthorizationResult("cas", "/api/v1", request).getState();
+
+        assertThrows(
+                com.alibaba.himarket.core.exception.BusinessException.class,
+                () -> casService.handleCallback("ST-1", state, request, response));
     }
 
     private MockHttpServletRequest buildRequest(int port) {
