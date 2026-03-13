@@ -1,6 +1,6 @@
-import {Card, Form, Switch, Divider, message} from 'antd'
+import {Card, Form, Input, Switch, Divider, message} from 'antd'
 import {useMemo} from 'react'
-import {Portal, ThirdPartyAuthConfig, AuthenticationType, OidcConfig, OAuth2Config} from '@/types'
+import {Portal, ThirdPartyAuthConfig, AuthenticationType, CasConfig, OidcConfig, OAuth2Config} from '@/types'
 import {portalApi} from '@/lib/api'
 import {ThirdPartyAuthManager} from './ThirdPartyAuthManager'
 
@@ -22,10 +22,9 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                 portalSettingConfig: {
                     ...portal.portalSettingConfig,
                     builtinAuthEnabled: values.builtinAuthEnabled,
-                    oidcAuthEnabled: values.oidcAuthEnabled,
                     autoApproveDevelopers: values.autoApproveDevelopers,
                     autoApproveSubscriptions: values.autoApproveSubscriptions,
-                    frontendRedirectUrl: values.frontendRedirectUrl,
+                    frontendRedirectUrl: values.frontendRedirectUrl?.trim() || undefined,
                 },
                 portalDomainConfig: portal.portalDomainConfig,
                 portalUiConfig: portal.portalUiConfig,
@@ -46,12 +45,27 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
     // 第三方认证配置保存函数
     const handleSaveThirdPartyAuth = async (configs: ThirdPartyAuthConfig[]) => {
         try {
+            const currentValues = form.getFieldsValue([
+                'builtinAuthEnabled',
+                'autoApproveDevelopers',
+                'autoApproveSubscriptions',
+                'frontendRedirectUrl'
+            ])
+            const frontendRedirectUrl = (currentValues.frontendRedirectUrl as string | undefined)?.trim() || undefined
+
             // 分离OIDC和OAuth2配置，去掉type字段
             const oidcConfigs = configs
                 .filter(config => config.type === AuthenticationType.OIDC)
                 .map(config => {
                     const { type, ...oidcConfig } = config as (OidcConfig & { type: AuthenticationType.OIDC })
                     return oidcConfig
+                })
+
+            const casConfigs = configs
+                .filter(config => config.type === AuthenticationType.CAS)
+                .map(config => {
+                    const { type, ...casConfig } = config as (CasConfig & { type: AuthenticationType.CAS })
+                    return casConfig
                 })
 
             const oauth2Configs = configs
@@ -65,8 +79,13 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                 ...portal,
                 portalSettingConfig: {
                     ...portal.portalSettingConfig,
+                    builtinAuthEnabled: currentValues.builtinAuthEnabled,
+                    autoApproveDevelopers: currentValues.autoApproveDevelopers,
+                    autoApproveSubscriptions: currentValues.autoApproveSubscriptions,
+                    frontendRedirectUrl: frontendRedirectUrl,
                     // 直接保存分离的配置数组
                     oidcConfigs: oidcConfigs,
+                    casConfigs: casConfigs,
                     oauth2Configs: oauth2Configs
                 }
             }
@@ -92,7 +111,16 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                 })
             })
         }
-        
+
+        if (portal.portalSettingConfig?.casConfigs) {
+            portal.portalSettingConfig.casConfigs.forEach(casConfig => {
+                configs.push({
+                    ...casConfig,
+                    type: AuthenticationType.CAS
+                })
+            })
+        }
+
         // 添加OAuth2配置
         if (portal.portalSettingConfig?.oauth2Configs) {
             portal.portalSettingConfig.oauth2Configs.forEach(oauth2Config => {
@@ -104,7 +132,11 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
         }
         
         return configs
-    }, [portal.portalSettingConfig?.oidcConfigs, portal.portalSettingConfig?.oauth2Configs])
+    }, [
+        portal.portalSettingConfig?.oidcConfigs,
+        portal.portalSettingConfig?.casConfigs,
+        portal.portalSettingConfig?.oauth2Configs
+    ])
 
 
     return (
@@ -119,7 +151,6 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                 layout="vertical"
                 initialValues={{
                     builtinAuthEnabled: portal.portalSettingConfig?.builtinAuthEnabled,
-                    oidcAuthEnabled: portal.portalSettingConfig?.oidcAuthEnabled,
                     autoApproveDevelopers: portal.portalSettingConfig?.autoApproveDevelopers,
                     autoApproveSubscriptions: portal.portalSettingConfig?.autoApproveSubscriptions,
                     frontendRedirectUrl: portal.portalSettingConfig?.frontendRedirectUrl,
@@ -160,6 +191,20 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                                 />
                             </Form.Item>
                         </div>
+
+                        <Form.Item
+                            name="frontendRedirectUrl"
+                            label="前端回调基址"
+                            extra="OIDC 和 CAS 回调将基于该地址生成，需填写 Portal 对外访问的前端域名基址，例如 https://portal.example.com"
+                            rules={[
+                                {
+                                    type: 'url',
+                                    message: '请输入有效的 URL'
+                                }
+                            ]}
+                        >
+                            <Input placeholder="https://portal.example.com" onBlur={() => handleSettingUpdate()} />
+                        </Form.Item>
 
                         <Divider />
                         

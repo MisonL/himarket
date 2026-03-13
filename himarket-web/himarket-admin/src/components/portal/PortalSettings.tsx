@@ -1,7 +1,7 @@
 import {Card, Form, Input, Select, Switch, Button, Divider, Space, Table, Modal, message, Tabs} from 'antd'
 import {SaveOutlined, PlusOutlined, DeleteOutlined, ExclamationCircleOutlined} from '@ant-design/icons'
 import {useState, useMemo} from 'react'
-import {Portal, ThirdPartyAuthConfig, AuthenticationType, OidcConfig, OAuth2Config} from '@/types'
+import {Portal, ThirdPartyAuthConfig, AuthenticationType, OidcConfig, OAuth2Config, CasConfig} from '@/types'
 import {portalApi} from '@/lib/api'
 import {ThirdPartyAuthManager} from './ThirdPartyAuthManager'
 
@@ -33,10 +33,9 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                 portalSettingConfig: {
                     ...portal.portalSettingConfig,
                     builtinAuthEnabled: values.builtinAuthEnabled,
-                    oidcAuthEnabled: values.oidcAuthEnabled,
                     autoApproveDevelopers: values.autoApproveDevelopers,
                     autoApproveSubscriptions: values.autoApproveSubscriptions,
-                    frontendRedirectUrl: values.frontendRedirectUrl,
+                    frontendRedirectUrl: values.frontendRedirectUrl?.trim() || undefined,
                 },
                 portalDomainConfig: portal.portalDomainConfig,
                 portalUiConfig: portal.portalUiConfig,
@@ -132,6 +131,15 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                 })
             })
         }
+
+        if (portal.portalSettingConfig?.casConfigs) {
+            portal.portalSettingConfig.casConfigs.forEach(casConfig => {
+                configs.push({
+                    ...casConfig,
+                    type: AuthenticationType.CAS
+                })
+            })
+        }
         
         // 添加OAuth2配置
         if (portal.portalSettingConfig?.oauth2Configs) {
@@ -144,17 +152,32 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
         }
         
         return configs
-    }, [portal.portalSettingConfig?.oidcConfigs, portal.portalSettingConfig?.oauth2Configs])
+    }, [portal.portalSettingConfig?.oidcConfigs, portal.portalSettingConfig?.casConfigs, portal.portalSettingConfig?.oauth2Configs])
 
     // 第三方认证配置保存函数
     const handleSaveThirdPartyAuth = async (configs: ThirdPartyAuthConfig[]) => {
         try {
+            const currentValues = form.getFieldsValue([
+                'builtinAuthEnabled',
+                'autoApproveDevelopers',
+                'autoApproveSubscriptions',
+                'frontendRedirectUrl'
+            ])
+            const frontendRedirectUrl = (currentValues.frontendRedirectUrl as string | undefined)?.trim() || undefined
+
             // 分离OIDC和OAuth2配置，去掉type字段
             const oidcConfigs = configs
                 .filter(config => config.type === AuthenticationType.OIDC)
                 .map(config => {
                     const { type, ...oidcConfig } = config as (OidcConfig & { type: AuthenticationType.OIDC })
                     return oidcConfig
+                })
+
+            const casConfigs = configs
+                .filter(config => config.type === AuthenticationType.CAS)
+                .map(config => {
+                    const { type, ...casConfig } = config as (CasConfig & { type: AuthenticationType.CAS })
+                    return casConfig
                 })
 
             const oauth2Configs = configs
@@ -168,8 +191,13 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                 ...portal,
                 portalSettingConfig: {
                     ...portal.portalSettingConfig,
+                    builtinAuthEnabled: currentValues.builtinAuthEnabled,
+                    autoApproveDevelopers: currentValues.autoApproveDevelopers,
+                    autoApproveSubscriptions: currentValues.autoApproveSubscriptions,
+                    frontendRedirectUrl: frontendRedirectUrl,
                     // 直接保存分离的配置数组
                     oidcConfigs: oidcConfigs,
+                    casConfigs: casConfigs,
                     oauth2Configs: oauth2Configs
                 }
             }
@@ -233,15 +261,6 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                                 onChange={(checked) => handleSettingUpdate('builtinAuthEnabled', checked)}
                             />
                         </Form.Item>
-                        {/* <Form.Item
-              name="oidcAuthEnabled"
-              label="OIDC认证"
-              valuePropName="checked"
-            >
-              <Switch 
-                onChange={(checked) => handleSettingUpdate('oidcAuthEnabled', checked)}
-              />
-            </Form.Item> */}
                         <Form.Item
                             name="autoApproveDevelopers"
                             label="开发者自动审批"
@@ -261,6 +280,28 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                             />
                         </Form.Item>
                     </div>
+
+                    <Form.Item
+                        name="frontendRedirectUrl"
+                        label="前端回调基址"
+                        extra="OIDC 和 CAS 回调将基于该地址生成，需填写 Portal 对外访问的前端域名基址，例如 https://portal.example.com"
+                        rules={[
+                            {
+                                type: 'url',
+                                message: '请输入有效的 URL'
+                            }
+                        ]}
+                    >
+                        <Input
+                            placeholder="https://portal.example.com"
+                            onBlur={(event) =>
+                                handleSettingUpdate(
+                                    'frontendRedirectUrl',
+                                    event.target.value.trim() || undefined
+                                )
+                            }
+                        />
+                    </Form.Item>
 
                     {/* 第三方认证管理 */}
                     <Divider/>
@@ -321,7 +362,6 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                 initialValues={{
                     portalSettingConfig: portal.portalSettingConfig,
                     builtinAuthEnabled: portal.portalSettingConfig?.builtinAuthEnabled,
-                    oidcAuthEnabled: portal.portalSettingConfig?.oidcAuthEnabled,
                     autoApproveDevelopers: portal.portalSettingConfig?.autoApproveDevelopers,
                     autoApproveSubscriptions: portal.portalSettingConfig?.autoApproveSubscriptions,
                     frontendRedirectUrl: portal.portalSettingConfig?.frontendRedirectUrl,

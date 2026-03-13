@@ -36,6 +36,11 @@ public class PortalSettingConfig {
     private List<OidcConfig> oidcConfigs;
 
     /**
+     * CAS configurations
+     */
+    private List<CasConfig> casConfigs;
+
+    /**
      * Enable auto-approval for developer registrations
      */
     private Boolean autoApproveDevelopers = false;
@@ -49,6 +54,11 @@ public class PortalSettingConfig {
      * OAuth2 configurations
      */
     private List<OAuth2Config> oauth2Configs;
+
+    /**
+     * Public frontend base URL used to build authentication callback URLs
+     */
+    private String frontendRedirectUrl;
 
     /**
      * Search engine configuration (New)

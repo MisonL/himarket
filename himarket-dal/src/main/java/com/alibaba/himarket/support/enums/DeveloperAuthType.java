@@ -30,6 +30,8 @@ public enum DeveloperAuthType {
 
     OIDC,
 
+    CAS,
+
     OAUTH2,
     ;
 

@@ -24,9 +24,21 @@ export interface OidcConfig {
   identityMapping?: IdentityMapping;
 }
 
+export interface CasConfig {
+  provider: string;
+  name: string;
+  enabled: boolean;
+  serverUrl: string;
+  loginEndpoint?: string;
+  validateEndpoint?: string;
+  logoutEndpoint?: string;
+  identityMapping?: IdentityMapping;
+}
+
 // 第三方认证相关类型定义
 export enum AuthenticationType {
   OIDC = 'OIDC',
+  CAS = 'CAS',
   OAUTH2 = 'OAUTH2'
 }
 
@@ -71,17 +83,18 @@ export interface OAuth2Config {
 // 为了UI显示方便，给配置添加类型标识的联合类型
 export type ThirdPartyAuthConfig = 
   | (OidcConfig & { type: AuthenticationType.OIDC })
+  | (CasConfig & { type: AuthenticationType.CAS })
   | (OAuth2Config & { type: AuthenticationType.OAUTH2 })
 
 export interface PortalSettingConfig {
   builtinAuthEnabled: boolean;
-  oidcAuthEnabled: boolean;
   autoApproveDevelopers: boolean;
   autoApproveSubscriptions: boolean;
-  frontendRedirectUrl: string;
+  frontendRedirectUrl?: string;
   
   // 第三方认证配置（分离存储）
   oidcConfigs?: OidcConfig[];
+  casConfigs?: CasConfig[];
   oauth2Configs?: OAuth2Config[];
 }
 

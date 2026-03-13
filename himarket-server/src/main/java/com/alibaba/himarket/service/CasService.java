@@ -19,42 +19,18 @@
 
 package com.alibaba.himarket.service;
 
-import com.alibaba.himarket.support.enums.PublicKeyFormat;
-import com.alibaba.himarket.support.portal.CasConfig;
-import com.alibaba.himarket.support.portal.OAuth2Config;
-import com.alibaba.himarket.support.portal.OidcConfig;
-import java.security.PublicKey;
+import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpResult;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.List;
 
-public interface IdpService {
+public interface CasService {
 
-    /**
-     * 验证OIDC配置
-     *
-     * @param oidcConfigs
-     */
-    void validateOidcConfigs(List<OidcConfig> oidcConfigs);
+    String buildAuthorizationUrl(String provider, String apiPrefix, HttpServletRequest request);
 
-    /**
-     * 验证OAuth2配置
-     *
-     * @param oauth2Configs
-     */
-    void validateOAuth2Configs(List<OAuth2Config> oauth2Configs);
+    AuthResult handleCallback(
+            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
 
-    /**
-     * 验证CAS配置
-     *
-     * @param casConfigs
-     */
-    void validateCasConfigs(List<CasConfig> casConfigs);
-
-    /**
-     * 加载JWT公钥
-     *
-     * @param format
-     * @param publicKey
-     * @return
-     */
-    PublicKey loadPublicKey(PublicKeyFormat format, String publicKey);
+    List<IdpResult> getAvailableProviders();
 }
