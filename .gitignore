@@ -47,3 +47,7 @@ package-lock.json
 # Local / deploy scripts (do not commit)
 .env
 push-himarket.sh
+
+# Docker local runtime artifacts
+deploy/docker/data/
+deploy/docker/standalone-logs/
