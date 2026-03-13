@@ -23,6 +23,7 @@ import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner.PublicAccessEndpoint;
 import jakarta.servlet.DispatcherType;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,47 +55,49 @@ public class SecurityConfig {
     private final PublicAccessPathScanner publicAccessPathScanner;
 
     // Auth endpoints
-    private static final String[] AUTH_WHITELIST = {
-        "/admins/init",
-        "/admins/need-init",
-        "/admins/login",
-        "/developers/login",
-        "/**/developers/login",
-        "/developers/authorize",
-        "/**/developers/authorize",
-        "/developers/callback",
-        "/**/developers/callback",
-        "/developers/providers",
-        "/**/developers/providers",
-        "/developers/oidc/authorize",
-        "/developers/oidc/callback",
-        "/developers/oidc/providers",
-        "/**/developers/oidc/authorize",
-        "/**/developers/oidc/callback",
-        "/**/developers/oidc/providers",
-        "/developers/cas/authorize",
-        "/developers/cas/callback",
-        "/developers/cas/providers",
-        "/**/developers/cas/authorize",
-        "/**/developers/cas/callback",
-        "/**/developers/cas/providers",
-        "/developers/oauth2/token",
-        "/**/developers/oauth2/token",
-        "/ws/acp",
-        "/ws/terminal",
-        "/cli-providers",
-        "/skills/*/download",
-        "/workers/*/download",
-        "/workers/*/files/**"
-    };
+    // Note: Using AntPathRequestMatcher here to support patterns like "/**/developers/login".
+    // Spring MVC PathPattern does not allow "**" in the middle of a pattern.
+    private static final RequestMatcher[] AUTH_WHITELIST =
+            antMatchers(
+                    "/admins/init",
+                    "/admins/need-init",
+                    "/admins/login",
+                    "/developers/login",
+                    "/**/developers/login",
+                    "/developers/authorize",
+                    "/**/developers/authorize",
+                    "/developers/callback",
+                    "/**/developers/callback",
+                    "/developers/providers",
+                    "/**/developers/providers",
+                    "/developers/oidc/authorize",
+                    "/developers/oidc/callback",
+                    "/developers/oidc/providers",
+                    "/**/developers/oidc/authorize",
+                    "/**/developers/oidc/callback",
+                    "/**/developers/oidc/providers",
+                    "/developers/cas/authorize",
+                    "/developers/cas/callback",
+                    "/developers/cas/providers",
+                    "/**/developers/cas/authorize",
+                    "/**/developers/cas/callback",
+                    "/**/developers/cas/providers",
+                    "/developers/oauth2/token",
+                    "/**/developers/oauth2/token",
+                    "/ws/acp",
+                    "/ws/terminal",
+                    "/cli-providers",
+                    "/skills/*/download",
+                    "/workers/*/download",
+                    "/workers/*/files/**");
 
     // Swagger endpoints
-    private static final String[] SWAGGER_WHITELIST = {
-        "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**"
-    };
+    private static final RequestMatcher[] SWAGGER_WHITELIST =
+            antMatchers(
+                    "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**");
 
     // System endpoints
-    private static final String[] SYSTEM_WHITELIST = {"/favicon.ico", "/error"};
+    private static final RequestMatcher[] SYSTEM_WHITELIST = antMatchers("/favicon.ico", "/error");
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -138,6 +143,12 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    private static RequestMatcher[] antMatchers(String... patterns) {
+        return Arrays.stream(patterns)
+                .map(AntPathRequestMatcher::new)
+                .toArray(RequestMatcher[]::new);
     }
 
     @Bean
