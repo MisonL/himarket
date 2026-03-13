@@ -91,26 +91,25 @@ const Login: React.FC = () => {
     }
   };
 
-  // 跳转到 OIDC 授权 - 对接OidcController
+  const buildAuthorizeUrl = (path: string, provider: string) => {
+    const apiPrefix = api.defaults.baseURL || "/api/v1";
+    const apiBaseUrl = new URL(apiPrefix, window.location.origin);
+    if (!apiBaseUrl.pathname.endsWith("/")) {
+      apiBaseUrl.pathname += "/";
+    }
+
+    const authUrl = new URL(path.replace(/^\//, ""), apiBaseUrl);
+    authUrl.searchParams.set("provider", provider);
+    return authUrl.toString();
+  };
+
+  // 跳转到 OIDC 授权 - 对接 /developers/oidc/authorize
   const handleOidcLogin = (provider: string) => {
-    // 获取API前缀配置
-    const apiPrefix = api.defaults.baseURL || '/api/v1';
-
-    // 构建授权URL - 对接 /developers/oidc/authorize
-    const authUrl = new URL(`${window.location.origin}${apiPrefix}/developers/oidc/authorize`);
-    authUrl.searchParams.set('provider', provider);
-
-    console.log('Redirecting to OIDC authorization:', authUrl.toString());
-
-    // 跳转到OIDC授权服务器
-    window.location.href = authUrl.toString();
+    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider);
   };
 
   const handleCasLogin = (provider: string) => {
-    const apiPrefix = api.defaults.baseURL || '/api/v1';
-    const authUrl = new URL(`${window.location.origin}${apiPrefix}/developers/cas/authorize`);
-    authUrl.searchParams.set('provider', provider);
-    window.location.href = authUrl.toString();
+    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider);
   };
 
   return (
