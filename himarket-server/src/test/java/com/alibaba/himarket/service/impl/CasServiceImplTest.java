@@ -89,7 +89,8 @@ class CasServiceImplTest {
         casConfig.setProvider("cas");
         casConfig.setName("CAS");
         casConfig.setServerUrl(serverUrl);
-        casConfig.setValidateEndpoint("/p3/serviceValidate");
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
         casConfig.setIdentityMapping(defaultIdentityMapping());
 
         PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
@@ -123,6 +124,9 @@ class CasServiceImplTest {
 
         String authUrl = casService.buildAuthorizationUrl("cas", "/api/v1", request);
         URI authUri = URI.create(authUrl);
+        assertEquals(
+                serverUrl + "/login",
+                authUri.getScheme() + "://" + authUri.getAuthority() + authUri.getPath());
         String serviceUrl = splitQueryValue(authUri.getQuery(), "service");
         assertEquals(
                 "https://portal.example.com/cas/callback",
