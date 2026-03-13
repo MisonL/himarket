@@ -71,6 +71,9 @@ public class CasTicketValidator {
     }
 
     private String joinUrl(String baseUrl, String path) {
+        if (StrUtil.startWithAnyIgnoreCase(path, "http://", "https://")) {
+            return path;
+        }
         return StrUtil.removeSuffix(baseUrl, "/") + StrUtil.addPrefixIfNot(path, "/");
     }
 }
