@@ -37,6 +37,8 @@ public class Resources {
 
     public static final String OIDC_CONFIG = "OidcConfig";
 
+    public static final String CAS_CONFIG = "CasConfig";
+
     public static final String PRODUCT = "Product";
 
     public static final String PRODUCT_CATEGORY = "ProductCategory";

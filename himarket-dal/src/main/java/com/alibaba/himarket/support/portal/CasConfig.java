@@ -17,27 +17,26 @@
  * under the License.
  */
 
-package com.alibaba.himarket.dto.result.idp;
+package com.alibaba.himarket.support.portal;
 
-import lombok.Builder;
 import lombok.Data;
 
 @Data
-@Builder
-public class IdpResult {
+public class CasConfig {
 
-    /**
-     * Provider
-     */
     private String provider;
 
-    /**
-     * Provider display name
-     */
     private String name;
 
-    /**
-     * Authentication type
-     */
-    private String type;
+    private boolean enabled = true;
+
+    private String serverUrl;
+
+    private String loginEndpoint;
+
+    private String validateEndpoint;
+
+    private String logoutEndpoint;
+
+    private IdentityMapping identityMapping = new IdentityMapping();
 }
