@@ -8,7 +8,8 @@ import request, { type RespI } from "../request";
 
 export interface IIdpProvider {
   provider: string;
-  name: string;
+  name?: string;
+  displayName?: string;
 }
 
 export interface IAuthResult {
@@ -23,6 +24,11 @@ export interface IIdentity {
 
 interface OidcCallbackParams {
   code: string;
+  state: string;
+}
+
+interface CasCallbackParams {
+  ticket: string;
   state: string;
 }
 
@@ -53,6 +59,12 @@ export function getOidcProviders() {
   );
 }
 
+export function getCasProviders() {
+  return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
+    '/developers/cas/providers'
+  );
+}
+
 /**
  * OIDC 回调处理
  */
@@ -62,6 +74,18 @@ export function handleOidcCallback(params: OidcCallbackParams) {
     {
       params: {
         code: params.code,
+        state: params.state,
+      },
+    }
+  );
+}
+
+export function handleCasCallback(params: CasCallbackParams) {
+  return request.get<RespI<IAuthResult>, RespI<IAuthResult>>(
+    '/developers/cas/callback',
+    {
+      params: {
+        ticket: params.ticket,
         state: params.state,
       },
     }

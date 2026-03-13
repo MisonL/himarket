@@ -26,13 +26,10 @@ import jakarta.servlet.DispatcherType;
 import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -45,25 +42,37 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @RequiredArgsConstructor
-@Slf4j
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final PublicAccessPathScanner publicAccessPathScanner;
 
-    // Auth endpoints
     private static final String[] AUTH_WHITELIST = {
         "/admins/init",
         "/admins/need-init",
         "/admins/login",
         "/developers/login",
+        "/**/developers/login",
         "/developers/authorize",
+        "/**/developers/authorize",
         "/developers/callback",
+        "/**/developers/callback",
         "/developers/providers",
+        "/**/developers/providers",
         "/developers/oidc/authorize",
         "/developers/oidc/callback",
         "/developers/oidc/providers",
+        "/**/developers/oidc/authorize",
+        "/**/developers/oidc/callback",
+        "/**/developers/oidc/providers",
+        "/developers/cas/authorize",
+        "/developers/cas/callback",
+        "/developers/cas/providers",
+        "/**/developers/cas/authorize",
+        "/**/developers/cas/callback",
+        "/**/developers/cas/providers",
         "/developers/oauth2/token",
+        "/**/developers/oauth2/token",
         "/ws/acp",
         "/ws/terminal",
         "/cli-providers",
@@ -72,12 +81,10 @@ public class SecurityConfig {
         "/workers/*/files/**"
     };
 
-    // Swagger endpoints
     private static final String[] SWAGGER_WHITELIST = {
         "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**"
     };
 
-    // System endpoints
     private static final String[] SYSTEM_WHITELIST = {"/favicon.ico", "/error"};
 
     @Bean
@@ -90,32 +97,23 @@ public class SecurityConfig {
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
                         auth -> {
-                            auth
-                                    // Permit async dispatch for SSE/streaming
-                                    .dispatcherTypeMatchers(DispatcherType.ASYNC)
+                            auth.dispatcherTypeMatchers(DispatcherType.ASYNC)
                                     .permitAll()
-                                    // Permit OPTIONS
                                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                                     .permitAll()
-                                    // Permit developer registration (POST /developers)
                                     .requestMatchers(HttpMethod.POST, "/developers")
                                     .permitAll()
-                                    // Permit auth endpoints
                                     .requestMatchers(AUTH_WHITELIST)
                                     .permitAll()
-                                    // Permit Swagger endpoints
                                     .requestMatchers(SWAGGER_WHITELIST)
                                     .permitAll()
-                                    // Permit system endpoints
                                     .requestMatchers(SYSTEM_WHITELIST)
                                     .permitAll();
-                            // Permit @PublicAccess annotated endpoints with HTTP method precision
                             for (PublicAccessEndpoint endpoint : publicEndpoints) {
                                 if (endpoint.httpMethod() != null) {
                                     auth.requestMatchers(endpoint.httpMethod(), endpoint.path())
                                             .permitAll();
                                 } else {
-                                    // null httpMethod means all methods
                                     auth.requestMatchers(endpoint.path()).permitAll();
                                 }
                             }
@@ -124,12 +122,6 @@ public class SecurityConfig {
                 .addFilterBefore(
                         new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
         return http.build();
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
     }
 
     @Bean

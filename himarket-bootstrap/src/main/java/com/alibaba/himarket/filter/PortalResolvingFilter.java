@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -36,6 +37,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Slf4j
 @RequiredArgsConstructor
 public class PortalResolvingFilter extends OncePerRequestFilter {
+
+    private static final Set<String> STRICT_AUTH_PATHS =
+            Set.of(
+                    "/developers/oidc/authorize",
+                    "/developers/oidc/callback",
+                    "/developers/oidc/providers",
+                    "/developers/cas/authorize",
+                    "/developers/cas/callback",
+                    "/developers/cas/providers");
 
     private final PortalService portalService;
 
@@ -75,10 +85,14 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
 
             if (domain == null) {
                 // Priority:
-                // 1. Use Host header if available
-                // 2. Fallback to ServerName if Host header is missing
-                if (host != null && !host.isEmpty()) {
-                    domain = host.split(":")[0];
+                // 1. Use X-Forwarded-Host if available
+                // 2. Use Host header if available
+                // 3. Fallback to ServerName if Host header is missing
+                String forwardedDomain = extractDomain(xForwardedHost);
+                if (StrUtil.isNotBlank(forwardedDomain)) {
+                    domain = forwardedDomain;
+                } else if (host != null && !host.isEmpty()) {
+                    domain = extractDomain(host);
                 } else {
                     domain = request.getServerName();
                 }
@@ -90,10 +104,16 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
                 log.debug("Resolved portal for domain: {} with portalId: {}", domain, portalId);
             } else {
                 log.debug("No portal found for domain: {}", domain);
-                String defaultPortalId = portalService.getDefaultPortal();
-                if (StrUtil.isNotBlank(defaultPortalId)) {
-                    contextHolder.savePortal(defaultPortalId);
-                    log.debug("Use default portal: {}", defaultPortalId);
+                if (!requiresStrictPortalResolution(request)) {
+                    String defaultPortalId = portalService.getDefaultPortal();
+                    if (StrUtil.isNotBlank(defaultPortalId)) {
+                        contextHolder.savePortal(defaultPortalId);
+                        log.debug("Use default portal: {}", defaultPortalId);
+                    }
+                } else {
+                    log.debug(
+                            "Skip default portal fallback for strict authentication path: {}",
+                            request.getRequestURI());
                 }
             }
 
@@ -101,5 +121,30 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
         } finally {
             contextHolder.clearPortal();
         }
+    }
+
+    private boolean requiresStrictPortalResolution(HttpServletRequest request) {
+        String requestPath = request.getRequestURI();
+        return STRICT_AUTH_PATHS.stream().anyMatch(requestPath::endsWith);
+    }
+
+    private String extractDomain(String hostValue) {
+        if (StrUtil.isBlank(hostValue)) {
+            return null;
+        }
+
+        String firstHost = StrUtil.trim(StrUtil.subBefore(hostValue, ",", false));
+        if (StrUtil.isBlank(firstHost)) {
+            return null;
+        }
+
+        try {
+            if (firstHost.contains("://")) {
+                return URI.create(firstHost).getHost();
+            }
+        } catch (Exception ignored) {
+        }
+
+        return StrUtil.trim(StrUtil.subBefore(firstHost, ":", false));
     }
 }

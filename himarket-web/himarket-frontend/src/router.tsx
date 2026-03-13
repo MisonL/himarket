@@ -12,6 +12,7 @@ import Agent from "./pages/Agent";
 import AgentDetail from "./pages/AgentDetail";
 import ModelDetail from "./pages/ModelDetail";
 import Callback from "./pages/Callback";
+import CasCallback from "./pages/CasCallback";
 import OidcCallback from "./pages/OidcCallback";
 import Square from "./pages/Square";
 import Chat from "./pages/Chat";
@@ -46,7 +47,6 @@ function MenuRedirectGuard() {
     };
 
     const currentPath = location.pathname;
-    // 仅拦截顶级菜单路径，不拦截子路径（如 /models/xxx）
     const menuKey = pathToKeyMap[currentPath];
     if (menuKey && !isMenuVisible(menuKey)) {
       navigate(firstVisiblePath, { replace: true });
@@ -75,19 +75,39 @@ export function Router() {
         <Route path="/coding" element={<Coding />} />
         <Route path="/getting-started" element={<GettingStarted />} />
         <Route path="/apis/:apiProductId" element={<ApiDetail />} />
-        <Route path="/consumers/:consumerId" element={<RequireAuth><ConsumerDetail /></RequireAuth>} />
-        <Route path="/consumers" element={<RequireAuth><Consumers /></RequireAuth>} />
+        <Route
+          path="/consumers/:consumerId"
+          element={
+            <RequireAuth>
+              <ConsumerDetail />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/consumers"
+          element={
+            <RequireAuth>
+              <Consumers />
+            </RequireAuth>
+          }
+        />
         <Route path="/mcp/:mcpProductId" element={<McpDetail />} />
         <Route path="/agents" element={<Agent />} />
         <Route path="/agents/:agentProductId" element={<AgentDetail />} />
         <Route path="/models/:modelProductId" element={<ModelDetail />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route
+          path="/profile"
+          element={
+            <RequireAuth>
+              <Profile />
+            </RequireAuth>
+          }
+        />
         <Route path="/callback" element={<Callback />} />
+        <Route path="/cas/callback" element={<CasCallback />} />
         <Route path="/oidc/callback" element={<OidcCallback />} />
-
-        {/* 其他页面可继续添加 */}
       </Routes>
     </>
   );
