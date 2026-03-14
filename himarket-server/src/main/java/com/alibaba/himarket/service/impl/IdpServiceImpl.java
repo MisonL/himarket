@@ -33,6 +33,7 @@ import com.alibaba.himarket.support.enums.PublicKeyFormat;
 import com.alibaba.himarket.support.portal.AuthCodeConfig;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.JwtBearerConfig;
+import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OAuth2Config;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.PublicKeyConfig;
@@ -149,6 +150,64 @@ public class IdpServiceImpl implements IdpService {
                 });
     }
 
+    @Override
+    public void validateLdapConfigs(List<LdapConfig> ldapConfigs) {
+        if (CollUtil.isEmpty(ldapConfigs)) {
+            return;
+        }
+
+        Set<String> providers =
+                ldapConfigs.stream()
+                        .map(LdapConfig::getProvider)
+                        .filter(StrUtil::isNotBlank)
+                        .collect(Collectors.toSet());
+        if (providers.size() != ldapConfigs.size()) {
+            throw new BusinessException(
+                    ErrorCode.CONFLICT, "Empty or duplicate provider in LDAP config");
+        }
+
+        ldapConfigs.forEach(
+                config -> {
+                    if (StrUtil.isBlank(config.getName())
+                            || StrUtil.isBlank(config.getServerUrl())
+                            || StrUtil.isBlank(config.getBaseDn())) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "LDAP config {} missing required params: name, server URL"
+                                                + " or base DN",
+                                        config.getProvider()));
+                    }
+
+                    validateLdapUrl(config.getServerUrl(), "LDAP server URL");
+                    if (StrUtil.isNotBlank(config.getBindDn())
+                            && StrUtil.isBlank(config.getBindPassword())) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "LDAP config {} missing required bind password",
+                                        config.getProvider()));
+                    }
+                    if (StrUtil.isBlank(config.getBindDn())
+                            && StrUtil.isNotBlank(config.getBindPassword())) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "LDAP config {} missing required bind DN",
+                                        config.getProvider()));
+                    }
+
+                    if (StrUtil.isBlank(config.getUserSearchFilter())
+                            || !config.getUserSearchFilter().contains("{0}")) {
+                        throw new BusinessException(
+                                ErrorCode.INVALID_PARAMETER,
+                                StrUtil.format(
+                                        "LDAP config {} has invalid user search filter",
+                                        config.getProvider()));
+                    }
+                });
+    }
+
     @SuppressWarnings("unchecked")
     private void discoverAndSetEndpoints(String provider, AuthCodeConfig config) {
         String discoveryUrl =
@@ -221,27 +280,51 @@ public class IdpServiceImpl implements IdpService {
                             config.getProvider()));
         }
 
+        boolean hasJwks = StrUtil.isNotBlank(jwtBearerConfig.getJwkSetUri());
         List<PublicKeyConfig> publicKeys = jwtBearerConfig.getPublicKeys();
-        if (CollUtil.isEmpty(publicKeys)) {
+        boolean hasPublicKeys = CollUtil.isNotEmpty(publicKeys);
+        if (!hasJwks && !hasPublicKeys) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER,
                     StrUtil.format(
-                            "OAuth2 config {} missing public key config", config.getProvider()));
+                            "OAuth2 config {} missing JWT verification config",
+                            config.getProvider()));
         }
 
-        if (publicKeys.stream()
-                        .map(
-                                key -> {
-                                    loadPublicKey(key.getFormat(), key.getValue());
-                                    return key.getKid();
-                                })
-                        .collect(Collectors.toSet())
-                        .size()
-                != publicKeys.size()) {
-            throw new BusinessException(
-                    ErrorCode.CONFLICT,
-                    StrUtil.format(
-                            "OAuth2 config {} has duplicate public key IDs", config.getProvider()));
+        if (hasJwks) {
+            if (StrUtil.isBlank(jwtBearerConfig.getIssuer())) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PARAMETER,
+                        StrUtil.format(
+                                "OAuth2 config {} missing JWT issuer", config.getProvider()));
+            }
+            if (CollUtil.isEmpty(jwtBearerConfig.getAudiences())
+                    || jwtBearerConfig.getAudiences().stream().anyMatch(StrUtil::isBlank)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PARAMETER,
+                        StrUtil.format(
+                                "OAuth2 config {} missing JWT audiences", config.getProvider()));
+            }
+            validateUrl(jwtBearerConfig.getIssuer(), "JWT issuer");
+            validateUrl(jwtBearerConfig.getJwkSetUri(), "JWT JWK set URI");
+        }
+
+        if (hasPublicKeys) {
+            if (publicKeys.stream()
+                            .map(
+                                    key -> {
+                                        loadPublicKey(key.getFormat(), key.getValue());
+                                        return key.getKid();
+                                    })
+                            .collect(Collectors.toSet())
+                            .size()
+                    != publicKeys.size()) {
+                throw new BusinessException(
+                        ErrorCode.CONFLICT,
+                        StrUtil.format(
+                                "OAuth2 config {} has duplicate public key IDs",
+                                config.getProvider()));
+            }
         }
     }
 
@@ -326,6 +409,22 @@ public class IdpServiceImpl implements IdpService {
         } catch (Exception e) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER, label + " must be an absolute http/https URL");
+        }
+    }
+
+    private void validateLdapUrl(String url, String label) {
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (!"ldap".equalsIgnoreCase(scheme) && !"ldaps".equalsIgnoreCase(scheme)) {
+                throw new IllegalArgumentException("Unsupported scheme");
+            }
+            if (StrUtil.isBlank(uri.getHost())) {
+                throw new IllegalArgumentException("Missing host");
+            }
+        } catch (Exception e) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER, label + " must be an absolute ldap/ldaps URL");
         }
     }
 

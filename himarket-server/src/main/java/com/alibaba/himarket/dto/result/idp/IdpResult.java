@@ -40,4 +40,9 @@ public class IdpResult {
      * Authentication type
      */
     private String type;
+
+    /**
+     * Whether provider supports SLO redirection.
+     */
+    private Boolean sloEnabled;
 }
