@@ -1,4 +1,4 @@
-export type LastAuthType = 'BUILTIN' | 'OIDC' | 'CAS';
+export type LastAuthType = 'BUILTIN' | 'OIDC' | 'CAS' | 'LDAP';
 
 const KEY_LAST_AUTH_TYPE = 'hm_last_auth_type';
 const KEY_LAST_AUTH_PROVIDER = 'hm_last_auth_provider';
@@ -48,4 +48,3 @@ export function clearLastAuthState() {
   localStorage.removeItem(KEY_LAST_AUTH_PROVIDER);
   localStorage.removeItem(KEY_LAST_AUTH_SLO_ENABLED);
 }
-
