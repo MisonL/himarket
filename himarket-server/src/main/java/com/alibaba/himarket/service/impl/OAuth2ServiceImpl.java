@@ -32,6 +32,7 @@ import com.alibaba.himarket.core.constant.JwtConstants;
 import com.alibaba.himarket.core.constant.Resources;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
+import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
@@ -41,15 +42,19 @@ import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.IdpService;
 import com.alibaba.himarket.service.OAuth2Service;
 import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.service.idp.JwtBearerTokenVerifier;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.enums.GrantType;
 import com.alibaba.himarket.support.enums.JwtAlgorithm;
 import com.alibaba.himarket.support.portal.*;
 import java.security.PublicKey;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -63,25 +68,52 @@ public class OAuth2ServiceImpl implements OAuth2Service {
 
     private final IdpService idpService;
 
+    private final ContextHolder contextHolder;
+
+    private final JwtBearerTokenVerifier jwtBearerTokenVerifier;
+
     @Override
     public AuthResult authenticate(String grantType, String jwtToken) {
         if (!GrantType.JWT_BEARER.getType().equals(grantType)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Unsupported grant type");
         }
 
-        // Parse JWT
-        JWT jwt = JWTUtil.parseToken(jwtToken);
-        String kid = (String) jwt.getHeader(JwtConstants.HEADER_KID);
+        JWT unverified = parseJwtUnverified(jwtToken);
+        if (isLegacyJwtBearer(unverified)) {
+            return authenticateLegacy(unverified, jwtToken);
+        }
+        return authenticateStandard(unverified, jwtToken);
+    }
+
+    private JWT parseJwtUnverified(String jwtToken) {
+        try {
+            return JWTUtil.parseToken(jwtToken);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid JWT");
+        }
+    }
+
+    private boolean isLegacyJwtBearer(JWT jwt) {
+        String kid = Convert.toStr(jwt.getHeader(JwtConstants.HEADER_KID), null);
+        String provider = Convert.toStr(jwt.getPayload(JwtConstants.PAYLOAD_PROVIDER), null);
+        String portalId = Convert.toStr(jwt.getPayload(JwtConstants.PAYLOAD_PORTAL), null);
+        return StrUtil.isNotBlank(kid)
+                && StrUtil.isNotBlank(provider)
+                && StrUtil.isNotBlank(portalId);
+    }
+
+    private AuthResult authenticateLegacy(JWT jwt, String jwtToken) {
+        String kid = Convert.toStr(jwt.getHeader(JwtConstants.HEADER_KID), null);
+        String provider = Convert.toStr(jwt.getPayload(JwtConstants.PAYLOAD_PROVIDER), null);
+        String portalId = Convert.toStr(jwt.getPayload(JwtConstants.PAYLOAD_PORTAL), null);
+
         if (StrUtil.isBlank(kid)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "JWT header missing field kid");
         }
-        String provider = (String) jwt.getPayload(JwtConstants.PAYLOAD_PROVIDER);
         if (StrUtil.isBlank(provider)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST, "JWT payload missing field provider");
         }
-
-        String portalId = (String) jwt.getPayload(JwtConstants.PAYLOAD_PORTAL);
         if (StrUtil.isBlank(portalId)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST, "JWT payload missing field portal");
@@ -102,6 +134,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
         OAuth2Config oAuth2Config =
                 oauth2Configs.stream()
                         // JWT Bearer mode
+                        .filter(OAuth2Config::isEnabled)
                         .filter(config -> config.getGrantType() == GrantType.JWT_BEARER)
                         .filter(
                                 config ->
@@ -149,6 +182,99 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                 oAuth2Config.getProvider(),
                 developerId);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
+    }
+
+    private AuthResult authenticateStandard(JWT unverified, String jwtToken) {
+        String portalId = contextHolder.getPortal();
+        if (StrUtil.isBlank(portalId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing portal context");
+        }
+
+        String issuer = Convert.toStr(unverified.getPayload(JwtConstants.PAYLOAD_ISS), null);
+        if (StrUtil.isBlank(issuer)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "JWT payload missing field iss");
+        }
+
+        List<String> audiences =
+                normalizeAudiences(unverified.getPayload(JwtConstants.PAYLOAD_AUD));
+
+        PortalResult portal = portalService.getPortal(portalId);
+        List<OAuth2Config> oauth2Configs =
+                Optional.ofNullable(portal.getPortalSettingConfig())
+                        .map(PortalSettingConfig::getOauth2Configs)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.NOT_FOUND,
+                                                Resources.OAUTH2_CONFIG,
+                                                portalId));
+
+        OAuth2Config matched =
+                oauth2Configs.stream()
+                        .filter(OAuth2Config::isEnabled)
+                        .filter(config -> config.getGrantType() == GrantType.JWT_BEARER)
+                        .filter(config -> config.getJwtBearerConfig() != null)
+                        .filter(
+                                config ->
+                                        StrUtil.isNotBlank(
+                                                config.getJwtBearerConfig().getJwkSetUri()))
+                        .filter(config -> issuer.equals(config.getJwtBearerConfig().getIssuer()))
+                        .filter(config -> audienceMatches(config.getJwtBearerConfig(), audiences))
+                        .reduce(
+                                null,
+                                (acc, cur) -> {
+                                    if (acc != null) {
+                                        throw new BusinessException(
+                                                ErrorCode.CONFLICT,
+                                                "Multiple OAuth2 configs match this JWT");
+                                    }
+                                    return cur;
+                                });
+
+        if (matched == null) {
+            throw new BusinessException(
+                    ErrorCode.NOT_FOUND, Resources.OAUTH2_CONFIG, "JWT issuer/audience");
+        }
+
+        Jwt verified = jwtBearerTokenVerifier.verify(jwtToken, matched.getJwtBearerConfig());
+
+        String developerId = createOrGetDeveloper(verified, matched);
+        String accessToken = TokenUtil.generateDeveloperToken(developerId);
+        log.info(
+                "JWT Bearer authentication successful, provider: {}, developer: {}",
+                matched.getProvider(),
+                developerId);
+        return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
+    }
+
+    private boolean audienceMatches(JwtBearerConfig config, List<String> audiences) {
+        if (CollUtil.isEmpty(config.getAudiences())) {
+            return true;
+        }
+        if (CollUtil.isEmpty(audiences)) {
+            return false;
+        }
+        return config.getAudiences().stream().anyMatch(audiences::contains);
+    }
+
+    private List<String> normalizeAudiences(Object audObj) {
+        if (audObj == null) {
+            return Collections.emptyList();
+        }
+        if (audObj instanceof String str) {
+            return StrUtil.isBlank(str) ? Collections.emptyList() : List.of(str);
+        }
+        if (audObj instanceof Iterable<?> iterable) {
+            List<String> audiences = new ArrayList<>();
+            for (Object item : iterable) {
+                String value = Convert.toStr(item, null);
+                if (StrUtil.isNotBlank(value)) {
+                    audiences.add(value);
+                }
+            }
+            return audiences;
+        }
+        return Collections.emptyList();
     }
 
     private boolean verifySignature(JWT jwt, PublicKeyConfig keyConfig) {
@@ -202,7 +328,8 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     }
 
     private String createOrGetDeveloper(JWT jwt, OAuth2Config config) {
-        IdentityMapping identityMapping = config.getIdentityMapping();
+        IdentityMapping identityMapping =
+                Optional.ofNullable(config.getIdentityMapping()).orElseGet(IdentityMapping::new);
         // userId & userName
         String userIdField =
                 StrUtil.isBlank(identityMapping.getUserIdField())
@@ -245,5 +372,51 @@ public class OAuth2ServiceImpl implements OAuth2Service {
                         .build();
 
         return developerService.createExternalDeveloper(param).getDeveloperId();
+    }
+
+    private String createOrGetDeveloper(Jwt jwt, OAuth2Config config) {
+        IdentityMapping identityMapping =
+                Optional.ofNullable(config.getIdentityMapping()).orElseGet(IdentityMapping::new);
+        String userIdField =
+                StrUtil.isBlank(identityMapping.getUserIdField())
+                        ? JwtConstants.PAYLOAD_SUB
+                        : identityMapping.getUserIdField();
+        String userNameField =
+                StrUtil.isBlank(identityMapping.getUserNameField())
+                        ? JwtConstants.PAYLOAD_USER_NAME
+                        : identityMapping.getUserNameField();
+        String emailField =
+                StrUtil.isBlank(identityMapping.getEmailField())
+                        ? JwtConstants.PAYLOAD_EMAIL
+                        : identityMapping.getEmailField();
+
+        String userId = jwt.getClaimAsString(userIdField);
+        String userName = jwt.getClaimAsString(userNameField);
+        if (StrUtil.isBlank(userId)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing user ID in JWT claims");
+        }
+        if (StrUtil.isBlank(userName)) {
+            userName = userId;
+        }
+
+        String email = jwt.getClaimAsString(emailField);
+
+        String finalUserName = userName;
+        return Optional.ofNullable(
+                        developerService.getExternalDeveloper(config.getProvider(), userId))
+                .map(DeveloperResult::getDeveloperId)
+                .orElseGet(
+                        () -> {
+                            CreateExternalDeveloperParam param =
+                                    CreateExternalDeveloperParam.builder()
+                                            .provider(config.getProvider())
+                                            .subject(userId)
+                                            .displayName(finalUserName)
+                                            .email(email)
+                                            .authType(DeveloperAuthType.OAUTH2)
+                                            .build();
+
+                            return developerService.createExternalDeveloper(param).getDeveloperId();
+                        });
     }
 }
