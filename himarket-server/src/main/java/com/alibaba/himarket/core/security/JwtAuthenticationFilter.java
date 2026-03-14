@@ -21,6 +21,7 @@ package com.alibaba.himarket.core.security;
 
 import com.alibaba.himarket.core.constant.CommonConstants;
 import com.alibaba.himarket.core.utils.TokenUtil;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.common.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -28,6 +29,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Collections;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -37,7 +39,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Slf4j
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private final AuthSessionStore authSessionStore;
 
     @Override
     protected void doFilterInternal(
@@ -49,8 +54,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             String token = TokenUtil.getTokenFromRequest(request);
             if (token != null) {
-                // Check if token is revoked
-                if (TokenUtil.isTokenRevoked(token)) {
+                if (authSessionStore.isTokenRevoked(token)) {
                     log.debug("Token revoked: {}", token);
                     SecurityContextHolder.clearContext();
                 } else {

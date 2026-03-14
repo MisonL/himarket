@@ -45,6 +45,7 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
                     "/developers/oidc/providers",
                     "/developers/cas/authorize",
                     "/developers/cas/callback",
+                    "/developers/cas/exchange",
                     "/developers/cas/providers",
                     "/developers/cas/logout",
                     "/developers/ldap/providers",

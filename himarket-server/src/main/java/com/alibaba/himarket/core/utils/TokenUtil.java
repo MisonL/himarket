@@ -20,14 +20,17 @@
 package com.alibaba.himarket.core.utils;
 
 import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSignerUtil;
 import com.alibaba.himarket.core.constant.CommonConstants;
-import com.alibaba.himarket.service.RevokedTokenService;
+import com.alibaba.himarket.core.constant.JwtConstants;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.common.User;
 import com.alibaba.himarket.support.enums.UserType;
 import jakarta.servlet.http.Cookie;
@@ -38,43 +41,35 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class TokenUtil {
 
-    private static String JWT_SECRET;
-
-    private static long JWT_EXPIRE_MILLIS;
+    private static final Pattern SHORT_DURATION_PATTERN =
+            Pattern.compile("\\d+[smhd]", Pattern.CASE_INSENSITIVE);
 
     private static String getJwtSecret() {
-        if (JWT_SECRET == null) {
-            JWT_SECRET = SpringUtil.getProperty("jwt.secret");
+        String jwtSecret = resolveProperty("jwt.secret");
+        if (StrUtil.isBlank(jwtSecret)) {
+            throw new IllegalStateException("JWT secret cannot be empty");
         }
-
-        if (StrUtil.isBlank(JWT_SECRET)) {
-            throw new RuntimeException("JWT secret cannot be empty");
-        }
-        return JWT_SECRET;
+        return jwtSecret;
     }
 
     private static long getJwtExpireMillis() {
-        if (JWT_EXPIRE_MILLIS == 0) {
-            String expiration = SpringUtil.getProperty("jwt.expiration");
-            if (StrUtil.isBlank(expiration)) {
-                throw new RuntimeException("JWT expiration is empty");
-            }
-
-            if (expiration.matches("\\d+[smhd]")) {
-                String upper = expiration.toUpperCase();
-                if (upper.endsWith("D")) {
-                    JWT_EXPIRE_MILLIS = Duration.parse("P" + upper).toMillis();
-                } else {
-                    JWT_EXPIRE_MILLIS = Duration.parse("PT" + upper).toMillis();
-                }
-            } else {
-                JWT_EXPIRE_MILLIS = Long.parseLong(expiration);
-            }
+        String expiration = resolveProperty("jwt.expiration");
+        if (StrUtil.isBlank(expiration)) {
+            throw new IllegalStateException("JWT expiration is empty");
         }
-        return JWT_EXPIRE_MILLIS;
+
+        if (SHORT_DURATION_PATTERN.matcher(expiration).matches()) {
+            String upper = expiration.toUpperCase();
+            if (upper.endsWith("D")) {
+                return Duration.parse("P" + upper).toMillis();
+            }
+            return Duration.parse("PT" + upper).toMillis();
+        }
+        return Long.parseLong(expiration);
     }
 
     public static String generateAdminToken(String userId) {
@@ -85,13 +80,6 @@ public class TokenUtil {
         return generateToken(UserType.DEVELOPER, userId);
     }
 
-    /**
-     * Generate token
-     *
-     * @param userType user type
-     * @param userId user ID
-     * @return JWT token
-     */
     private static String generateToken(UserType userType, String userId) {
         long now = System.currentTimeMillis();
 
@@ -99,6 +87,7 @@ public class TokenUtil {
                 MapUtil.<String, String>builder()
                         .put(CommonConstants.USER_TYPE, userType.name())
                         .put(CommonConstants.USER_ID, userId)
+                        .put(JwtConstants.PAYLOAD_JTI, IdUtil.fastSimpleUUID())
                         .build();
 
         return JWT.create()
@@ -109,16 +98,9 @@ public class TokenUtil {
                 .sign();
     }
 
-    /**
-     * Parse token
-     *
-     * @param token JWT token
-     * @return user info
-     */
     public static User parseUser(String token) {
         JWT jwt = JWTUtil.parseToken(token);
 
-        // Verify signature
         boolean isValid =
                 jwt.setSigner(JWTSignerUtil.hs256(getJwtSecret().getBytes(StandardCharsets.UTF_8)))
                         .verify();
@@ -126,7 +108,6 @@ public class TokenUtil {
             throw new IllegalArgumentException("Invalid token signature");
         }
 
-        // Verify expiration
         Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
         if (ObjectUtil.isNotNull(expObj)) {
             long expireAt = Long.parseLong(expObj.toString());
@@ -139,7 +120,6 @@ public class TokenUtil {
     }
 
     public static String getTokenFromRequest(HttpServletRequest request) {
-        // Get token from header
         String authHeader = request.getHeader(CommonConstants.AUTHORIZATION_HEADER);
 
         String token = null;
@@ -147,7 +127,6 @@ public class TokenUtil {
             token = authHeader.substring(CommonConstants.BEARER_PREFIX.length());
         }
 
-        // Get token from cookie
         if (StrUtil.isBlank(token)) {
             token =
                     Optional.ofNullable(request.getCookies())
@@ -158,35 +137,49 @@ public class TokenUtil {
                                                             cookie ->
                                                                     CommonConstants
                                                                             .AUTH_TOKEN_COOKIE
-                                                                            .equals(
-                                                                                    cookie
-                                                                                            .getName()))
+                                                                            .equals(cookie.getName()))
                                                     .map(Cookie::getValue)
                                                     .findFirst())
                             .orElse(null);
         }
-        if (StrUtil.isBlank(token) || isTokenRevoked(token)) {
+        if (StrUtil.isBlank(token)) {
             return null;
         }
 
         return token;
     }
 
+    public static String extractTokenFromRequest(HttpServletRequest request) {
+        return getTokenFromRequest(request);
+    }
+
+    public static long getTokenExpireTime(String token) {
+        JWT jwt = JWTUtil.parseToken(token);
+        Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
+        if (ObjectUtil.isNotNull(expObj)) {
+            return Long.parseLong(expObj.toString()) * 1000;
+        }
+        return System.currentTimeMillis() + getJwtExpireMillis();
+    }
+
+    public static long getTokenExpireTimeMillis(String token) {
+        return getTokenExpireTime(token);
+    }
+
+    public static String getTokenDigest(String token) {
+        return DigestUtil.sha256Hex(token);
+    }
+
+    public static Duration getTokenTtl(String token) {
+        long ttlMillis = getTokenExpireTime(token) - System.currentTimeMillis();
+        return ttlMillis <= 0 ? Duration.ZERO : Duration.ofMillis(ttlMillis);
+    }
+
     public static void revokeToken(String token) {
         if (StrUtil.isBlank(token)) {
             return;
         }
-        long expiresAtMillis = getTokenExpireTime(token);
-        SpringUtil.getBean(RevokedTokenService.class).revokeToken(token, expiresAtMillis);
-    }
-
-    private static long getTokenExpireTime(String token) {
-        JWT jwt = JWTUtil.parseToken(token);
-        Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
-        if (ObjectUtil.isNotNull(expObj)) {
-            return Long.parseLong(expObj.toString()) * 1000; // JWT expiration is in seconds
-        }
-        return System.currentTimeMillis() + getJwtExpireMillis(); // Default expiration
+        authSessionStore().revokeToken(token);
     }
 
     public static void revokeToken(HttpServletRequest request) {
@@ -200,10 +193,22 @@ public class TokenUtil {
         if (StrUtil.isBlank(token)) {
             return false;
         }
-        return SpringUtil.getBean(RevokedTokenService.class).isTokenRevoked(token);
+        return authSessionStore().isTokenRevoked(token);
     }
 
     public static long getTokenExpiresIn() {
         return getJwtExpireMillis() / 1000;
+    }
+
+    private static String resolveProperty(String key) {
+        String value = SpringUtil.getProperty(key);
+        if (StrUtil.isBlank(value)) {
+            value = System.getProperty(key);
+        }
+        return value;
+    }
+
+    private static AuthSessionStore authSessionStore() {
+        return SpringUtil.getBean(AuthSessionStore.class);
     }
 }

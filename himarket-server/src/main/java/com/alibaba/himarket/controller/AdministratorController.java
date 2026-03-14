@@ -27,6 +27,7 @@ import com.alibaba.himarket.dto.params.login.LoginParam;
 import com.alibaba.himarket.dto.result.admin.AdminResult;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.service.AdministratorService;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,6 +45,8 @@ public class AdministratorController {
 
     private final AdministratorService administratorService;
 
+    private final AuthSessionStore authSessionStore;
+
     @Operation(summary = "管理员登录", description = "管理员登录，只需用户名和密码")
     @PostMapping("/login")
     public AuthResult login(@Valid @RequestBody LoginParam param) {
@@ -54,7 +57,10 @@ public class AdministratorController {
     @PostMapping("/logout")
     @AdminAuth
     public void logout(HttpServletRequest request) {
-        TokenUtil.revokeToken(request);
+        String token = TokenUtil.getTokenFromRequest(request);
+        if (token != null) {
+            authSessionStore.revokeToken(token);
+        }
     }
 
     @Operation(summary = "检查是否需要初始化管理员", description = "检查系统是否需要初始化管理员")

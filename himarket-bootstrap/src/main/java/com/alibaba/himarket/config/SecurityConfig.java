@@ -5,16 +5,8 @@
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * with the License.  See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
 package com.alibaba.himarket.config;
@@ -22,9 +14,9 @@ package com.alibaba.himarket.config;
 import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner.PublicAccessEndpoint;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -50,6 +42,8 @@ public class SecurityConfig {
 
     private final PublicAccessPathScanner publicAccessPathScanner;
 
+    private final AuthSessionStore authSessionStore;
+
     private static final RequestMatcher[] AUTH_WHITELIST =
             antMatchers(
                     "/admins/init",
@@ -57,12 +51,16 @@ public class SecurityConfig {
                     "/admins/login",
                     "/admins/cas/authorize",
                     "/admins/cas/callback",
+                    "/admins/cas/proxy-callback",
+                    "/admins/cas/exchange",
                     "/admins/cas/providers",
                     "/admins/cas/logout",
                     "/admins/ldap/providers",
                     "/admins/ldap/login",
                     "/**/admins/cas/authorize",
                     "/**/admins/cas/callback",
+                    "/**/admins/cas/proxy-callback",
+                    "/**/admins/cas/exchange",
                     "/**/admins/cas/providers",
                     "/**/admins/cas/logout",
                     "/**/admins/ldap/providers",
@@ -83,10 +81,14 @@ public class SecurityConfig {
                     "/**/developers/oidc/providers",
                     "/developers/cas/authorize",
                     "/developers/cas/callback",
+                    "/developers/cas/proxy-callback",
+                    "/developers/cas/exchange",
                     "/developers/cas/providers",
                     "/developers/cas/logout",
                     "/**/developers/cas/authorize",
                     "/**/developers/cas/callback",
+                    "/**/developers/cas/proxy-callback",
+                    "/**/developers/cas/exchange",
                     "/**/developers/cas/providers",
                     "/**/developers/cas/logout",
                     "/developers/ldap/providers",
@@ -141,7 +143,8 @@ public class SecurityConfig {
                             auth.anyRequest().authenticated();
                         })
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                        new JwtAuthenticationFilter(authSessionStore),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -154,9 +157,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOriginPatterns(Collections.singletonList("*"));
-        corsConfig.setAllowedMethods(Collections.singletonList("*"));
-        corsConfig.setAllowedHeaders(Collections.singletonList("*"));
+        corsConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        corsConfig.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        corsConfig.setExposedHeaders(Arrays.asList("Authorization"));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
 

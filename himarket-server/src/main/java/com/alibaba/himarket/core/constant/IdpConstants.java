@@ -61,6 +61,10 @@ public class IdpConstants {
      */
     public static final String STATE = "state";
 
+    public static final String PROVIDER = "provider";
+
+    public static final String LOGOUT_REQUEST = "logoutRequest";
+
     /**
      * State TTL, also used by OIDC/CAS callback to reject stale requests.
      */

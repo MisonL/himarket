@@ -20,7 +20,9 @@
 package com.alibaba.himarket.service.impl;
 
 import cn.hutool.core.convert.Convert;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.constant.Resources;
 import com.alibaba.himarket.core.exception.BusinessException;
@@ -36,10 +38,15 @@ import com.alibaba.himarket.dto.result.idp.IdpState;
 import com.alibaba.himarket.service.CasService;
 import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.service.idp.CasLogoutRequestParser;
 import com.alibaba.himarket.service.idp.CasTicketValidator;
+import com.alibaba.himarket.service.idp.FrontendApiUrlBuilder;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
 import com.alibaba.himarket.service.idp.IdpStateCookie;
 import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
+import com.alibaba.himarket.service.idp.session.CasLoginContext;
+import com.alibaba.himarket.service.idp.session.CasSessionScope;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
@@ -66,7 +73,13 @@ public class CasServiceImpl implements CasService {
 
     private final ContextHolder contextHolder;
 
+    private final AuthSessionConfig authSessionConfig;
+
+    private final AuthSessionStore authSessionStore;
+
     private final CasTicketValidator casTicketValidator;
+
+    private final CasLogoutRequestParser casLogoutRequestParser;
 
     private final PortalFrontendUrlResolver portalFrontendUrlResolver;
 
@@ -77,7 +90,7 @@ public class CasServiceImpl implements CasService {
             String provider, String apiPrefix, HttpServletRequest request) {
         CasConfig config = findCasConfig(provider);
         String state = encodeState(createState(provider, apiPrefix));
-        String serviceUrl = buildFrontendCallbackUrl(state);
+        String serviceUrl = buildServiceCallbackUrl(apiPrefix, state);
         String loginUrl =
                 UriComponentsBuilder.fromUriString(buildLoginUrl(config))
                         .queryParam(IdpConstants.SERVICE, serviceUrl)
@@ -87,17 +100,32 @@ public class CasServiceImpl implements CasService {
     }
 
     @Override
-    public AuthResult handleCallback(
+    public String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response) {
         IdpStateCookie.assertCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());
-        String serviceUrl = buildFrontendCallbackUrl(state);
+        String serviceUrl = buildServiceCallbackUrl(idpState.getApiPrefix(), state);
         Map<String, Object> userInfo = casTicketValidator.validate(config, ticket, serviceUrl);
         String developerId = createOrGetDeveloper(userInfo, config);
-        String accessToken = TokenUtil.generateDeveloperToken(developerId);
+        String code = issueLoginCode(config.getProvider(), developerId, ticket);
         IdpStateCookie.clearCasStateCookie(request, response);
+        return buildFrontendRedirectUrl(code);
+    }
+
+    @Override
+    public AuthResult exchangeCode(String code) {
+        CasLoginContext loginContext = consumeLoginContext(code);
+        String accessToken = TokenUtil.generateDeveloperToken(loginContext.getUserId());
+        authSessionStore.bindCasSessionToken(
+                loginContext.getScope(), loginContext.getSessionIndex(), accessToken);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
+    }
+
+    @Override
+    public int handleLogoutRequest(String logoutRequest) {
+        String sessionIndex = casLogoutRequestParser.parseSessionIndex(logoutRequest);
+        return authSessionStore.revokeCasSession(CasSessionScope.DEVELOPER, sessionIndex);
     }
 
     @Override
@@ -116,10 +144,7 @@ public class CasServiceImpl implements CasService {
                                                                 .provider(config.getProvider())
                                                                 .name(config.getName())
                                                                 .type("CAS")
-                                                                .sloEnabled(
-                                                                        config.isSloEnabled()
-                                                                                ? Boolean.TRUE
-                                                                                : Boolean.FALSE)
+                                                                .sloEnabled(config.isSloEnabled())
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());
@@ -167,10 +192,22 @@ public class CasServiceImpl implements CasService {
         return joinUrl(config.getServerUrl(), endpoint);
     }
 
-    private String buildFrontendCallbackUrl(String state) {
+    private String buildServiceCallbackUrl(String apiPrefix, String state) {
+        String callbackUrl =
+                FrontendApiUrlBuilder.buildApiUrl(
+                        portalFrontendUrlResolver.getFrontendBaseUrl(),
+                        apiPrefix,
+                        "/developers/cas/callback");
+        return UriComponentsBuilder.fromUriString(callbackUrl)
+                .queryParam(IdpConstants.STATE, state)
+                .build()
+                .toUriString();
+    }
+
+    private String buildFrontendRedirectUrl(String code) {
         return UriComponentsBuilder.fromUriString(
                         portalFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
-                .queryParam(IdpConstants.STATE, state)
+                .queryParam(IdpConstants.CODE, code)
                 .build()
                 .toUriString();
     }
@@ -200,6 +237,28 @@ public class CasServiceImpl implements CasService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing CAS provider");
         }
         return idpState;
+    }
+
+    private String issueLoginCode(String provider, String userId, String sessionIndex) {
+        String code = IdUtil.fastSimpleUUID();
+        authSessionStore.saveCasLoginContext(
+                code,
+                new CasLoginContext(CasSessionScope.DEVELOPER, provider, userId, sessionIndex),
+                authSessionConfig.getCas().getLoginCodeTtl());
+        return code;
+    }
+
+    private CasLoginContext consumeLoginContext(String code) {
+        CasLoginContext loginContext = authSessionStore.consumeCasLoginContext(code);
+        if (loginContext == null) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "CAS login code is invalid or expired");
+        }
+        if (loginContext.getScope() != CasSessionScope.DEVELOPER) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "CAS login code does not belong to developer flow");
+        }
+        return loginContext;
     }
 
     private String createOrGetDeveloper(Map<String, Object> userInfo, CasConfig config) {
