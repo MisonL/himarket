@@ -34,10 +34,23 @@ export interface CasConfig {
   identityMapping?: IdentityMapping;
 }
 
+export interface LdapConfig {
+  provider: string;
+  name: string;
+  enabled: boolean;
+  serverUrl: string;
+  baseDn: string;
+  bindDn?: string;
+  bindPassword?: string;
+  userSearchFilter?: string;
+  identityMapping?: IdentityMapping;
+}
+
 // 第三方认证相关类型定义
 export enum AuthenticationType {
   OIDC = 'OIDC',
   CAS = 'CAS',
+  LDAP = 'LDAP',
   OAUTH2 = 'OAUTH2'
 }
 
@@ -83,6 +96,7 @@ export interface OAuth2Config {
 export type ThirdPartyAuthConfig = 
   | (OidcConfig & { type: AuthenticationType.OIDC })
   | (CasConfig & { type: AuthenticationType.CAS })
+  | (LdapConfig & { type: AuthenticationType.LDAP })
   | (OAuth2Config & { type: AuthenticationType.OAUTH2 })
 
 export interface PortalSettingConfig {
@@ -94,6 +108,7 @@ export interface PortalSettingConfig {
   // 第三方认证配置（分离存储）
   oidcConfigs?: OidcConfig[];
   casConfigs?: CasConfig[];
+  ldapConfigs?: LdapConfig[];
   oauth2Configs?: OAuth2Config[];
 }
 

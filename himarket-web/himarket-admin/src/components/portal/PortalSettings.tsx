@@ -1,7 +1,7 @@
 import {Card, Form, Input, Select, Switch, Button, Divider, Space, Tag, Table, Modal, message, Tabs} from 'antd'
 import {SaveOutlined, PlusOutlined, DeleteOutlined, ExclamationCircleOutlined} from '@ant-design/icons'
 import {useState, useMemo} from 'react'
-import {Portal, ThirdPartyAuthConfig, AuthenticationType, OidcConfig, OAuth2Config, CasConfig} from '@/types'
+import {Portal, ThirdPartyAuthConfig, AuthenticationType, OidcConfig, OAuth2Config, CasConfig, LdapConfig} from '@/types'
 import {portalApi} from '@/lib/api'
 import {ThirdPartyAuthManager} from './ThirdPartyAuthManager'
 
@@ -151,9 +151,18 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                 })
             })
         }
+
+        if (portal.portalSettingConfig?.ldapConfigs) {
+            portal.portalSettingConfig.ldapConfigs.forEach(ldapConfig => {
+                configs.push({
+                    ...ldapConfig,
+                    type: AuthenticationType.LDAP
+                })
+            })
+        }
         
         return configs
-    }, [portal.portalSettingConfig?.oidcConfigs, portal.portalSettingConfig?.casConfigs, portal.portalSettingConfig?.oauth2Configs])
+    }, [portal.portalSettingConfig?.oidcConfigs, portal.portalSettingConfig?.casConfigs, portal.portalSettingConfig?.oauth2Configs, portal.portalSettingConfig?.ldapConfigs])
 
     // 第三方认证配置保存函数
     const handleSaveThirdPartyAuth = async (configs: ThirdPartyAuthConfig[]) => {
@@ -187,6 +196,13 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                     const { type, ...oauth2Config } = config as (OAuth2Config & { type: AuthenticationType.OAUTH2 })
                     return oauth2Config
                 })
+
+            const ldapConfigs = configs
+                .filter(config => config.type === AuthenticationType.LDAP)
+                .map(config => {
+                    const { type, ...ldapConfig } = config as (LdapConfig & { type: AuthenticationType.LDAP })
+                    return ldapConfig
+                })
             
             const updateData = {
                 ...portal,
@@ -199,6 +215,7 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
                     // 直接保存分离的配置数组
                     oidcConfigs: oidcConfigs,
                     casConfigs: casConfigs,
+                    ldapConfigs: ldapConfigs,
                     oauth2Configs: oauth2Configs
                 }
             }

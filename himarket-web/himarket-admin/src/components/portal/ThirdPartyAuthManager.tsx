@@ -1,7 +1,7 @@
 import {useState} from 'react'
 import {Button, Form, Input, Select, Switch, Table, Modal, Space, message, Divider, Steps, Card, Tabs, Collapse, Radio} from 'antd'
 import {PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusCircleOutlined, KeyOutlined, CheckCircleFilled, MinusCircleFilled} from '@ant-design/icons'
-import {ThirdPartyAuthConfig, AuthenticationType, GrantType, AuthCodeConfig, CasConfig, OAuth2Config, OidcConfig, PublicKeyFormat} from '@/types'
+import {ThirdPartyAuthConfig, AuthenticationType, GrantType, AuthCodeConfig, CasConfig, OAuth2Config, OidcConfig, PublicKeyFormat, LdapConfig} from '@/types'
 
 interface ThirdPartyAuthManagerProps {
   configs: ThirdPartyAuthConfig[]
@@ -87,6 +87,22 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         userNameField: casConfig.identityMapping?.userNameField,
         emailField: casConfig.identityMapping?.emailField
       })
+    } else if (config.type === AuthenticationType.LDAP) {
+      const ldapConfig = config as (LdapConfig & { type: AuthenticationType.LDAP })
+      form.setFieldsValue({
+        provider: ldapConfig.provider,
+        name: ldapConfig.name,
+        enabled: ldapConfig.enabled,
+        type: ldapConfig.type,
+        serverUrl: ldapConfig.serverUrl,
+        baseDn: ldapConfig.baseDn,
+        bindDn: ldapConfig.bindDn,
+        bindPassword: ldapConfig.bindPassword,
+        userSearchFilter: ldapConfig.userSearchFilter,
+        userIdField: ldapConfig.identityMapping?.userIdField,
+        userNameField: ldapConfig.identityMapping?.userNameField,
+        emailField: ldapConfig.identityMapping?.emailField
+      })
     }
   }
 
@@ -129,6 +145,11 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         } else if (values.type === AuthenticationType.CAS) {
           form.setFieldsValue({
             enabled: true
+          })
+        } else if (values.type === AuthenticationType.LDAP) {
+          form.setFieldsValue({
+            enabled: true,
+            userSearchFilter: '(uid={0})'
           })
         } else if (values.type === AuthenticationType.OIDC) {
           form.setFieldsValue({
@@ -226,6 +247,23 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
           },
           type: AuthenticationType.CAS
         } as (CasConfig & { type: AuthenticationType.CAS })
+      } else if (selectedType === AuthenticationType.LDAP) {
+        newConfig = {
+          provider: values.provider,
+          name: values.name,
+          enabled: values.enabled ?? true,
+          serverUrl: values.serverUrl,
+          baseDn: values.baseDn,
+          bindDn: values.bindDn || '',
+          bindPassword: values.bindPassword || '',
+          userSearchFilter: values.userSearchFilter || '(uid={0})',
+          identityMapping: {
+            userIdField: values.userIdField || null,
+            userNameField: values.userNameField || null,
+            emailField: values.emailField || null
+          },
+          type: AuthenticationType.LDAP
+        } as (LdapConfig & { type: AuthenticationType.LDAP })
       } else {
         // OAuth2配置：直接创建OAuth2Config格式
         const grantType = values.oauth2GrantType || GrantType.JWT_BEARER // 使用oauth2GrantType字段
@@ -440,6 +478,72 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
       key: 'protocol',
       width: 120,
       render: () => <span className="text-gray-600">CAS Ticket</span>
+    },
+    {
+      title: '状态',
+      dataIndex: 'enabled',
+      key: 'enabled',
+      width: 80,
+      render: (enabled: boolean) => (
+        <div className="flex items-center">
+          {enabled ? (
+            <CheckCircleFilled className="text-green-500 mr-2" style={{fontSize: '12px'}} />
+          ) : (
+            <MinusCircleFilled className="text-gray-500 mr-2" style={{fontSize: '12px'}} />
+          )}
+          <span className="text-gray-700">
+            {enabled ? '已启用' : '已停用'}
+          </span>
+        </div>
+      )
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 150,
+      render: (_: any, record: ThirdPartyAuthConfig) => (
+        <Space>
+          <Button
+            type="link"
+            icon={<EditOutlined/>}
+            onClick={() => handleEdit(record)}
+          >
+            编辑
+          </Button>
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined/>}
+            onClick={() => handleDelete(record.provider, record.name)}
+          >
+            删除
+          </Button>
+        </Space>
+      )
+    }
+  ]
+
+  const ldapColumns = [
+    {
+      title: '提供商',
+      dataIndex: 'provider',
+      key: 'provider',
+      width: 120,
+      render: (provider: string) => (
+        <span className="font-medium text-gray-700">{provider}</span>
+      )
+    },
+    {
+      title: '名称',
+      dataIndex: 'name',
+      key: 'name',
+      width: 150,
+    },
+    {
+      title: '协议',
+      key: 'protocol',
+      width: 120,
+      render: () => <span className="text-gray-600">LDAP Bind</span>
     },
     {
       title: '状态',
@@ -973,9 +1077,132 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
     </div>
   )
 
+  const renderLdapForm = () => (
+    <div className="space-y-6">
+      <Form.Item
+        name="serverUrl"
+        label="LDAP 服务地址"
+        rules={[
+          {required: true, message: '请输入LDAP服务地址'},
+          {
+            validator: (_, value) => {
+              const v = String(value || '').toLowerCase()
+              return v.startsWith('ldap://') || v.startsWith('ldaps://')
+                ? Promise.resolve()
+                : Promise.reject(new Error('请输入以 ldap:// 或 ldaps:// 开头的地址'))
+            }
+          }
+        ]}
+      >
+        <Input placeholder="如: ldap://ldap.example.com:389 或 ldaps://ldap.example.com:636"/>
+      </Form.Item>
+
+      <Form.Item
+        name="baseDn"
+        label="Base DN"
+        rules={[{required: true, message: '请输入 Base DN'}]}
+      >
+        <Input placeholder="如: dc=example,dc=com"/>
+      </Form.Item>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Form.Item
+          name="bindDn"
+          label="Bind DN"
+          extra="可选，用于查询用户。与 Bind 密码 配对使用。"
+        >
+          <Input placeholder="如: cn=admin,dc=example,dc=com"/>
+        </Form.Item>
+        <Form.Item
+          name="bindPassword"
+          label="Bind 密码"
+          extra="可选，与 Bind DN 配对使用。"
+        >
+          <Input.Password placeholder="可选"/>
+        </Form.Item>
+      </div>
+
+      <Form.Item
+        name="userSearchFilter"
+        label="用户搜索过滤器"
+        extra="必须包含 {0} 占位符，例如 (uid={0}) 或 (sAMAccountName={0})."
+        rules={[
+          {required: true, message: '请输入用户搜索过滤器'},
+          {
+            validator: (_, value) =>
+              value && String(value).includes('{0}')
+                ? Promise.resolve()
+                : Promise.reject(new Error('过滤器必须包含 {0} 占位符'))
+          }
+        ]}
+      >
+        <Input placeholder="默认: (uid={0})"/>
+      </Form.Item>
+
+      <div className="-ml-3">
+        <Collapse
+          size="small"
+          ghost
+          expandIcon={({ isActive }) => (
+            <svg
+              className={`w-4 h-4 transition-transform ${isActive ? 'rotate-90' : ''}`}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                clipRule="evenodd"
+              />
+            </svg>
+          )}
+          items={[
+            {
+              key: 'advanced',
+              label: (
+                <div className="flex items-center text-gray-600">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947z"
+                      clipRule="evenodd"
+                    />
+                    <path
+                      fillRule="evenodd"
+                      d="M10 13a3 3 0 100-6 3 3 0 000 6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  <span className="ml-2">高级配置</span>
+                  <span className="text-xs text-gray-400 ml-2">身份映射</span>
+                </div>
+              ),
+              children: (
+                <div className="space-y-4 pt-2 ml-3">
+                  <div className="grid grid-cols-3 gap-4">
+                    <Form.Item name="userIdField" label="开发者ID">
+                      <Input placeholder="默认: uid"/>
+                    </Form.Item>
+                    <Form.Item name="userNameField" label="开发者名称">
+                      <Input placeholder="默认: cn"/>
+                    </Form.Item>
+                    <Form.Item name="emailField" label="邮箱">
+                      <Input placeholder="默认: mail"/>
+                    </Form.Item>
+                  </div>
+                </div>
+              )
+            }
+          ]}
+        />
+      </div>
+    </div>
+  )
+
   // 按类型分组配置
   const oidcConfigs = configs.filter(config => config.type === AuthenticationType.OIDC)
   const casConfigs = configs.filter(config => config.type === AuthenticationType.CAS)
+  const ldapConfigs = configs.filter(config => config.type === AuthenticationType.LDAP)
   const oauth2Configs = configs.filter(config => config.type === AuthenticationType.OAUTH2)
 
   return (
@@ -1036,6 +1263,28 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
                   size="small"
                   locale={{
                     emptyText: '暂无CAS配置'
+                  }}
+                />
+              </div>
+            ),
+          },
+          {
+            key: 'ldap',
+            label: 'LDAP配置',
+            children: (
+              <div className="bg-white rounded-lg">
+                <div className="py-4 border-b border-gray-200">
+                  <h4 className="text-lg font-medium text-gray-900">LDAP配置</h4>
+                  <p className="text-sm text-gray-500 mt-1">支持基于 LDAP 的账号密码登录</p>
+                </div>
+                <Table
+                  columns={ldapColumns}
+                  dataSource={ldapConfigs}
+                  rowKey="provider"
+                  pagination={false}
+                  size="small"
+                  locale={{
+                    emptyText: '暂无LDAP配置'
                   }}
                 />
               </div>
@@ -1112,6 +1361,11 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
                       <div className="font-medium">CAS（适用于兼容 CAS 协议的单点登录）</div>
                     </div>
                   </Select.Option>
+                  <Select.Option value={AuthenticationType.LDAP}>
+                    <div className="py-2">
+                      <div className="font-medium">LDAP（适用于企业目录服务登录）</div>
+                    </div>
+                  </Select.Option>
                   <Select.Option value={AuthenticationType.OAUTH2}>
                     <div className="py-2">
                       <div className="font-medium">OAuth2（适用于服务间集成）</div>
@@ -1183,6 +1437,8 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
                 ? renderOidcForm()
                 : selectedType === AuthenticationType.CAS
                   ? renderCasForm()
+                  : selectedType === AuthenticationType.LDAP
+                    ? renderLdapForm()
                   : renderOAuth2Form()}
 
               <div className="flex justify-between mt-6">
