@@ -60,12 +60,17 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
     } else if (config.type === AuthenticationType.OAUTH2) {
       // OAuth2配置：直接使用OAuth2Config的字段
       const oauth2Config = config as (OAuth2Config & { type: AuthenticationType.OAUTH2 })
+      const hasJwks = !!oauth2Config.jwtBearerConfig?.jwkSetUri
       form.setFieldsValue({
         provider: oauth2Config.provider,
         name: oauth2Config.name,
         enabled: oauth2Config.enabled,
         type: oauth2Config.type,
         oauth2GrantType: oauth2Config.grantType || GrantType.JWT_BEARER, // 使用oauth2GrantType字段
+        oauth2JwtValidationMode: hasJwks ? 'JWKS' : 'PUBLIC_KEYS',
+        oauth2Issuer: oauth2Config.jwtBearerConfig?.issuer,
+        oauth2JwkSetUri: oauth2Config.jwtBearerConfig?.jwkSetUri,
+        oauth2Audiences: oauth2Config.jwtBearerConfig?.audiences || [],
         userIdField: oauth2Config.identityMapping?.userIdField,
         userNameField: oauth2Config.identityMapping?.userNameField,
         emailField: oauth2Config.identityMapping?.emailField,
@@ -140,6 +145,7 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         if (values.type === AuthenticationType.OAUTH2) {
           form.setFieldsValue({
             oauth2GrantType: GrantType.JWT_BEARER,
+            oauth2JwtValidationMode: 'PUBLIC_KEYS',
             enabled: true
           })
         } else if (values.type === AuthenticationType.CAS) {
@@ -267,14 +273,25 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
       } else {
         // OAuth2配置：直接创建OAuth2Config格式
         const grantType = values.oauth2GrantType || GrantType.JWT_BEARER // 使用oauth2GrantType字段
+        const validationMode = values.oauth2JwtValidationMode || 'PUBLIC_KEYS'
         newConfig = {
           provider: values.provider,
           name: values.name,
           enabled: values.enabled ?? true,
           grantType: grantType,
-          jwtBearerConfig: grantType === GrantType.JWT_BEARER ? {
-            publicKeys: values.publicKeys || []
-          } : undefined,
+          jwtBearerConfig:
+            grantType === GrantType.JWT_BEARER
+              ? validationMode === 'JWKS'
+                ? {
+                    issuer: values.oauth2Issuer,
+                    jwkSetUri: values.oauth2JwkSetUri,
+                    audiences: values.oauth2Audiences || [],
+                    publicKeys: []
+                  }
+                : {
+                    publicKeys: values.publicKeys || []
+                  }
+              : undefined,
           identityMapping: {
             userIdField: values.userIdField || null,
             userNameField: values.userNameField || null,
@@ -411,6 +428,27 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
           )
         }
         return <span className="text-gray-600">授权码模式</span>
+      }
+    },
+    {
+      title: '验签方式',
+      key: 'jwtValidationMode',
+      width: 120,
+      render: (record: ThirdPartyAuthConfig) => {
+        if (record.type !== AuthenticationType.OAUTH2) {
+          return <span className="text-gray-600">-</span>
+        }
+
+        const oauth2Config = record as (OAuth2Config & { type: AuthenticationType.OAUTH2 })
+        if (!oauth2Config.jwtBearerConfig) {
+          return <span className="text-gray-600">-</span>
+        }
+
+        return (
+          <span className="text-gray-600">
+            {oauth2Config.jwtBearerConfig.jwkSetUri ? 'JWKS' : '公钥'}
+          </span>
+        )
       }
     },
     {
@@ -794,114 +832,193 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         </Select>
       </Form.Item>
 
-      <Form.List name="publicKeys">
-        {(fields, { add, remove }) => (
-          <div className="space-y-4">
-            {fields.length > 0 && (
-              <Collapse
-                size="small"
-                items={fields.map(({ key, name, ...restField }) => ({
-                  key: key,
-                  label: (
-                    <div className="flex items-center">
-                      <KeyOutlined className="mr-2" />
-                      <span>公钥 {name + 1}</span>
-                    </div>
-                  ),
-                  extra: (
-                    <Button
-                      type="link"
-                      danger
-                      size="small"
-                      icon={<MinusCircleOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        remove(name)
-                      }}
-                    >
-                      删除
-                    </Button>
-                  ),
-                  children: (
-                    <div className="space-y-4 px-4">
-                      <div className="grid grid-cols-3 gap-4">
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'kid']}
-                          label="Key ID"
-                          rules={[{ required: true, message: '请输入Key ID' }]}
-                        >
-                          <Input placeholder="公钥标识符" size="small" />
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'algorithm']}
-                          label="签名算法"
-                          rules={[{ required: true, message: '请选择签名算法' }]}
-                        >
-                          <Select placeholder="选择签名算法" size="small">
-                            <Select.Option value="RS256">RS256</Select.Option>
-                            <Select.Option value="RS384">RS384</Select.Option>
-                            <Select.Option value="RS512">RS512</Select.Option>
-                            <Select.Option value="ES256">ES256</Select.Option>
-                            <Select.Option value="ES384">ES384</Select.Option>
-                            <Select.Option value="ES512">ES512</Select.Option>
-                          </Select>
-                        </Form.Item>
-                        <Form.Item
-                          {...restField}
-                          name={[name, 'format']}
-                          label="公钥格式"
-                          rules={[{ required: true, message: '请选择公钥格式' }]}
-                        >
-                          <Select placeholder="选择公钥格式" size="small">
-                            <Select.Option value={PublicKeyFormat.PEM}>PEM</Select.Option>
-                            <Select.Option value={PublicKeyFormat.JWK}>JWK</Select.Option>
-                          </Select>
-                        </Form.Item>
-                      </div>
+      <Form.Item
+        name="oauth2JwtValidationMode"
+        label="验签方式"
+        initialValue="PUBLIC_KEYS"
+        rules={[{required: true, message: '请选择验签方式'}]}
+      >
+        <Radio.Group>
+          <Radio value="PUBLIC_KEYS">手工公钥</Radio>
+          <Radio value="JWKS">JWKS</Radio>
+        </Radio.Group>
+      </Form.Item>
 
-                      <Form.Item
-                        noStyle
-                        shouldUpdate={(prevValues, curValues) => {
-                          const prevFormat = prevValues?.publicKeys?.[name]?.format
-                          const curFormat = curValues?.publicKeys?.[name]?.format
-                          return prevFormat !== curFormat
-                        }}
-                      >
-                        {({ getFieldValue }) => {
-                          const format = getFieldValue(['publicKeys', name, 'format'])
-                          return (
+      <Form.Item
+        noStyle
+        shouldUpdate={(prevValues, curValues) =>
+          prevValues?.oauth2JwtValidationMode !== curValues?.oauth2JwtValidationMode
+        }
+      >
+        {({ getFieldValue }) => {
+          const mode = getFieldValue('oauth2JwtValidationMode') || 'PUBLIC_KEYS'
+          if (mode === 'JWKS') {
+            return (
+              <div className="space-y-4">
+                <Form.Item
+                  name="oauth2Issuer"
+                  label="Issuer"
+                  rules={[
+                    {required: true, message: '请输入Issuer'},
+                    {type: 'url', message: '请输入有效的URL'}
+                  ]}
+                >
+                  <Input placeholder="如: https://cas.example.com/cas/oauth2.0" />
+                </Form.Item>
+                <Form.Item
+                  name="oauth2JwkSetUri"
+                  label="JWKS 地址"
+                  rules={[
+                    {required: true, message: '请输入JWKS地址'},
+                    {type: 'url', message: '请输入有效的URL'}
+                  ]}
+                >
+                  <Input placeholder="如: https://cas.example.com/cas/oauth2.0/jwks" />
+                </Form.Item>
+                <Form.Item
+                  name="oauth2Audiences"
+                  label="Audiences"
+                  rules={[
+                    {required: true, message: '请输入至少一个Audience'},
+                    {
+                      validator: (_, value) => {
+                        if (!value || value.length === 0) {
+                          return Promise.resolve()
+                        }
+                        const invalid = value.some((v: string) => !v || !v.trim())
+                        return invalid ? Promise.reject(new Error('Audience 不能为空')) : Promise.resolve()
+                      }
+                    }
+                  ]}
+                >
+                  <Select
+                    mode="tags"
+                    placeholder="输入一个或多个audience"
+                    tokenSeparators={[',', ' ']}
+                  />
+                </Form.Item>
+              </div>
+            )
+          }
+
+          return (
+            <Form.List name="publicKeys">
+              {(fields, {add, remove}) => (
+                <div className="space-y-4">
+                  {fields.length > 0 && (
+                    <Collapse
+                      size="small"
+                      items={fields.map(({key, name, ...restField}) => ({
+                        key: key,
+                        label: (
+                          <div className="flex items-center">
+                            <KeyOutlined className="mr-2" />
+                            <span>公钥 {name + 1}</span>
+                          </div>
+                        ),
+                        extra: (
+                          <Button
+                            type="link"
+                            danger
+                            size="small"
+                            icon={<MinusCircleOutlined />}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              remove(name)
+                            }}
+                          >
+                            删除
+                          </Button>
+                        ),
+                        children: (
+                          <div className="space-y-4 px-4">
+                            <div className="grid grid-cols-3 gap-4">
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'kid']}
+                                label="Key ID"
+                                rules={[{required: true, message: '请输入Key ID'}]}
+                              >
+                                <Input placeholder="公钥标识符" size="small" />
+                              </Form.Item>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'algorithm']}
+                                label="签名算法"
+                                rules={[{required: true, message: '请选择签名算法'}]}
+                              >
+                                <Select placeholder="选择签名算法" size="small">
+                                  <Select.Option value="RS256">RS256</Select.Option>
+                                  <Select.Option value="RS384">RS384</Select.Option>
+                                  <Select.Option value="RS512">RS512</Select.Option>
+                                  <Select.Option value="ES256">ES256</Select.Option>
+                                  <Select.Option value="ES384">ES384</Select.Option>
+                                  <Select.Option value="ES512">ES512</Select.Option>
+                                </Select>
+                              </Form.Item>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'format']}
+                                label="公钥格式"
+                                rules={[{required: true, message: '请选择公钥格式'}]}
+                              >
+                                <Select placeholder="选择公钥格式" size="small">
+                                  <Select.Option value={PublicKeyFormat.PEM}>PEM</Select.Option>
+                                  <Select.Option value={PublicKeyFormat.JWK}>JWK</Select.Option>
+                                </Select>
+                              </Form.Item>
+                            </div>
+
                             <Form.Item
-                              {...restField}
-                              name={[name, 'value']}
-                              label="公钥内容"
-                              rules={[{ required: true, message: '请输入公钥内容' }]}
+                              noStyle
+                              shouldUpdate={(prevValues, curValues) => {
+                                const prevFormat = prevValues?.publicKeys?.[name]?.format
+                                const curFormat = curValues?.publicKeys?.[name]?.format
+                                return prevFormat !== curFormat
+                              }}
                             >
-                              <Input.TextArea
-                                rows={6}
-                                placeholder={
-                                  format === PublicKeyFormat.JWK
-                                    ? 'JWK格式公钥，例如:\n{\n  "kty": "RSA",\n  "kid": "key1",\n  "n": "...",\n  "e": "AQAB"\n}'
-                                    : 'PEM格式公钥，例如:\n-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----'
-                                }
-                                style={{ fontFamily: 'monospace', fontSize: '12px' }}
-                              />
+                              {({getFieldValue}) => {
+                                const format = getFieldValue(['publicKeys', name, 'format'])
+                                return (
+                                  <Form.Item
+                                    {...restField}
+                                    name={[name, 'value']}
+                                    label="公钥内容"
+                                    rules={[{required: true, message: '请输入公钥内容'}]}
+                                  >
+                                    <Input.TextArea
+                                      rows={6}
+                                      placeholder={
+                                        format === PublicKeyFormat.JWK
+                                          ? 'JWK格式公钥，例如:\n{\n  \"kty\": \"RSA\",\n  \"kid\": \"key1\",\n  \"n\": \"...\",\n  \"e\": \"AQAB\"\n}'
+                                          : 'PEM格式公钥，例如:\n-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----'
+                                      }
+                                      style={{fontFamily: 'monospace', fontSize: '12px'}}
+                                    />
+                                  </Form.Item>
+                                )
+                              }}
                             </Form.Item>
-                          )
-                        }}
-                      </Form.Item>
-                    </div>
-                  )
-                }))}
-              />
-            )}
-            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} size="small">
-              添加公钥
-            </Button>
-          </div>
-        )}
-      </Form.List>
+                          </div>
+                        )
+                      }))}
+                    />
+                  )}
+                  <Button
+                    type="dashed"
+                    onClick={() => add()}
+                    block
+                    icon={<PlusOutlined />}
+                    size="small"
+                  >
+                    添加公钥
+                  </Button>
+                </div>
+              )}
+            </Form.List>
+          )
+        }}
+      </Form.Item>
 
       <div className="-ml-3">
         <Collapse
@@ -933,10 +1050,23 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
                 <div className="space-y-4 pt-2 ml-3">
                   <div className="grid grid-cols-3 gap-4">
                     <Form.Item
-                      name="userIdField"
-                      label="开发者ID"
+                      noStyle
+                      shouldUpdate={(prevValues, curValues) =>
+                        prevValues?.oauth2JwtValidationMode !== curValues?.oauth2JwtValidationMode
+                      }
                     >
-                      <Input placeholder="默认: userId"/>
+                      {({ getFieldValue }) => {
+                        const mode = getFieldValue('oauth2JwtValidationMode') || 'PUBLIC_KEYS'
+                        const placeholder = mode === 'JWKS' ? '默认: sub' : '默认: userId'
+                        return (
+                          <Form.Item
+                            name="userIdField"
+                            label="开发者ID"
+                          >
+                            <Input placeholder={placeholder} />
+                          </Form.Item>
+                        )
+                      }}
                     </Form.Item>
                     <Form.Item
                       name="userNameField"
