@@ -19,10 +19,11 @@
 
 package com.alibaba.himarket.support.portal;
 
+import com.alibaba.himarket.support.common.Encrypted;
 import lombok.Data;
 
 @Data
-public class CasConfig {
+public class LdapConfig {
 
     private String provider;
 
@@ -31,17 +32,29 @@ public class CasConfig {
     private boolean enabled = true;
 
     /**
-     * If true, logout will also redirect to CAS logout endpoint.
+     * LDAP server URL, e.g. ldap://ldap.example.com:389 or ldaps://ldap.example.com:636
      */
-    private boolean sloEnabled = false;
-
     private String serverUrl;
 
-    private String loginEndpoint;
+    /**
+     * Base DN for user search.
+     */
+    private String baseDn;
 
-    private String validateEndpoint;
+    /**
+     * Bind DN used to search users.
+     */
+    private String bindDn;
 
-    private String logoutEndpoint;
+    /**
+     * Bind password used to search users.
+     */
+    @Encrypted private String bindPassword;
+
+    /**
+     * LDAP search filter template, e.g. (uid={0}) or (sAMAccountName={0}).
+     */
+    private String userSearchFilter = "(uid={0})";
 
     private IdentityMapping identityMapping = new IdentityMapping();
 }

@@ -41,6 +41,11 @@ public class PortalSettingConfig {
     private List<CasConfig> casConfigs;
 
     /**
+     * LDAP configurations
+     */
+    private List<LdapConfig> ldapConfigs;
+
+    /**
      * Enable auto-approval for developer registrations
      */
     private Boolean autoApproveDevelopers = false;
