@@ -20,9 +20,12 @@
 package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.support.portal.AuthCodeConfig;
 import com.alibaba.himarket.support.portal.CasConfig;
+import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
@@ -99,6 +102,32 @@ class IdpServiceImplTest {
         casConfig.setLogoutEndpoint("/logout");
 
         new IdpServiceImpl().validateCasConfigs(List.of(casConfig));
+    }
+
+    @Test
+    void validateLdapConfigsShouldRejectFilterWithoutPlaceholder() {
+        LdapConfig ldapConfig = new LdapConfig();
+        ldapConfig.setProvider("ldap");
+        ldapConfig.setName("LDAP");
+        ldapConfig.setServerUrl("ldap://localhost:389");
+        ldapConfig.setBaseDn("dc=example,dc=com");
+        ldapConfig.setUserSearchFilter("(uid=alice)");
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateLdapConfigs(List.of(ldapConfig)));
+    }
+
+    @Test
+    void validateLdapConfigsShouldAcceptValidConfig() {
+        LdapConfig ldapConfig = new LdapConfig();
+        ldapConfig.setProvider("ldap");
+        ldapConfig.setName("LDAP");
+        ldapConfig.setServerUrl("ldap://localhost:389");
+        ldapConfig.setBaseDn("dc=example,dc=com");
+        ldapConfig.setUserSearchFilter("(uid={0})");
+
+        new IdpServiceImpl().validateLdapConfigs(List.of(ldapConfig));
     }
 
     private static class JsonHandler implements HttpHandler {
