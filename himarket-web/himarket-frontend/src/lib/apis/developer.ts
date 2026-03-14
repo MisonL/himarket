@@ -10,6 +10,7 @@ export interface IIdpProvider {
   provider: string;
   name?: string;
   displayName?: string;
+  sloEnabled?: boolean;
 }
 
 export interface IAuthResult {
