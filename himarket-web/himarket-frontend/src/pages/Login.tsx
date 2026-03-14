@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Form, Input, Button, message, Divider, Select } from "antd";
+import { Button, Divider, Form, Input, message, Select } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
 import api from "../lib/api";
-import type { IIdpProvider } from "../lib/apis";
-import { AxiosError } from "axios";
+import APIs, { type IIdpProvider } from "../lib/apis";
 import { Layout } from "../components/Layout";
-import APIs from "../lib/apis";
 import { setLastAuthState } from "../lib/authStorage";
 
 import aliyunIcon from "../assets/aliyun.png";
@@ -129,9 +128,7 @@ const Login: React.FC = () => {
       }
     } catch (error) {
       if (error instanceof AxiosError) {
-        message.error(
-          error.response?.data.message || t("loginFailedCheckCredentials")
-        );
+        message.error(error.response?.data.message || t("loginFailedCheckCredentials"));
       } else {
         message.error(t("loginFailed"));
       }
@@ -153,10 +150,7 @@ const Login: React.FC = () => {
 
   const handleOidcLogin = (provider: LoginProvider) => {
     setLastAuthState({ type: "OIDC", provider: provider.provider });
-    window.location.href = buildAuthorizeUrl(
-      "/developers/oidc/authorize",
-      provider.provider
-    );
+    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider.provider);
   };
 
   const handleCasLogin = (provider: LoginProvider) => {
@@ -165,10 +159,7 @@ const Login: React.FC = () => {
       provider: provider.provider,
       sloEnabled: !!provider.sloEnabled,
     });
-    window.location.href = buildAuthorizeUrl(
-      "/developers/cas/authorize",
-      provider.provider
-    );
+    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider.provider);
   };
 
   return (
@@ -259,9 +250,7 @@ const Login: React.FC = () => {
                   }
                   className="w-full flex items-center justify-center"
                   size="large"
-                  icon={
-                    oidcIcons[provider.provider.toLowerCase()] || <span></span>
-                  }
+                  icon={oidcIcons[provider.provider.toLowerCase()] || <span></span>}
                 >
                   {t("loginWithProvider", {
                     provider: provider.name || provider.provider,

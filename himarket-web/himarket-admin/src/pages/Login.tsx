@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../lib/api";
-import { authApi } from '@/lib/api'
-import { Form, Input, Button, Alert, Divider } from "antd";
+import { Alert, Button, Divider, Form, Input, Select } from "antd";
+import api, { authApi } from "@/lib/api";
 import { setLastAuthState } from "@/lib/authStorage";
 
 interface IdpProvider {
@@ -15,22 +14,22 @@ interface IdpProvider {
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isRegister, setIsRegister] = useState<boolean | null>(null); // null 表示正在加载
+  const [isRegister, setIsRegister] = useState<boolean | null>(null);
   const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
+  const [ldapProviders, setLdapProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
 
-  // 页面加载时检查权限
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await authApi.getNeedInit(); // 替换为你的权限接口
+        const response = await authApi.getNeedInit();
         const needInit = response.data === true;
-        setIsRegister(needInit); // 根据接口返回值决定是否显示注册表单
+        setIsRegister(needInit);
         if (!needInit) {
-          await fetchCasProviders();
+          await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
         }
-      } catch (err) {
-        setIsRegister(false); // 默认显示登录表单
+      } catch {
+        setIsRegister(false);
       }
     };
 
@@ -43,6 +42,15 @@ const Login: React.FC = () => {
       setCasProviders(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setCasProviders([]);
+    }
+  };
+
+  const fetchLdapProviders = async () => {
+    try {
+      const res = await api.get("/admins/ldap/providers");
+      setLdapProviders(Array.isArray(res?.data) ? res.data : []);
+    } catch {
+      setLdapProviders([]);
     }
   };
 
@@ -67,20 +75,43 @@ const Login: React.FC = () => {
     window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
   };
 
-  // 登录表单提交
-  const handleLogin = async (values: { username: string; password: string }) => {
+  const handleLogin = async (values: {
+    username: string;
+    password: string;
+    loginMode?: string;
+  }) => {
     setLoading(true);
     setError("");
     try {
-      const response = await api.post("/admins/login", {
-        username: values.username,
-        password: values.password,
-      });
+      const loginMode = values.loginMode || "builtin";
+      const response =
+        loginMode === "builtin"
+          ? await api.post("/admins/login", {
+              username: values.username,
+              password: values.password,
+            })
+          : loginMode.startsWith("ldap:")
+            ? await api.post("/admins/ldap/login", {
+                provider: loginMode.replace(/^ldap:/, ""),
+                username: values.username,
+                password: values.password,
+              })
+            : (() => {
+                throw new Error("未知登录方式");
+              })();
+
       const accessToken = response.data.access_token;
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
-      setLastAuthState({ type: "BUILTIN" });
-      navigate('/portals');
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("userInfo", JSON.stringify(response.data));
+      if (loginMode === "builtin") {
+        setLastAuthState({ type: "BUILTIN" });
+      } else {
+        setLastAuthState({
+          type: "LDAP",
+          provider: loginMode.replace(/^ldap:/, ""),
+        });
+      }
+      navigate("/portals");
     } catch {
       setError("账号或密码错误");
     } finally {
@@ -88,8 +119,11 @@ const Login: React.FC = () => {
     }
   };
 
-  // 注册表单提交
-  const handleRegister = async (values: { username: string; password: string; confirmPassword: string }) => {
+  const handleRegister = async (values: {
+    username: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
     setLoading(true);
     setError("");
     if (values.password !== values.confirmPassword) {
@@ -103,7 +137,7 @@ const Login: React.FC = () => {
         password: values.password,
       });
       if (response.data.adminId) {
-        setIsRegister(false); // 初始化成功后切换到登录状态
+        setIsRegister(false);
       }
     } catch {
       setError("初始化失败，请重试");
@@ -114,12 +148,10 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* 左侧品牌区域 - 移动端隐藏 */}
       <div
         className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)' }}
+        style={{ background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)" }}
       >
-        {/* 装饰性背景元素 */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-white" />
           <div className="absolute bottom-32 right-16 w-48 h-48 rounded-full bg-white" />
@@ -142,23 +174,25 @@ const Login: React.FC = () => {
             {isRegister ? "注册Admin账号" : "登录HiMarket-后台"}
           </h2>
 
-          {/* 登录表单 */}
           {!isRegister && (
-            <Form
-              className="w-full flex flex-col gap-4"
-              layout="vertical"
-              onFinish={handleLogin}
-            >
-              <Form.Item
-                name="username"
-                rules={[{ required: true, message: "请输入账号" }]}
-              >
+            <Form className="w-full flex flex-col gap-4" layout="vertical" onFinish={handleLogin}>
+              {ldapProviders.length > 0 && (
+                <Form.Item name="loginMode" initialValue="builtin" label="登录方式">
+                  <Select
+                    options={[
+                      { label: "内置账号", value: "builtin" },
+                      ...ldapProviders.map(provider => ({
+                        label: `LDAP: ${provider.name || provider.provider}`,
+                        value: `ldap:${provider.provider}`,
+                      })),
+                    ]}
+                  />
+                </Form.Item>
+              )}
+              <Form.Item name="username" rules={[{ required: true, message: "请输入账号" }]}>
                 <Input placeholder="账号" size="large" />
               </Form.Item>
-              <Form.Item
-                name="password"
-                rules={[{ required: true, message: "请输入密码" }]}
-              >
+              <Form.Item name="password" rules={[{ required: true, message: "请输入密码" }]}>
                 <Input.Password placeholder="密码" size="large" />
               </Form.Item>
               {error && <Alert message={error} type="error" showIcon className="mb-2" />}
@@ -179,7 +213,7 @@ const Login: React.FC = () => {
                     或
                   </Divider>
                   <div className="flex flex-col gap-2">
-                    {casProviders.map((provider) => (
+                    {casProviders.map(provider => (
                       <Button
                         key={provider.provider}
                         className="w-full"
@@ -195,23 +229,16 @@ const Login: React.FC = () => {
             </Form>
           )}
 
-          {/* 注册表单 */}
           {isRegister && (
             <Form
               className="w-full flex flex-col gap-4"
               layout="vertical"
               onFinish={handleRegister}
             >
-              <Form.Item
-                name="username"
-                rules={[{ required: true, message: "请输入账号" }]}
-              >
+              <Form.Item name="username" rules={[{ required: true, message: "请输入账号" }]}>
                 <Input placeholder="账号" size="large" />
               </Form.Item>
-              <Form.Item
-                name="password"
-                rules={[{ required: true, message: "请输入密码" }]}
-              >
+              <Form.Item name="password" rules={[{ required: true, message: "请输入密码" }]}>
                 <Input.Password placeholder="密码" size="large" />
               </Form.Item>
               <Form.Item
