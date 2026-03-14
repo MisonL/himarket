@@ -17,31 +17,24 @@
  * under the License.
  */
 
-package com.alibaba.himarket.support.portal;
+package com.alibaba.himarket.service;
 
-import lombok.Data;
+import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
+import com.alibaba.himarket.dto.result.idp.IdpResult;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.List;
 
-@Data
-public class CasConfig {
+public interface AdminCasService {
 
-    private String provider;
+    IdpAuthorizeResult buildAuthorizationResult(
+            String provider, String apiPrefix, HttpServletRequest request);
 
-    private String name;
+    AuthResult handleCallback(
+            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
 
-    private boolean enabled = true;
+    List<IdpResult> getAvailableProviders();
 
-    /**
-     * If true, logout will also redirect to CAS logout endpoint.
-     */
-    private boolean sloEnabled = false;
-
-    private String serverUrl;
-
-    private String loginEndpoint;
-
-    private String validateEndpoint;
-
-    private String logoutEndpoint;
-
-    private IdentityMapping identityMapping = new IdentityMapping();
+    String buildLogoutRedirectUrl(String provider);
 }

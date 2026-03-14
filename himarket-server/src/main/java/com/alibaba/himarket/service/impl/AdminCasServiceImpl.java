@@ -21,26 +21,22 @@ package com.alibaba.himarket.service.impl;
 
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.himarket.config.AdminAuthConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.constant.Resources;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
-import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
-import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.developer.DeveloperResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.dto.result.idp.IdpState;
-import com.alibaba.himarket.service.CasService;
-import com.alibaba.himarket.service.DeveloperService;
-import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.entity.Administrator;
+import com.alibaba.himarket.repository.AdministratorRepository;
+import com.alibaba.himarket.service.AdminCasService;
+import com.alibaba.himarket.service.idp.AdminFrontendUrlResolver;
 import com.alibaba.himarket.service.idp.CasTicketValidator;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
-import com.alibaba.himarket.service.idp.IdpStateCookie;
-import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
-import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,17 +54,15 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CasServiceImpl implements CasService {
+public class AdminCasServiceImpl implements AdminCasService {
 
-    private final PortalService portalService;
+    private final AdminAuthConfig adminAuthConfig;
 
-    private final DeveloperService developerService;
-
-    private final ContextHolder contextHolder;
+    private final AdministratorRepository administratorRepository;
 
     private final CasTicketValidator casTicketValidator;
 
-    private final PortalFrontendUrlResolver portalFrontendUrlResolver;
+    private final AdminFrontendUrlResolver adminFrontendUrlResolver;
 
     private final IdpStateCodec idpStateCodec;
 
@@ -89,23 +83,20 @@ public class CasServiceImpl implements CasService {
     @Override
     public AuthResult handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response) {
-        IdpStateCookie.assertCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());
         String serviceUrl = buildFrontendCallbackUrl(state);
         Map<String, Object> userInfo = casTicketValidator.validate(config, ticket, serviceUrl);
-        String developerId = createOrGetDeveloper(userInfo, config);
-        String accessToken = TokenUtil.generateDeveloperToken(developerId);
-        IdpStateCookie.clearCasStateCookie(request, response);
+
+        String adminId = getAdminId(userInfo, config);
+        String accessToken = TokenUtil.generateAdminToken(adminId);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
     }
 
     @Override
     public List<IdpResult> getAvailableProviders() {
-        return Optional.ofNullable(portalService.getPortal(contextHolder.getPortal()))
-                .filter(portal -> portal.getPortalSettingConfig() != null)
-                .filter(portal -> portal.getPortalSettingConfig().getCasConfigs() != null)
-                .map(portal -> portal.getPortalSettingConfig().getCasConfigs())
+        return Optional.ofNullable(adminAuthConfig.getCasConfigs())
+                .filter(configs -> !configs.isEmpty())
                 .map(
                         configs ->
                                 configs.stream()
@@ -136,7 +127,7 @@ public class CasServiceImpl implements CasService {
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        String serviceUrl = portalFrontendUrlResolver.buildCallbackUrl("/login");
+        String serviceUrl = adminFrontendUrlResolver.buildCallbackUrl("/login");
         return UriComponentsBuilder.fromUriString(logoutUrl)
                 .queryParam(IdpConstants.SERVICE, serviceUrl)
                 .build()
@@ -144,17 +135,11 @@ public class CasServiceImpl implements CasService {
     }
 
     private CasConfig findCasConfig(String provider) {
-        return Optional.ofNullable(portalService.getPortal(contextHolder.getPortal()))
-                .filter(portal -> portal.getPortalSettingConfig() != null)
-                .filter(portal -> portal.getPortalSettingConfig().getCasConfigs() != null)
-                .flatMap(
-                        portal ->
-                                portal.getPortalSettingConfig().getCasConfigs().stream()
-                                        .filter(
-                                                config ->
-                                                        provider.equals(config.getProvider())
-                                                                && config.isEnabled())
-                                        .findFirst())
+        return Optional.ofNullable(adminAuthConfig.getCasConfigs())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(config -> provider.equals(config.getProvider()) && config.isEnabled())
+                .findFirst()
                 .orElseThrow(
                         () ->
                                 new BusinessException(
@@ -169,7 +154,7 @@ public class CasServiceImpl implements CasService {
 
     private String buildFrontendCallbackUrl(String state) {
         return UriComponentsBuilder.fromUriString(
-                        portalFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
+                        adminFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
                 .queryParam(IdpConstants.STATE, state)
                 .build()
                 .toUriString();
@@ -189,6 +174,7 @@ public class CasServiceImpl implements CasService {
 
     private IdpState parseState(String encodedState) {
         IdpState idpState = idpStateCodec.decode(encodedState);
+
         Long timestamp = idpState.getTimestamp();
         if (timestamp == null) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid state");
@@ -202,32 +188,21 @@ public class CasServiceImpl implements CasService {
         return idpState;
     }
 
-    private String createOrGetDeveloper(Map<String, Object> userInfo, CasConfig config) {
+    private String getAdminId(Map<String, Object> userInfo, CasConfig config) {
         IdentityMapping identityMapping =
                 Optional.ofNullable(config.getIdentityMapping()).orElseGet(IdentityMapping::new);
         String userIdField = StrUtil.blankToDefault(identityMapping.getUserIdField(), "user");
-        String userNameField = StrUtil.blankToDefault(identityMapping.getUserNameField(), "user");
-        String emailField = StrUtil.blankToDefault(identityMapping.getEmailField(), "mail");
 
-        String userId = getRequiredField(userInfo, userIdField, "CAS user id");
-        String userName = getRequiredField(userInfo, userNameField, "CAS user name");
-        String email = Convert.toStr(userInfo.get(emailField));
-
-        return Optional.ofNullable(
-                        developerService.getExternalDeveloper(config.getProvider(), userId))
-                .map(DeveloperResult::getDeveloperId)
-                .orElseGet(
-                        () -> {
-                            CreateExternalDeveloperParam param =
-                                    CreateExternalDeveloperParam.builder()
-                                            .provider(config.getProvider())
-                                            .subject(userId)
-                                            .displayName(userName)
-                                            .email(email)
-                                            .authType(DeveloperAuthType.CAS)
-                                            .build();
-                            return developerService.createExternalDeveloper(param).getDeveloperId();
-                        });
+        String username = getRequiredField(userInfo, userIdField, "CAS user id");
+        Administrator admin =
+                administratorRepository
+                        .findByUsername(username)
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.UNAUTHORIZED,
+                                                "Administrator is not allowed to login"));
+        return admin.getAdminId();
     }
 
     private String getRequiredField(Map<String, Object> userInfo, String field, String label) {

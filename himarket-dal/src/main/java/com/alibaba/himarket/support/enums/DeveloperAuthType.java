@@ -32,6 +32,8 @@ public enum DeveloperAuthType {
 
     CAS,
 
+    LDAP,
+
     OAUTH2,
     ;
 

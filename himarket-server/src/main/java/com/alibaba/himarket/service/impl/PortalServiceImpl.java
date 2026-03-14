@@ -53,6 +53,7 @@ import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.support.enums.DomainType;
 import com.alibaba.himarket.support.enums.SearchEngineType;
 import com.alibaba.himarket.support.portal.CasConfig;
+import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.PortalUiConfig;
@@ -215,6 +216,11 @@ public class PortalServiceImpl implements PortalService {
             idpService.validateCasConfigs(setting.getCasConfigs());
         }
 
+        // Verify LDAP configs
+        if (CollUtil.isNotEmpty(setting.getLdapConfigs())) {
+            idpService.validateLdapConfigs(setting.getLdapConfigs());
+        }
+
         // Verify OAuth2 configs
         if (CollUtil.isNotEmpty(setting.getOauth2Configs())) {
             idpService.validateOAuth2Configs(setting.getOauth2Configs());
@@ -227,13 +233,14 @@ public class PortalServiceImpl implements PortalService {
 
         boolean enabledOidc = hasEnabledOidc(setting);
         boolean enabledCas = hasEnabledCas(setting);
+        boolean enabledLdap = hasEnabledLdap(setting);
         if (enabledOidc || enabledCas) {
             validateFrontendRedirectUrl(setting.getFrontendRedirectUrl());
         }
 
         // At least keep one authentication method
         if (BooleanUtil.isFalse(setting.getBuiltinAuthEnabled())) {
-            if (!enabledOidc && !enabledCas) {
+            if (!enabledOidc && !enabledCas && !enabledLdap) {
                 throw new BusinessException(
                         ErrorCode.INVALID_REQUEST,
                         "At least one authentication method must be configured");
@@ -390,6 +397,13 @@ public class PortalServiceImpl implements PortalService {
         return Optional.ofNullable(setting.getCasConfigs())
                 .filter(CollUtil::isNotEmpty)
                 .map(configs -> configs.stream().anyMatch(CasConfig::isEnabled))
+                .orElse(false);
+    }
+
+    private boolean hasEnabledLdap(PortalSettingConfig setting) {
+        return Optional.ofNullable(setting.getLdapConfigs())
+                .filter(CollUtil::isNotEmpty)
+                .map(configs -> configs.stream().anyMatch(LdapConfig::isEnabled))
                 .orElse(false);
     }
 

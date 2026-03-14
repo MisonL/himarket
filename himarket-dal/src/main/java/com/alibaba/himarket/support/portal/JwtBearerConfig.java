@@ -26,6 +26,21 @@ import lombok.Data;
 public class JwtBearerConfig {
 
     /**
+     * Token issuer, used by standard JWT validation mode.
+     */
+    private String issuer;
+
+    /**
+     * JWK set URI used to verify token signature.
+     */
+    private String jwkSetUri;
+
+    /**
+     * Expected audiences, used by standard JWT validation mode.
+     */
+    private List<String> audiences;
+
+    /**
      * JWT public keys
      */
     private List<PublicKeyConfig> publicKeys;
