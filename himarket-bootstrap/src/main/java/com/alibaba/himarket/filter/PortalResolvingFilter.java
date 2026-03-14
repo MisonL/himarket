@@ -46,7 +46,10 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
                     "/developers/cas/authorize",
                     "/developers/cas/callback",
                     "/developers/cas/providers",
-                    "/developers/cas/logout");
+                    "/developers/cas/logout",
+                    "/developers/ldap/providers",
+                    "/developers/ldap/login",
+                    "/developers/oauth2/token");
 
     private final PortalService portalService;
 
