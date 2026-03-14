@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { message, Spin } from 'antd'
-import api from '@/lib/api'
+import { adminCasApi } from '@/lib/api'
 
 const CasCallback: React.FC = () => {
   const location = useLocation()
@@ -21,18 +21,15 @@ const CasCallback: React.FC = () => {
       setLoading(true)
 
       const searchParams = new URLSearchParams(location.search)
-      const ticket = searchParams.get('ticket')
-      const state = searchParams.get('state')
+      const code = searchParams.get('code')
 
-      if (!ticket || !state) {
+      if (!code) {
         message.error('回调参数不完整，请重试')
         navigate('/login', { replace: true })
         return
       }
 
-      const res = await api.get('/admins/cas/callback', {
-        params: { ticket, state },
-      })
+      const res = await adminCasApi.exchange(code)
 
       if (!res?.data?.access_token) {
         throw new Error('未获取到访问令牌')
@@ -48,7 +45,7 @@ const CasCallback: React.FC = () => {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status: number } }
         if (axiosError.response?.status === 400) {
-          errorMessage = 'CAS票据无效或已过期'
+          errorMessage = 'CAS登录码无效或已过期'
         } else if (axiosError.response?.status === 404) {
           errorMessage = 'CAS配置不存在'
         }
@@ -74,4 +71,3 @@ const CasCallback: React.FC = () => {
 }
 
 export default CasCallback
-

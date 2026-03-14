@@ -17,28 +17,24 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.service.idp;
 
-import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
-import com.alibaba.himarket.dto.result.idp.IdpResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
+import cn.hutool.core.util.StrUtil;
 
-public interface CasService {
+public final class FrontendApiUrlBuilder {
 
-    IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+    private FrontendApiUrlBuilder() {}
 
-    String handleCallback(
-            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
+    public static String buildApiUrl(String frontendBaseUrl, String apiPrefix, String path) {
+        String normalizedBaseUrl = StrUtil.removeSuffix(frontendBaseUrl, "/");
+        String normalizedPrefix = normalizeApiPrefix(apiPrefix);
+        return normalizedBaseUrl + normalizedPrefix + StrUtil.addPrefixIfNot(path, "/");
+    }
 
-    AuthResult exchangeCode(String code);
-
-    int handleLogoutRequest(String logoutRequest);
-
-    List<IdpResult> getAvailableProviders();
-
-    String buildLogoutRedirectUrl(String provider);
+    private static String normalizeApiPrefix(String apiPrefix) {
+        if (StrUtil.isBlank(apiPrefix)) {
+            return "/api/v1";
+        }
+        return "/" + StrUtil.removePrefix(StrUtil.removeSuffix(apiPrefix, "/"), "/");
+    }
 }

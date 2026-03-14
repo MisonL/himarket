@@ -19,6 +19,7 @@
 
 package com.alibaba.himarket.controller;
 
+import com.alibaba.himarket.dto.params.idp.CasExchangeParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
@@ -26,11 +27,15 @@ import com.alibaba.himarket.service.CasService;
 import com.alibaba.himarket.service.idp.IdpStateCookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -58,12 +63,25 @@ public class CasController {
     }
 
     @GetMapping("/callback")
-    public AuthResult callback(
+    public void callback(
             @RequestParam String ticket,
             @RequestParam String state,
             HttpServletRequest request,
-            HttpServletResponse response) {
-        return casService.handleCallback(ticket, state, request, response);
+            HttpServletResponse response)
+            throws IOException {
+        response.sendRedirect(casService.handleCallback(ticket, state, request, response));
+    }
+
+    @PostMapping("/callback")
+    public ResponseEntity<Void> logoutCallback(
+            @RequestParam("logoutRequest") String logoutRequest) {
+        casService.handleLogoutRequest(logoutRequest);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/exchange")
+    public AuthResult exchange(@Valid @RequestBody CasExchangeParam param) {
+        return casService.exchangeCode(param.getCode());
     }
 
     @GetMapping("/providers")

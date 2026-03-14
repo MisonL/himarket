@@ -57,7 +57,9 @@ api.interceptors.response.use(
     message.error(error.response?.data?.message || '请求发生错误');
     if (error.response?.status === 403 || error.response?.status === 401) {
       removeToken()
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
@@ -70,6 +72,12 @@ export default api
 export const authApi = {
   getNeedInit: () => {
     return api.get('/admins/need-init')
+  }
+}
+
+export const adminCasApi = {
+  exchange: (code: string) => {
+    return api.post('/admins/cas/exchange', { code })
   }
 }
 // Portal相关API
@@ -108,6 +116,9 @@ export const portalApi = {
   // 更新Portal设置
   updatePortalSettings: (portalId: string, settings: UpdatePortalSettingsRequest) => {
     return api.put(`/portals/${portalId}/setting`, settings)
+  },
+  exportCasServiceDefinition: (portalId: string, provider: string) => {
+    return api.get(`/portals/${portalId}/cas/${provider}/service-definition`)
   },
   // 获取Portal的开发者列表
   getDeveloperList: (portalId: string, pagination?: { page: number; size: number }) => {
