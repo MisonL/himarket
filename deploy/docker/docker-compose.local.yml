@@ -1,0 +1,32 @@
+services:
+  himarket-server:
+    build:
+      context: ../../himarket-bootstrap
+    image: himarket-server-local:dev
+    environment:
+      - DB_HOST=${DB_HOST:-mysql}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_NAME=${DB_NAME:-portal_db}
+      - DB_USERNAME=${DB_USERNAME:-portal_user}
+      - DB_PASSWORD=${DB_PASSWORD:-portal_pass}
+
+      # Admin auth (global) - used by admin CAS/LDAP login.
+      - ADMIN_AUTH_FRONTEND_REDIRECT_URL=http://localhost:${HIMARKET_ADMIN_PORT:-5174}
+
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROVIDER=cas
+      - ADMIN_AUTH_CAS_CONFIGS_0_NAME=CAS
+      - ADMIN_AUTH_CAS_CONFIGS_0_ENABLED=true
+      - ADMIN_AUTH_CAS_CONFIGS_0_SLO_ENABLED=true
+      # Public URL for browser redirects (CAS UI), via published port.
+      - ADMIN_AUTH_CAS_CONFIGS_0_SERVER_URL=http://localhost:${CAS_HTTP_PORT:-8083}/cas
+      # Internal URL for server-to-server ticket validation.
+      - ADMIN_AUTH_CAS_CONFIGS_0_VALIDATE_ENDPOINT=http://cas:8080/cas/p3/serviceValidate
+
+      - ADMIN_AUTH_LDAP_CONFIGS_0_PROVIDER=ldap
+      - ADMIN_AUTH_LDAP_CONFIGS_0_NAME=LDAP
+      - ADMIN_AUTH_LDAP_CONFIGS_0_ENABLED=true
+      - ADMIN_AUTH_LDAP_CONFIGS_0_SERVER_URL=ldap://openldap:389
+      - ADMIN_AUTH_LDAP_CONFIGS_0_BASE_DN=ou=people,dc=example,dc=org
+      - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_DN=cn=admin,dc=example,dc=org
+      - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin}
+      - ADMIN_AUTH_LDAP_CONFIGS_0_USER_SEARCH_FILTER=(uid={0})

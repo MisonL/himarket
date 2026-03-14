@@ -1,0 +1,7 @@
+{
+  "@class": "org.apereo.cas.services.RegexRegisteredService",
+  "serviceId": "^(http|https)://(localhost|127\\.0\\.0\\.1)(:\\d+)?/.*",
+  "name": "HiMarket Local",
+  "id": 1000,
+  "evaluationOrder": 1
+}
