@@ -74,7 +74,10 @@ export interface PublicKeyConfig {
 }
 
 export interface JwtBearerConfig {
-  publicKeys: PublicKeyConfig[];
+  issuer?: string;
+  jwkSetUri?: string;
+  audiences?: string[];
+  publicKeys?: PublicKeyConfig[];
 }
 
 export interface IdentityMapping {
