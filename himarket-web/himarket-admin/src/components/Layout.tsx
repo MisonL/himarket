@@ -17,7 +17,10 @@ import {
   ApiOutlined,
 } from "@ant-design/icons";
 import McpServerIcon from "@/components/icons/McpServerIcon";
-import { Button, Tooltip } from "antd";
+import { Button, message } from "antd";
+import api from "../lib/api";
+import { clearLastAuthState, getLastAuthState } from "../lib/authStorage";
+import { Tooltip } from "antd";
 import { isAuthenticated, removeToken } from "../lib/utils";
 
 interface NavigationItem {
@@ -134,9 +137,44 @@ const Layout: React.FC = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const handleLogout = () => {
-    removeToken();
-    setIsLoggedIn(false);
+  const buildAuthorizeUrl = (path: string, provider: string) => {
+    const apiPrefix = api.defaults.baseURL || "/api/v1";
+    const apiBaseUrl = new URL(apiPrefix, window.location.origin);
+    if (!apiBaseUrl.pathname.endsWith("/")) {
+      apiBaseUrl.pathname += "/";
+    }
+
+    const authUrl = new URL(path.replace(/^\//, ""), apiBaseUrl);
+    authUrl.searchParams.set("provider", provider);
+    return authUrl.toString();
+  };
+
+  const handleLogout = async () => {
+    const lastAuth = getLastAuthState();
+    const shouldCasSlo =
+      lastAuth?.type === "CAS" && !!lastAuth.provider && lastAuth.sloEnabled === true;
+    let serverLogoutSucceeded = false;
+
+    try {
+      await api.post("/admins/logout");
+      serverLogoutSucceeded = true;
+    } catch (error) {
+      console.error("管理员退出登录接口调用失败:", error);
+      message.error("服务端登出失败，已清理本地登录状态");
+    } finally {
+      removeToken();
+      clearLastAuthState();
+      setIsLoggedIn(false);
+    }
+
+    if (shouldCasSlo && lastAuth?.provider) {
+      window.location.href = buildAuthorizeUrl("/admins/cas/logout", lastAuth.provider);
+      return;
+    }
+
+    if (serverLogoutSucceeded) {
+      message.success("退出登录成功", 1);
+    }
     navigate("/login");
   };
 
