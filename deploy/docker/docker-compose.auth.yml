@@ -1,0 +1,45 @@
+networks:
+  himarket-network:
+    driver: bridge
+
+services:
+  cas:
+    image: ${CAS_IMAGE:-apereo/cas}
+    platform: ${CAS_PLATFORM:-linux/arm64}
+    container_name: himarket-cas
+    environment:
+      - SERVER_SSL_ENABLED=false
+      - SERVER_PORT=8080
+      - CAS_AUTHN_ACCEPT_USERS=${CAS_ACCEPT_USERS:-admin::admin,alice::alice}
+      - CAS_SERVICE_REGISTRY_CORE_INIT_FROM_JSON=true
+      - CAS_SERVICE_REGISTRY_JSON_LOCATION=file:/etc/cas/services
+    volumes:
+      - ./auth/cas/services:/etc/cas/services:ro
+    ports:
+      - "${CAS_HTTP_PORT:-8083}:8080"
+    networks:
+      - himarket-network
+
+  openldap:
+    image: ${OPENLDAP_IMAGE:-osixia/openldap:1.5.0}
+    container_name: himarket-openldap
+    environment:
+      - LDAP_ORGANISATION=${LDAP_ORGANISATION:-Example}
+      - LDAP_DOMAIN=${LDAP_DOMAIN:-example.org}
+      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin}
+      - LDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD:-config}
+      - LDAP_TLS=${LDAP_TLS:-false}
+    ports:
+      - "${LDAP_PORT:-3890}:389"
+    networks:
+      - himarket-network
+
+  jwks-server:
+    image: ${JWKS_SERVER_IMAGE:-nginx:alpine}
+    container_name: himarket-jwks-server
+    volumes:
+      - ./data/jwt-bearer:/usr/share/nginx/html:ro
+    ports:
+      - "${JWKS_HTTP_PORT:-8091}:80"
+    networks:
+      - himarket-network
