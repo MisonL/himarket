@@ -47,6 +47,7 @@ import com.alibaba.himarket.repository.DeveloperRepository;
 import com.alibaba.himarket.repository.PortalRepository;
 import com.alibaba.himarket.service.ConsumerService;
 import com.alibaba.himarket.service.DeveloperService;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.enums.DeveloperAuthType;
 import com.alibaba.himarket.support.enums.DeveloperStatus;
 import jakarta.persistence.criteria.Predicate;
@@ -78,6 +79,8 @@ public class DeveloperServiceImpl implements DeveloperService {
     private final ContextHolder contextHolder;
 
     private final ConsumerService consumerService;
+
+    private final AuthSessionStore authSessionStore;
 
     @Override
     public AuthResult registerDeveloper(CreateDeveloperParam param) {
@@ -349,7 +352,10 @@ public class DeveloperServiceImpl implements DeveloperService {
 
     @Override
     public void logout(HttpServletRequest request) {
-        TokenUtil.revokeToken(request);
+        String token = TokenUtil.getTokenFromRequest(request);
+        if (StrUtil.isNotBlank(token)) {
+            authSessionStore.revokeToken(token);
+        }
     }
 
     @Override

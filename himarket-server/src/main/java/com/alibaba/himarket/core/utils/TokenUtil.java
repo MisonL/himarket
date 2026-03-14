@@ -22,12 +22,13 @@ package com.alibaba.himarket.core.utils;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSignerUtil;
 import com.alibaba.himarket.core.constant.CommonConstants;
-import com.alibaba.himarket.service.RevokedTokenService;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.common.User;
 import com.alibaba.himarket.support.enums.UserType;
 import jakarta.servlet.http.Cookie;
@@ -85,13 +86,6 @@ public class TokenUtil {
         return generateToken(UserType.DEVELOPER, userId);
     }
 
-    /**
-     * Generate token
-     *
-     * @param userType user type
-     * @param userId user ID
-     * @return JWT token
-     */
     private static String generateToken(UserType userType, String userId) {
         long now = System.currentTimeMillis();
 
@@ -109,16 +103,9 @@ public class TokenUtil {
                 .sign();
     }
 
-    /**
-     * Parse token
-     *
-     * @param token JWT token
-     * @return user info
-     */
     public static User parseUser(String token) {
         JWT jwt = JWTUtil.parseToken(token);
 
-        // Verify signature
         boolean isValid =
                 jwt.setSigner(JWTSignerUtil.hs256(getJwtSecret().getBytes(StandardCharsets.UTF_8)))
                         .verify();
@@ -126,7 +113,6 @@ public class TokenUtil {
             throw new IllegalArgumentException("Invalid token signature");
         }
 
-        // Verify expiration
         Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
         if (ObjectUtil.isNotNull(expObj)) {
             long expireAt = Long.parseLong(expObj.toString());
@@ -139,7 +125,6 @@ public class TokenUtil {
     }
 
     public static String getTokenFromRequest(HttpServletRequest request) {
-        // Get token from header
         String authHeader = request.getHeader(CommonConstants.AUTHORIZATION_HEADER);
 
         String token = null;
@@ -147,7 +132,6 @@ public class TokenUtil {
             token = authHeader.substring(CommonConstants.BEARER_PREFIX.length());
         }
 
-        // Get token from cookie
         if (StrUtil.isBlank(token)) {
             token =
                     Optional.ofNullable(request.getCookies())
@@ -158,35 +142,49 @@ public class TokenUtil {
                                                             cookie ->
                                                                     CommonConstants
                                                                             .AUTH_TOKEN_COOKIE
-                                                                            .equals(
-                                                                                    cookie
-                                                                                            .getName()))
+                                                                            .equals(cookie.getName()))
                                                     .map(Cookie::getValue)
                                                     .findFirst())
                             .orElse(null);
         }
-        if (StrUtil.isBlank(token) || isTokenRevoked(token)) {
+        if (StrUtil.isBlank(token)) {
             return null;
         }
 
         return token;
     }
 
+    public static String extractTokenFromRequest(HttpServletRequest request) {
+        return getTokenFromRequest(request);
+    }
+
+    public static long getTokenExpireTime(String token) {
+        JWT jwt = JWTUtil.parseToken(token);
+        Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
+        if (ObjectUtil.isNotNull(expObj)) {
+            return Long.parseLong(expObj.toString()) * 1000;
+        }
+        return System.currentTimeMillis() + getJwtExpireMillis();
+    }
+
+    public static long getTokenExpireTimeMillis(String token) {
+        return getTokenExpireTime(token);
+    }
+
+    public static String getTokenDigest(String token) {
+        return DigestUtil.sha256Hex(token);
+    }
+
+    public static Duration getTokenTtl(String token) {
+        long ttlMillis = getTokenExpireTime(token) - System.currentTimeMillis();
+        return ttlMillis <= 0 ? Duration.ZERO : Duration.ofMillis(ttlMillis);
+    }
+
     public static void revokeToken(String token) {
         if (StrUtil.isBlank(token)) {
             return;
         }
-        long expiresAtMillis = getTokenExpireTime(token);
-        SpringUtil.getBean(RevokedTokenService.class).revokeToken(token, expiresAtMillis);
-    }
-
-    private static long getTokenExpireTime(String token) {
-        JWT jwt = JWTUtil.parseToken(token);
-        Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
-        if (ObjectUtil.isNotNull(expObj)) {
-            return Long.parseLong(expObj.toString()) * 1000; // JWT expiration is in seconds
-        }
-        return System.currentTimeMillis() + getJwtExpireMillis(); // Default expiration
+        authSessionStore().revokeToken(token);
     }
 
     public static void revokeToken(HttpServletRequest request) {
@@ -200,10 +198,14 @@ public class TokenUtil {
         if (StrUtil.isBlank(token)) {
             return false;
         }
-        return SpringUtil.getBean(RevokedTokenService.class).isTokenRevoked(token);
+        return authSessionStore().isTokenRevoked(token);
     }
 
     public static long getTokenExpiresIn() {
         return getJwtExpireMillis() / 1000;
+    }
+
+    private static AuthSessionStore authSessionStore() {
+        return SpringUtil.getBean(AuthSessionStore.class);
     }
 }

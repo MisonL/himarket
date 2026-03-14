@@ -72,6 +72,12 @@ export const authApi = {
     return api.get('/admins/need-init')
   }
 }
+
+export const adminCasApi = {
+  exchange: (code: string) => {
+    return api.post('/admins/cas/exchange', { code })
+  }
+}
 // Portal相关API
 export const portalApi = {
   // 获取portal列表

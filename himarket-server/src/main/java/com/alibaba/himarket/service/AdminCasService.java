@@ -31,8 +31,12 @@ public interface AdminCasService {
     IdpAuthorizeResult buildAuthorizationResult(
             String provider, String apiPrefix, HttpServletRequest request);
 
-    AuthResult handleCallback(
+    String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response);
+
+    AuthResult exchangeCode(String code);
+
+    int handleLogoutRequest(String logoutRequest);
 
     List<IdpResult> getAvailableProviders();
 

@@ -21,16 +21,15 @@ const CasCallback: React.FC = () => {
       setLoading(true)
 
       const searchParams = new URLSearchParams(location.search)
-      const ticket = searchParams.get('ticket')
-      const state = searchParams.get('state')
+      const code = searchParams.get('code')
 
-      if (!ticket || !state) {
+      if (!code) {
         message.error('回调参数不完整，请重试')
         navigate('/login', { replace: true })
         return
       }
 
-      const authResult = await APIs.handleCasCallback({ ticket, state })
+      const authResult = await APIs.exchangeCasCode({ code })
       if (!authResult?.data?.access_token) {
         throw new Error('未获取到访问令牌')
       }
@@ -44,7 +43,7 @@ const CasCallback: React.FC = () => {
       if (error && typeof error === 'object' && 'response' in error) {
         const axiosError = error as { response?: { status: number } }
         if (axiosError.response?.status === 400) {
-          errorMessage = 'CAS票据无效或已过期'
+          errorMessage = 'CAS登录码无效或已过期'
         } else if (axiosError.response?.status === 404) {
           errorMessage = 'CAS配置不存在'
         }

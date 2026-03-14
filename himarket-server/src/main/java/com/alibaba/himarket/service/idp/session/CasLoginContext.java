@@ -17,28 +17,22 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.service.idp.session;
 
-import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
-import com.alibaba.himarket.dto.result.idp.IdpResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-public interface CasService {
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class CasLoginContext {
 
-    IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+    private CasSessionScope scope;
 
-    String handleCallback(
-            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
+    private String provider;
 
-    AuthResult exchangeCode(String code);
+    private String userId;
 
-    int handleLogoutRequest(String logoutRequest);
-
-    List<IdpResult> getAvailableProviders();
-
-    String buildLogoutRedirectUrl(String provider);
+    private String sessionIndex;
 }

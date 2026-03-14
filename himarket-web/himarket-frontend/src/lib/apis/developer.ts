@@ -28,9 +28,8 @@ interface OidcCallbackParams {
   state: string;
 }
 
-interface CasCallbackParams {
-  ticket: string;
-  state: string;
+interface CasExchangeParams {
+  code: string;
 }
 
 interface IDeveloperInfo {
@@ -87,15 +86,10 @@ export function handleOidcCallback(params: OidcCallbackParams) {
   );
 }
 
-export function handleCasCallback(params: CasCallbackParams) {
-  return request.get<RespI<IAuthResult>, RespI<IAuthResult>>(
-    '/developers/cas/callback',
-    {
-      params: {
-        ticket: params.ticket,
-        state: params.state,
-      },
-    }
+export function exchangeCasCode(params: CasExchangeParams) {
+  return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
+    '/developers/cas/exchange',
+    params
   );
 }
 

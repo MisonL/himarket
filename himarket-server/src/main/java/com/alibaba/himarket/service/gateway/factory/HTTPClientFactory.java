@@ -19,6 +19,8 @@
 
 package com.alibaba.himarket.service.gateway.factory;
 
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.extra.spring.SpringUtil;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import lombok.extern.slf4j.Slf4j;
@@ -28,13 +30,38 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class HTTPClientFactory {
 
+    private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+    private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(5);
+
     public static RestTemplate createRestTemplate() {
         HttpClient httpClient =
-                HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
+                HttpClient.newBuilder()
+                        .connectTimeout(
+                                resolveDuration(
+                                        "http.client.connect-timeout", DEFAULT_CONNECT_TIMEOUT))
+                        .build();
 
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        factory.setReadTimeout(Duration.ofSeconds(5));
+        factory.setReadTimeout(resolveDuration("http.client.read-timeout", DEFAULT_READ_TIMEOUT));
 
         return new RestTemplate(factory);
+    }
+
+    private static Duration resolveDuration(String propertyName, Duration defaultValue) {
+        String raw = SpringUtil.getProperty(propertyName);
+        if (StrUtil.isBlank(raw)) {
+            return defaultValue;
+        }
+        try {
+            return Duration.parse(raw);
+        } catch (Exception e) {
+            log.warn(
+                    "Invalid duration property {}={}, fallback to {}",
+                    propertyName,
+                    raw,
+                    defaultValue);
+            return defaultValue;
+        }
     }
 }

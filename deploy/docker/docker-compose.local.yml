@@ -9,6 +9,11 @@ services:
       - DB_NAME=${DB_NAME:-portal_db}
       - DB_USERNAME=${DB_USERNAME:-portal_user}
       - DB_PASSWORD=${DB_PASSWORD:-portal_pass}
+      - AUTH_SESSION_STORE_TYPE=${AUTH_SESSION_STORE_TYPE:-REDIS}
+      - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis-stack-server}
+      - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
+      - HTTP_CLIENT_CONNECT_TIMEOUT=${HTTP_CLIENT_CONNECT_TIMEOUT:-PT5S}
+      - HTTP_CLIENT_READ_TIMEOUT=${HTTP_CLIENT_READ_TIMEOUT:-PT30S}
 
       # Admin auth (global) - used by admin CAS/LDAP login.
       - ADMIN_AUTH_FRONTEND_REDIRECT_URL=http://localhost:${HIMARKET_ADMIN_PORT:-5174}
@@ -30,3 +35,13 @@ services:
       - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_DN=cn=admin,dc=example,dc=org
       - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin}
       - ADMIN_AUTH_LDAP_CONFIGS_0_USER_SEARCH_FILTER=(uid={0})
+
+  himarket-admin:
+    build:
+      context: ../../himarket-web/himarket-admin
+    image: himarket-admin-local:dev
+
+  himarket-frontend:
+    build:
+      context: ../../himarket-web/himarket-frontend
+    image: himarket-frontend-local:dev

@@ -22,6 +22,7 @@ package com.alibaba.himarket.config;
 import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner;
 import com.alibaba.himarket.core.security.PublicAccessPathScanner.PublicAccessEndpoint;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
 import java.util.Collections;
@@ -54,9 +55,8 @@ public class SecurityConfig {
 
     private final PublicAccessPathScanner publicAccessPathScanner;
 
-    // Auth endpoints
-    // Note: Using AntPathRequestMatcher here to support patterns like "/**/developers/login".
-    // Spring MVC PathPattern does not allow "**" in the middle of a pattern.
+    private final AuthSessionStore authSessionStore;
+
     private static final RequestMatcher[] AUTH_WHITELIST =
             antMatchers(
                     "/admins/init",
@@ -64,12 +64,14 @@ public class SecurityConfig {
                     "/admins/login",
                     "/admins/cas/authorize",
                     "/admins/cas/callback",
+                    "/admins/cas/exchange",
                     "/admins/cas/providers",
                     "/admins/cas/logout",
                     "/admins/ldap/providers",
                     "/admins/ldap/login",
                     "/**/admins/cas/authorize",
                     "/**/admins/cas/callback",
+                    "/**/admins/cas/exchange",
                     "/**/admins/cas/providers",
                     "/**/admins/cas/logout",
                     "/**/admins/ldap/providers",
@@ -90,10 +92,12 @@ public class SecurityConfig {
                     "/**/developers/oidc/providers",
                     "/developers/cas/authorize",
                     "/developers/cas/callback",
+                    "/developers/cas/exchange",
                     "/developers/cas/providers",
                     "/developers/cas/logout",
                     "/**/developers/cas/authorize",
                     "/**/developers/cas/callback",
+                    "/**/developers/cas/exchange",
                     "/**/developers/cas/providers",
                     "/**/developers/cas/logout",
                     "/developers/ldap/providers",
@@ -109,12 +113,10 @@ public class SecurityConfig {
                     "/workers/*/download",
                     "/workers/*/files/**");
 
-    // Swagger endpoints
     private static final RequestMatcher[] SWAGGER_WHITELIST =
             antMatchers(
                     "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**");
 
-    // System endpoints
     private static final RequestMatcher[] SYSTEM_WHITELIST = antMatchers("/favicon.ico", "/error");
 
     @Bean
@@ -127,39 +129,31 @@ public class SecurityConfig {
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
                         auth -> {
-                            auth
-                                    // Permit async dispatch for SSE/streaming
-                                    .dispatcherTypeMatchers(DispatcherType.ASYNC)
+                            auth.dispatcherTypeMatchers(DispatcherType.ASYNC)
                                     .permitAll()
-                                    // Permit OPTIONS
                                     .requestMatchers(HttpMethod.OPTIONS, "/**")
                                     .permitAll()
-                                    // Permit developer registration (POST /developers)
                                     .requestMatchers(HttpMethod.POST, "/developers")
                                     .permitAll()
-                                    // Permit auth endpoints
                                     .requestMatchers(AUTH_WHITELIST)
                                     .permitAll()
-                                    // Permit Swagger endpoints
                                     .requestMatchers(SWAGGER_WHITELIST)
                                     .permitAll()
-                                    // Permit system endpoints
                                     .requestMatchers(SYSTEM_WHITELIST)
                                     .permitAll();
-                            // Permit @PublicAccess annotated endpoints with HTTP method precision
                             for (PublicAccessEndpoint endpoint : publicEndpoints) {
                                 if (endpoint.httpMethod() != null) {
                                     auth.requestMatchers(endpoint.httpMethod(), endpoint.path())
                                             .permitAll();
                                 } else {
-                                    // null httpMethod means all methods
                                     auth.requestMatchers(endpoint.path()).permitAll();
                                 }
                             }
                             auth.anyRequest().authenticated();
                         })
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                        new JwtAuthenticationFilter(authSessionStore),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

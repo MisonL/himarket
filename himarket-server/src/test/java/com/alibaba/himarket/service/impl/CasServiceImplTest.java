@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
@@ -34,9 +35,11 @@ import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.portal.PortalResult;
 import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.service.idp.CasLogoutRequestParser;
 import com.alibaba.himarket.service.idp.CasTicketValidationParser;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
 import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
+import com.alibaba.himarket.service.idp.session.MemoryAuthSessionStore;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
@@ -119,8 +122,12 @@ class CasServiceImplTest {
                         portalService,
                         developerService,
                         contextHolder,
+                        new AuthSessionConfig(),
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
                                 new CasTicketValidationParser()),
+                        new CasLogoutRequestParser(),
                         new PortalFrontendUrlResolver(portalService, contextHolder),
                         new IdpStateCodec());
         MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
@@ -134,7 +141,7 @@ class CasServiceImplTest {
                 authUri.getScheme() + "://" + authUri.getAuthority() + authUri.getPath());
         String serviceUrl = splitQueryValue(authUri.getQuery(), "service");
         assertEquals(
-                "https://portal.example.com/cas/callback",
+                "https://portal.example.com/api/v1/developers/cas/callback",
                 URI.create(serviceUrl).getScheme()
                         + "://"
                         + URI.create(serviceUrl).getHost()
@@ -143,7 +150,9 @@ class CasServiceImplTest {
         request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
         expectedServiceHolder[0] = serviceUrl;
 
-        AuthResult authResult = casService.handleCallback("ST-1", state, request, response);
+        String redirectUrl = casService.handleCallback("ST-1", state, request, response);
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+        AuthResult authResult = casService.exchangeCode(code);
 
         assertNotNull(authResult);
         assertNotNull(authResult.getAccessToken());
@@ -171,8 +180,12 @@ class CasServiceImplTest {
                         portalService,
                         developerService,
                         contextHolder,
+                        new AuthSessionConfig(),
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
                                 new CasTicketValidationParser()),
+                        new CasLogoutRequestParser(),
                         new PortalFrontendUrlResolver(portalService, contextHolder),
                         new IdpStateCodec());
 
@@ -184,6 +197,76 @@ class CasServiceImplTest {
         assertThrows(
                 com.alibaba.himarket.core.exception.BusinessException.class,
                 () -> casService.handleCallback("ST-1", state, request, response));
+    }
+
+    @Test
+    void handleLogoutRequestShouldRevokeIssuedToken() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new ValidateHandler(expectedServiceHolder, "alice", "alice@example.com"));
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        casConfig.setIdentityMapping(defaultIdentityMapping());
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        when(developerService.getExternalDeveloper("cas", "alice")).thenReturn(null);
+
+        DeveloperResult developerResult = new DeveloperResult();
+        developerResult.setDeveloperId("dev-1");
+        when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
+
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+        MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, "placeholder"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        IdpAuthorizeResult authorizeResult =
+                casService.buildAuthorizationResult("cas", "/api/v1", request);
+        String state = authorizeResult.getState();
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
+        String serviceUrl =
+                splitQueryValue(URI.create(authorizeResult.getRedirectUrl()).getQuery(), "service");
+        expectedServiceHolder[0] = serviceUrl;
+
+        String redirectUrl = casService.handleCallback("ST-1", state, request, response);
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+        AuthResult authResult = casService.exchangeCode(code);
+
+        assertEquals(false, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
+        assertEquals(1, casService.handleLogoutRequest(logoutRequest("ST-1")));
+        assertEquals(true, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
     }
 
     private MockHttpServletRequest buildRequest(int port) {
@@ -211,6 +294,14 @@ class CasServiceImplTest {
             }
         }
         return null;
+    }
+
+    private String logoutRequest(String sessionIndex) {
+        return "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\">"
+                + "<samlp:SessionIndex>"
+                + sessionIndex
+                + "</samlp:SessionIndex>"
+                + "</samlp:LogoutRequest>";
     }
 
     private static class ValidateHandler implements HttpHandler {
