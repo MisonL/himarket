@@ -66,6 +66,12 @@ export function getCasProviders() {
   );
 }
 
+export function getLdapProviders() {
+  return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
+    '/developers/ldap/providers'
+  );
+}
+
 /**
  * OIDC 回调处理
  */
@@ -93,6 +99,13 @@ export function handleCasCallback(params: CasCallbackParams) {
   );
 }
 
+export function handleLdapLogin(params: LdapLoginParam) {
+  return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
+    '/developers/ldap/login',
+    params
+  );
+}
+
 /**
  * 开发者登出
  */
@@ -107,4 +120,10 @@ export function developersListIdentities() {
   return request.post<RespI<IIdentity[]>, RespI<IIdentity[]>>(
     '/developers/list-identities'
   );
+}
+
+interface LdapLoginParam {
+  provider: string;
+  username: string;
+  password: string;
 }

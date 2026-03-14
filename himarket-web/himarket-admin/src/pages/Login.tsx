@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Alert, Button, Divider, Form, Input } from "antd";
+import { Alert, Button, Divider, Form, Input, Select } from "antd";
 import api from "../lib/api";
 import { authApi } from "@/lib/api";
 import { setLastAuthState } from "@/lib/authStorage";
@@ -17,6 +17,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState("");
   const [isRegister, setIsRegister] = useState<boolean | null>(null);
   const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
+  const [ldapProviders, setLdapProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const Login: React.FC = () => {
         const needInit = response.data === true;
         setIsRegister(needInit);
         if (!needInit) {
-          await fetchCasProviders();
+          await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
         }
       } catch {
         setIsRegister(false);
@@ -42,6 +43,15 @@ const Login: React.FC = () => {
       setCasProviders(Array.isArray(res?.data) ? res.data : []);
     } catch {
       setCasProviders([]);
+    }
+  };
+
+  const fetchLdapProviders = async () => {
+    try {
+      const res = await api.get("/admins/ldap/providers");
+      setLdapProviders(Array.isArray(res?.data) ? res.data : []);
+    } catch {
+      setLdapProviders([]);
     }
   };
 
@@ -66,18 +76,41 @@ const Login: React.FC = () => {
     window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
   };
 
-  const handleLogin = async (values: { username: string; password: string }) => {
+  const handleLogin = async (values: {
+    username: string;
+    password: string;
+    loginMode?: string;
+  }) => {
     setLoading(true);
     setError("");
     try {
-      const response = await api.post("/admins/login", {
-        username: values.username,
-        password: values.password,
-      });
+      const loginMode = values.loginMode || "builtin";
+      const response =
+        loginMode === "builtin"
+          ? await api.post("/admins/login", {
+              username: values.username,
+              password: values.password,
+            })
+          : loginMode.startsWith("ldap:")
+            ? await api.post("/admins/ldap/login", {
+                provider: loginMode.replace(/^ldap:/, ""),
+                username: values.username,
+                password: values.password,
+              })
+            : (() => {
+                throw new Error("未知登录方式");
+              })();
       const accessToken = response.data.access_token;
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("userInfo", JSON.stringify(response.data));
-      setLastAuthState({ type: "BUILTIN" });
+      if (loginMode === "builtin") {
+        setLastAuthState({ type: "BUILTIN" });
+      } else {
+        setLastAuthState({
+          type: "LDAP",
+          provider: loginMode.replace(/^ldap:/, ""),
+        });
+      }
       navigate("/portals");
     } catch {
       setError("账号或密码错误");
@@ -105,7 +138,7 @@ const Login: React.FC = () => {
       });
       if (response.data.adminId) {
         setIsRegister(false);
-        await fetchCasProviders();
+        await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
       }
     } catch {
       setError("初始化失败，请重试");
@@ -154,6 +187,19 @@ const Login: React.FC = () => {
               layout="vertical"
               onFinish={handleLogin}
             >
+              {ldapProviders.length > 0 && (
+                <Form.Item name="loginMode" initialValue="builtin" label="登录方式">
+                  <Select
+                    options={[
+                      { label: "内置账号", value: "builtin" },
+                      ...ldapProviders.map(provider => ({
+                        label: `LDAP: ${provider.name || provider.provider}`,
+                        value: `ldap:${provider.provider}`,
+                      })),
+                    ]}
+                  />
+                </Form.Item>
+              )}
               <Form.Item
                 name="username"
                 rules={[{ required: true, message: "请输入账号" }]}

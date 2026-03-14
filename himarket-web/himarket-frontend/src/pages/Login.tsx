@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Divider, Form, Input, message } from "antd";
+import { Button, Divider, Form, Input, message, Select } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
@@ -27,12 +27,15 @@ const oidcIcons: Record<string, React.ReactNode> = {
 const Login: React.FC = () => {
   const { t } = useTranslation("login");
   const [providers, setProviders] = useState<LoginProvider[]>([]);
+  const [ldapProviders, setLdapProviders] = useState<Array<{ provider: string; name?: string }>>(
+    []
+  );
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    Promise.allSettled([APIs.getOidcProviders(), APIs.getCasProviders()])
+    Promise.allSettled([APIs.getOidcProviders(), APIs.getCasProviders(), APIs.getLdapProviders()])
       .then(results => {
         const mergedProviders: LoginProvider[] = [];
 
@@ -54,27 +57,54 @@ const Login: React.FC = () => {
           );
         }
 
+        if (results[2].status === "fulfilled") {
+          setLdapProviders(results[2].value.data || []);
+        } else {
+          setLdapProviders([]);
+        }
+
         setProviders(mergedProviders);
       })
       .catch(() => {
         setProviders([]);
+        setLdapProviders([]);
       });
   }, []);
 
   const handlePasswordLogin = async (values: {
     username: string;
     password: string;
+    loginMode?: string;
   }) => {
     setLoading(true);
     try {
-      const res = await request.post("/developers/login", {
-        username: values.username,
-        password: values.password,
-      });
+      const loginMode = values.loginMode || "builtin";
+      const res =
+        loginMode === "builtin"
+          ? await request.post("/developers/login", {
+              username: values.username,
+              password: values.password,
+            })
+          : loginMode.startsWith("ldap:")
+            ? await APIs.handleLdapLogin({
+                provider: loginMode.replace(/^ldap:/, ""),
+                username: values.username,
+                password: values.password,
+              })
+            : (() => {
+                throw new Error("未知登录方式");
+              })();
       if (res && res.data && res.data.access_token) {
         message.success(t("loginSuccess"), 1);
         localStorage.setItem("access_token", res.data.access_token);
-        setLastAuthState({ type: "BUILTIN" });
+        if (loginMode === "builtin") {
+          setLastAuthState({ type: "BUILTIN" });
+        } else if (loginMode.startsWith("ldap:")) {
+          setLastAuthState({
+            type: "LDAP",
+            provider: loginMode.replace(/^ldap:/, ""),
+          });
+        }
 
         const returnUrl = searchParams.get("returnUrl");
         if (returnUrl) {
@@ -141,6 +171,19 @@ const Login: React.FC = () => {
               layout="vertical"
               size="large"
             >
+              {ldapProviders.length > 0 && (
+                <Form.Item name="loginMode" initialValue="builtin" label="登录方式">
+                  <Select
+                    options={[
+                      { label: "内置账号", value: "builtin" },
+                      ...ldapProviders.map(provider => ({
+                        label: `LDAP: ${provider.name || provider.provider}`,
+                        value: `ldap:${provider.provider}`,
+                      })),
+                    ]}
+                  />
+                </Form.Item>
+              )}
               <Form.Item
                 name="username"
                 rules={[{ required: true, message: t("usernameRequired") }]}
