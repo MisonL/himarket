@@ -1,0 +1,105 @@
+networks:
+  himarket-network:
+    driver: bridge
+
+services:
+  cas:
+    image: ${CAS_IMAGE:-apereo/cas:7.0.0}
+    platform: ${CAS_PLATFORM:-linux/amd64}
+    container_name: himarket-cas
+    entrypoint:
+      - sh
+      - -lc
+      - |
+        set -eu
+        CAS_EXPLODED_DIR=/tmp/cas-exploded
+        rm -rf "$${CAS_EXPLODED_DIR}"
+        mkdir -p "$${CAS_EXPLODED_DIR}"
+        cd "$${CAS_EXPLODED_DIR}"
+        jar xf /docker/cas/war/cas.war
+        if [ -d /docker/cas/modules ]; then
+          cp -f /docker/cas/modules/*.jar "$${CAS_EXPLODED_DIR}/WEB-INF/lib/" 2>/dev/null || true
+        fi
+        exec java \
+          -server \
+          -noverify \
+          -Xms512m \
+          -Xmx1536m \
+          -XX:+UseSerialGC \
+          -XX:TieredStopAtLevel=1 \
+          -Dspring.devtools.restart.enabled=false \
+          -Dlog4j2.is.webapp=false \
+          -Dspring.main.lazy-initialization=true \
+          -Dserver.servlet.context-parameters.isLog4jAutoInitializationDisabled=true \
+          -cp "$${CAS_EXPLODED_DIR}/WEB-INF/classes:$${CAS_EXPLODED_DIR}/WEB-INF/lib/*" \
+          org.apereo.cas.web.CasWebApplication
+    environment:
+      - SERVER_SSL_ENABLED=false
+      - SERVER_PORT=8080
+      - CAS_AUTHN_ACCEPT_USERS=${CAS_ACCEPT_USERS:-admin::admin,alice::alice}
+      - CAS_AUTHN_MFA_SIMPLE_ID=${CAS_AUTHN_MFA_SIMPLE_ID:-mfa-simple}
+      - CAS_SERVICE_REGISTRY_CORE_INIT_FROM_JSON=true
+      - CAS_SERVICE_REGISTRY_JSON_LOCATION=file:/etc/cas/services
+      - MANAGEMENT_ENDPOINT_MFASIMPLE_ENABLED=true
+      - MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE=health,info,mfaSimple
+      - CAS_MONITOR_ENDPOINTS_ENDPOINT_MFASIMPLE_ACCESS=ANONYMOUS
+      - >
+        SPRING_APPLICATION_JSON={
+          "cas":{
+            "authn":{
+              "pac4j":{
+                "oidc":[
+                  {
+                    "generic":{
+                      "clientName":"MockOidcClient",
+                      "displayName":"Mock OIDC",
+                      "id":"cas-delegated-client",
+                      "secret":"cas-delegated-secret",
+                      "discoveryUri":"http://mock-oidc.local:8092/.well-known/openid-configuration",
+                      "principalIdAttribute":"preferred_username",
+                      "scope":"openid profile email"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        }
+    volumes:
+      - ./auth/cas/services/himarket-local.json:/etc/cas/services/himarket-local-1000.json:ro
+      - ./auth/cas/services/himarket-header.json:/etc/cas/services/himarket-header-0950.json:ro
+      - ./auth/cas/services/himarket-mfa.json:/etc/cas/services/himarket-mfa-0900.json:ro
+      - ./auth/cas/services/himarket-delegated.json:/etc/cas/services/himarket-delegated-0850.json:ro
+      - ./auth/cas/services/himarket-proxy-targets.json:/etc/cas/services/himarket-proxy-targets-1100.json:ro
+      - ./auth/cas/modules/lib:/docker/cas/modules:ro
+    ports:
+      - "${CAS_HTTP_PORT:-8083}:8080"
+    extra_hosts:
+      - "mock-oidc.local:host-gateway"
+    networks:
+      himarket-network:
+        ipv4_address: 172.24.0.9
+
+  openldap:
+    image: ${OPENLDAP_IMAGE:-osixia/openldap:1.5.0}
+    container_name: himarket-openldap
+    environment:
+      - LDAP_ORGANISATION=${LDAP_ORGANISATION:-Example}
+      - LDAP_DOMAIN=${LDAP_DOMAIN:-example.org}
+      - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin}
+      - LDAP_CONFIG_PASSWORD=${LDAP_CONFIG_PASSWORD:-config}
+      - LDAP_TLS=${LDAP_TLS:-false}
+    ports:
+      - "${LDAP_PORT:-3890}:389"
+    networks:
+      - himarket-network
+
+  jwks-server:
+    image: ${JWKS_SERVER_IMAGE:-nginx:alpine}
+    container_name: himarket-jwks-server
+    volumes:
+      - ./data/jwt-bearer:/usr/share/nginx/html:ro
+    ports:
+      - "${JWKS_HTTP_PORT:-8091}:80"
+    networks:
+      - himarket-network

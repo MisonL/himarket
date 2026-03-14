@@ -1,0 +1,46 @@
+{
+  "@class": "org.apereo.cas.services.CasRegisteredService",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=(cas|cas-saml1|cas1|cas2)(?:&.*)?$",
+  "proxyPolicy": {
+    "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
+    "pattern": "^http://(?:himarket-server:8080|172\\.24\\.0\\.11:8080)/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
+    "useServiceId": false,
+    "exactMatch": false
+  },
+  "accessStrategy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy",
+    "enabled": true,
+    "ssoEnabled": true,
+    "delegatedAuthenticationPolicy": {
+      "@class": "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy",
+      "permitUndefined": true,
+      "exclusive": false
+    }
+  },
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS10",
+      "CAS20",
+      "CAS30",
+      "SAML1"
+    ]
+  ],
+  "name": "HiMarket Local",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy",
+    "allowedAttributes": [
+      "java.util.ArrayList",
+      [
+        "cn",
+        "mail",
+        "displayName",
+        "user",
+        "email",
+        "name"
+      ]
+    ]
+  },
+  "id": 1000,
+  "evaluationOrder": 1
+}
