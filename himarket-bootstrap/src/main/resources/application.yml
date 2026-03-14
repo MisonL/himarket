@@ -40,6 +40,17 @@ jwt:
   secret: YourJWTSecret
   expiration: 2h
 
+auth:
+  session-store:
+    type: MEMORY
+  cas:
+    login-code-ttl: 60s
+
+http:
+  client:
+    connect-timeout: PT5S
+    read-timeout: PT30S
+
 sls:
   # SLS服务端点（必填）
   # cn-chengdu.log.aliyuncs.com

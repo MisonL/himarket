@@ -17,28 +17,21 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.service.idp.session;
 
-import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
-import com.alibaba.himarket.dto.result.idp.IdpResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
+import java.time.Duration;
 
-public interface CasService {
+public interface AuthSessionStore {
 
-    IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+    void saveCasLoginContext(String code, CasLoginContext context, Duration ttl);
 
-    String handleCallback(
-            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
+    CasLoginContext consumeCasLoginContext(String code);
 
-    AuthResult exchangeCode(String code);
+    void bindCasSessionToken(CasSessionScope scope, String sessionIndex, String token);
 
-    int handleLogoutRequest(String logoutRequest);
+    int revokeCasSession(CasSessionScope scope, String sessionIndex);
 
-    List<IdpResult> getAvailableProviders();
+    void revokeToken(String token);
 
-    String buildLogoutRedirectUrl(String provider);
+    boolean isTokenRevoked(String token);
 }

@@ -80,6 +80,24 @@ class PortalResolvingFilterTest {
     }
 
     @Test
+    void strictCasExchangePathShouldNotFallbackToDefaultPortal() throws Exception {
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("POST", "/api/v1/developers/cas/exchange");
+        request.addHeader("Host", "unknown.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(portalService.resolvePortal("unknown.example.com")).thenReturn(null);
+
+        PortalResolvingFilter filter = new PortalResolvingFilter(portalService, contextHolder);
+        filter.doFilter(request, response, filterChain);
+
+        verify(portalService).resolvePortal("unknown.example.com");
+        verify(portalService, never()).getDefaultPortal();
+        verify(contextHolder, never()).savePortal(anyString());
+        verify(contextHolder).clearPortal();
+    }
+
+    @Test
     void shouldUseForwardedHostWhenPresent() throws Exception {
         MockHttpServletRequest request =
                 new MockHttpServletRequest("GET", "/api/v1/developers/oidc/providers");

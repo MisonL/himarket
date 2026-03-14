@@ -22,11 +22,13 @@ package com.alibaba.himarket.core.utils;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.crypto.digest.DigestUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSignerUtil;
 import com.alibaba.himarket.core.constant.CommonConstants;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.common.User;
 import com.alibaba.himarket.support.enums.UserType;
 import jakarta.servlet.http.Cookie;
@@ -37,15 +39,12 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class TokenUtil {
 
     private static String JWT_SECRET;
 
     private static long JWT_EXPIRE_MILLIS;
-
-    private static final Map<String, Long> INVALID_TOKENS = new ConcurrentHashMap<>();
 
     private static String getJwtSecret() {
         if (JWT_SECRET == null) {
@@ -162,29 +161,44 @@ public class TokenUtil {
                                                     .findFirst())
                             .orElse(null);
         }
-        if (StrUtil.isBlank(token) || isTokenRevoked(token)) {
+        if (StrUtil.isBlank(token)) {
             return null;
         }
 
         return token;
     }
 
-    public static void revokeToken(String token) {
-        if (StrUtil.isBlank(token)) {
-            return;
-        }
-        long expireAt = getTokenExpireTime(token);
-        INVALID_TOKENS.put(token, expireAt);
-        cleanExpiredTokens();
+    public static String extractTokenFromRequest(HttpServletRequest request) {
+        return getTokenFromRequest(request);
     }
 
-    private static long getTokenExpireTime(String token) {
+    public static long getTokenExpireTime(String token) {
         JWT jwt = JWTUtil.parseToken(token);
         Object expObj = jwt.getPayloads().get(JWT.EXPIRES_AT);
         if (ObjectUtil.isNotNull(expObj)) {
             return Long.parseLong(expObj.toString()) * 1000; // JWT expiration is in seconds
         }
         return System.currentTimeMillis() + getJwtExpireMillis(); // Default expiration
+    }
+
+    public static long getTokenExpireTimeMillis(String token) {
+        return getTokenExpireTime(token);
+    }
+
+    public static String getTokenDigest(String token) {
+        return DigestUtil.sha256Hex(token);
+    }
+
+    public static Duration getTokenTtl(String token) {
+        long ttlMillis = getTokenExpireTime(token) - System.currentTimeMillis();
+        return ttlMillis <= 0 ? Duration.ZERO : Duration.ofMillis(ttlMillis);
+    }
+
+    public static void revokeToken(String token) {
+        if (StrUtil.isBlank(token)) {
+            return;
+        }
+        authSessionStore().revokeToken(token);
     }
 
     public static void revokeToken(HttpServletRequest request) {
@@ -198,23 +212,14 @@ public class TokenUtil {
         if (StrUtil.isBlank(token)) {
             return false;
         }
-        Long expireAt = INVALID_TOKENS.get(token);
-        if (expireAt == null) {
-            return false;
-        }
-        if (expireAt <= System.currentTimeMillis()) {
-            INVALID_TOKENS.remove(token);
-            return false;
-        }
-        return true;
-    }
-
-    private static void cleanExpiredTokens() {
-        long now = System.currentTimeMillis();
-        INVALID_TOKENS.entrySet().removeIf(entry -> entry.getValue() <= now);
+        return authSessionStore().isTokenRevoked(token);
     }
 
     public static long getTokenExpiresIn() {
         return getJwtExpireMillis() / 1000;
+    }
+
+    private static AuthSessionStore authSessionStore() {
+        return SpringUtil.getBean(AuthSessionStore.class);
     }
 }

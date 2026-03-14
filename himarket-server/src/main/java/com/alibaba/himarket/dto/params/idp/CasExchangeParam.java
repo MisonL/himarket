@@ -17,28 +17,19 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.dto.params.idp;
 
-import com.alibaba.himarket.dto.result.common.AuthResult;
-import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
-import com.alibaba.himarket.dto.result.idp.IdpResult;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import java.util.List;
+import jakarta.validation.constraints.NotBlank;
 
-public interface CasService {
+public class CasExchangeParam {
 
-    IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+    @NotBlank private String code;
 
-    String handleCallback(
-            String ticket, String state, HttpServletRequest request, HttpServletResponse response);
+    public String getCode() {
+        return code;
+    }
 
-    AuthResult exchangeCode(String code);
-
-    int handleLogoutRequest(String logoutRequest);
-
-    List<IdpResult> getAvailableProviders();
-
-    String buildLogoutRedirectUrl(String provider);
+    public void setCode(String code) {
+        this.code = code;
+    }
 }

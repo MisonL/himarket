@@ -92,6 +92,30 @@ wait_openldap_ready() {
   return 1
 }
 
+wait_cas_ready() {
+  local max_wait="${1:-900}"
+  local interval=5
+  local start_ts
+  start_ts="$(date +%s)"
+
+  log "wait service: cas"
+  while true; do
+    local elapsed
+    elapsed=$(( $(date +%s) - start_ts ))
+    if (( elapsed >= max_wait )); then
+      break
+    fi
+    if grep -q "Ready to process requests @" < <(docker logs himarket-cas 2>&1); then
+      log "service ready: cas"
+      return 0
+    fi
+    sleep "${interval}"
+  done
+
+  err "service not ready: cas"
+  return 1
+}
+
 seed_openldap_users() {
   local ldif_path="${DOCKER_DIR}/auth/ldap/ldif/50-users.ldif"
   local admin_dn="cn=admin,dc=example,dc=org"
@@ -207,6 +231,50 @@ parse_query_param() {
   ' "$url" "$key"
 }
 
+build_logout_request() {
+  local session_index="$1"
+  printf '%s' "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\"><samlp:SessionIndex>${session_index}</samlp:SessionIndex></samlp:LogoutRequest>"
+}
+
+exchange_code_for_token() {
+  local name="$1"
+  local url="$2"
+  local code="$3"
+  local request_body
+  request_body="$(jq -nc --arg code "${code}" '{code:$code}')"
+  local exchange_resp
+  exchange_resp="$(curl_json POST "${url}" "${request_body}")"
+  local exchange_code
+  exchange_code="$(echo "${exchange_resp}" | head -n 1)"
+  if [[ "${exchange_code}" != 200 ]]; then
+    err "${name} exchange failed: http=${exchange_code}"
+    echo "${exchange_resp}" | tail -n +2 >&2
+    exit 1
+  fi
+  local exchange_body
+  exchange_body="$(echo "${exchange_resp}" | tail -n +2)"
+  local token
+  token="$(echo "${exchange_body}" | jq -r '.data.access_token')"
+  if [[ -z "${token}" || "${token}" == "null" ]]; then
+    err "${name} exchange did not return access_token"
+    echo "${exchange_body}" >&2
+    exit 1
+  fi
+  echo "${token}"
+}
+
+expect_auth_rejected() {
+  local name="$1"
+  local url="$2"
+  local token="$3"
+  local http_code
+  http_code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${token}" "${url}" || true)"
+  if [[ "${http_code}" != "401" && "${http_code}" != "403" ]]; then
+    err "${name} expected 401/403 but got ${http_code}"
+    exit 1
+  fi
+}
+
 main() {
   require_cmd docker
   require_cmd curl
@@ -234,7 +302,7 @@ main() {
   local portal_name="${PORTAL_NAME:-demo-portal}"
   local frontend_redirect_url="${FRONTEND_REDIRECT_URL:-http://localhost:${HIMARKET_FRONTEND_PORT:-5173}}"
   local cas_http_port="${CAS_HTTP_PORT:-8083}"
-  local cas_ready_timeout="${CAS_READY_TIMEOUT:-660}"
+  local cas_ready_timeout="${CAS_READY_TIMEOUT:-900}"
   local skip_build="${SKIP_BUILD:-0}"
   local skip_docker_up="${SKIP_DOCKER_UP:-0}"
 
@@ -250,6 +318,12 @@ main() {
     fi
 
     (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" mvn -pl himarket-bootstrap -am package -DskipTests)
+
+    require_cmd npm
+    log "build himarket frontend dist"
+    (cd "${REPO_DIR}/himarket-web/himarket-frontend" && npm run build)
+    log "build himarket admin dist"
+    (cd "${REPO_DIR}/himarket-web/himarket-admin" && npm run build)
   else
     log "skip build himarket server jar"
   fi
@@ -262,13 +336,15 @@ main() {
     log "start docker services"
     cd "${DOCKER_DIR}"
     export COMPOSE_PROFILES=builtin-mysql
-    docker compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml up -d --build mysql himarket-server cas openldap jwks-server
+    docker compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml up -d --build mysql redis-stack-server himarket-server himarket-frontend himarket-admin cas openldap jwks-server
   else
     log "skip docker compose up"
   fi
 
   wait_http_ok "himarket-server" "http://localhost:8081/portal/swagger-ui.html" 180
-  wait_http_ok "cas" "http://localhost:${cas_http_port}/cas/login" "${cas_ready_timeout}"
+  wait_http_ok "himarket-frontend" "http://localhost:${HIMARKET_FRONTEND_PORT:-5173}/login" 120
+  wait_http_ok "himarket-admin" "http://localhost:${HIMARKET_ADMIN_PORT:-5174}/login" 120
+  wait_cas_ready "${cas_ready_timeout}"
   wait_http_ok "jwks-server" "http://localhost:${JWKS_HTTP_PORT:-8091}/jwks.json" 60
   wait_openldap_ready 120
   seed_openldap_users
@@ -487,10 +563,33 @@ main() {
     exit 1
   fi
 
-  log "himarket cas callback"
-  local cas_cb
-  cas_cb="$(curl -fsS -b "${cookie_jar}" -G "http://localhost:8081/developers/cas/callback" --data-urlencode "ticket=${st}" --data-urlencode "state=${state}")"
-  echo "${cas_cb}" | jq -e '.data.access_token | length > 0' >/dev/null
+  log "himarket cas callback via public service url"
+  local cas_callback_headers
+  cas_callback_headers="$(mktemp)"
+  curl -sS -D "${cas_callback_headers}" -o /dev/null -b "${cookie_jar}" -G "${service_url}" --data-urlencode "ticket=${st}" || true
+  local frontend_cas_redirect
+  frontend_cas_redirect="$(extract_header_value "$(cat "${cas_callback_headers}")" "Location")"
+  if [[ -z "${frontend_cas_redirect}" ]]; then
+    err "missing frontend redirect from developer cas callback"
+    cat "${cas_callback_headers}" >&2
+    exit 1
+  fi
+  local developer_cas_code
+  developer_cas_code="$(parse_query_param "${frontend_cas_redirect}" "code")"
+  if [[ -z "${developer_cas_code}" ]]; then
+    err "missing developer cas code in redirect"
+    echo "${frontend_cas_redirect}" >&2
+    exit 1
+  fi
+  local developer_cas_token
+  developer_cas_token="$(exchange_code_for_token "developer cas" "http://localhost:8081/developers/cas/exchange" "${developer_cas_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_cas_token}" "http://localhost:8081/developers/profile" >/dev/null
+
+  log "developer cas back-channel logout"
+  local developer_logout_request
+  developer_logout_request="$(build_logout_request "${st}")"
+  curl -fsS -X POST "${service_url}" --data-urlencode "logoutRequest=${developer_logout_request}" >/dev/null
+  expect_auth_rejected "developer cas revoked token" "http://localhost:8081/developers/profile" "${developer_cas_token}"
 
   log "verify ldap login (developer)"
   curl -fsS "http://localhost:8081/developers/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
@@ -562,10 +661,33 @@ main() {
     exit 1
   fi
 
-  log "himarket admin cas callback"
-  local admin_cb
-  admin_cb="$(curl -fsS -b "${admin_cookie}" -G "http://localhost:8081/admins/cas/callback" --data-urlencode "ticket=${st_admin}" --data-urlencode "state=${admin_state}")"
-  echo "${admin_cb}" | jq -e '.data.access_token | length > 0' >/dev/null
+  log "himarket admin cas callback via public service url"
+  local admin_callback_headers
+  admin_callback_headers="$(mktemp)"
+  curl -sS -D "${admin_callback_headers}" -o /dev/null -b "${admin_cookie}" -G "${admin_service_url}" --data-urlencode "ticket=${st_admin}" || true
+  local admin_frontend_redirect
+  admin_frontend_redirect="$(extract_header_value "$(cat "${admin_callback_headers}")" "Location")"
+  if [[ -z "${admin_frontend_redirect}" ]]; then
+    err "missing frontend redirect from admin cas callback"
+    cat "${admin_callback_headers}" >&2
+    exit 1
+  fi
+  local admin_cas_code
+  admin_cas_code="$(parse_query_param "${admin_frontend_redirect}" "code")"
+  if [[ -z "${admin_cas_code}" ]]; then
+    err "missing admin cas code in redirect"
+    echo "${admin_frontend_redirect}" >&2
+    exit 1
+  fi
+  local admin_cas_token
+  admin_cas_token="$(exchange_code_for_token "admin cas" "http://localhost:8081/admins/cas/exchange" "${admin_cas_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_cas_token}" "http://localhost:8081/admins" >/dev/null
+
+  log "admin cas back-channel logout"
+  local admin_logout_request
+  admin_logout_request="$(build_logout_request "${st_admin}")"
+  curl -fsS -X POST "${admin_service_url}" --data-urlencode "logoutRequest=${admin_logout_request}" >/dev/null
+  expect_auth_rejected "admin cas revoked token" "http://localhost:8081/admins" "${admin_cas_token}"
 
   log "verify admin ldap login"
   curl -fsS "http://localhost:8081/admins/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null

@@ -20,6 +20,7 @@
 package com.alibaba.himarket.config;
 
 import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
+import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
 import java.util.Collections;
@@ -49,6 +50,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final AuthSessionStore authSessionStore;
+
     // Auth endpoints
     // Note: Using AntPathRequestMatcher here to support patterns like "/**/developers/login".
     // Spring MVC PathPattern does not allow "**" in the middle of a pattern.
@@ -59,12 +62,14 @@ public class SecurityConfig {
                     "/admins/login",
                     "/admins/cas/authorize",
                     "/admins/cas/callback",
+                    "/admins/cas/exchange",
                     "/admins/cas/providers",
                     "/admins/cas/logout",
                     "/admins/ldap/providers",
                     "/admins/ldap/login",
                     "/**/admins/cas/authorize",
                     "/**/admins/cas/callback",
+                    "/**/admins/cas/exchange",
                     "/**/admins/cas/providers",
                     "/**/admins/cas/logout",
                     "/**/admins/ldap/providers",
@@ -85,10 +90,12 @@ public class SecurityConfig {
                     "/**/developers/oidc/providers",
                     "/developers/cas/authorize",
                     "/developers/cas/callback",
+                    "/developers/cas/exchange",
                     "/developers/cas/providers",
                     "/developers/cas/logout",
                     "/**/developers/cas/authorize",
                     "/**/developers/cas/callback",
+                    "/**/developers/cas/exchange",
                     "/**/developers/cas/providers",
                     "/**/developers/cas/logout",
                     "/developers/ldap/providers",
@@ -136,7 +143,8 @@ public class SecurityConfig {
                                         .anyRequest()
                                         .authenticated())
                 .addFilterBefore(
-                        new JwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+                        new JwtAuthenticationFilter(authSessionStore),
+                        UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

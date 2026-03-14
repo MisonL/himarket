@@ -7,6 +7,15 @@ services:
     image: ${CAS_IMAGE:-apereo/cas}
     platform: ${CAS_PLATFORM:-linux/arm64}
     container_name: himarket-cas
+    entrypoint:
+      - java
+      - -server
+      - -noverify
+      - -Xms256m
+      - -Xmx1024m
+      - -XX:+UseSerialGC
+      - -jar
+      - cas.war
     environment:
       - SERVER_SSL_ENABLED=false
       - SERVER_PORT=8080

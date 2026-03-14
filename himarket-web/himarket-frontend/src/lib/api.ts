@@ -101,10 +101,8 @@ export function handleOidcCallback(code: string, state: string): Promise<AuthRes
   });
 }
 
-export function handleCasCallback(ticket: string, state: string): Promise<AuthResult> {
-  return request.get('/developers/cas/callback', {
-    params: { ticket, state }
-  });
+export function exchangeCasCode(code: string): Promise<AuthResult> {
+  return request.post('/developers/cas/exchange', { code });
 }
 
 // Developer相关接口
