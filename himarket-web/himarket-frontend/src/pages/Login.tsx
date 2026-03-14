@@ -2,16 +2,21 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Form, Input, Button, message, Divider } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import api, { type IdpResult } from "../lib/api";
+import api from "../lib/api";
 import { AxiosError } from "axios";
 import { Layout } from "../components/Layout";
 import APIs from "../lib/apis";
+import { setLastAuthState } from "../lib/authStorage";
 
 import aliyunIcon from "../assets/aliyun.png";
 import githubIcon from "../assets/github.png";
 import googleIcon from "../assets/google.png";
 
-type LoginProvider = IdpResult & {
+type LoginProvider = {
+  provider: string;
+  name?: string;
+  displayName?: string;
+  sloEnabled?: boolean;
   authType: "OIDC" | "CAS";
 };
 
@@ -69,6 +74,7 @@ const Login: React.FC = () => {
       if (res && res.data && res.data.access_token) {
         message.success('登录成功！', 1);
         localStorage.setItem('access_token', res.data.access_token)
+        setLastAuthState({ type: 'BUILTIN' });
 
         // 检查URL中是否有returnUrl参数
         const returnUrl = searchParams.get('returnUrl');
@@ -104,12 +110,18 @@ const Login: React.FC = () => {
   };
 
   // 跳转到 OIDC 授权 - 对接 /developers/oidc/authorize
-  const handleOidcLogin = (provider: string) => {
-    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider);
+  const handleOidcLogin = (provider: LoginProvider) => {
+    setLastAuthState({ type: 'OIDC', provider: provider.provider });
+    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider.provider);
   };
 
-  const handleCasLogin = (provider: string) => {
-    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider);
+  const handleCasLogin = (provider: LoginProvider) => {
+    setLastAuthState({
+      type: 'CAS',
+      provider: provider.provider,
+      sloEnabled: !!provider.sloEnabled,
+    });
+    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider.provider);
   };
 
   return (
@@ -194,8 +206,8 @@ const Login: React.FC = () => {
                     key={provider.provider}
                     onClick={() => (
                       provider.authType === 'CAS'
-                        ? handleCasLogin(provider.provider)
-                        : handleOidcLogin(provider.provider)
+                        ? handleCasLogin(provider)
+                        : handleOidcLogin(provider)
                     )}
                     className="w-full flex items-center justify-center"
                     size="large"

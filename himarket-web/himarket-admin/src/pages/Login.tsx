@@ -2,12 +2,21 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { authApi } from '@/lib/api'
-import { Form, Input, Button, Alert } from "antd";
+import { Form, Input, Button, Alert, Divider } from "antd";
+import { setLastAuthState } from "@/lib/authStorage";
+
+interface IdpProvider {
+  provider: string;
+  name?: string;
+  type?: string;
+  sloEnabled?: boolean;
+}
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isRegister, setIsRegister] = useState<boolean | null>(null); // null 表示正在加载
+  const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
 
   // 页面加载时检查权限
@@ -15,7 +24,11 @@ const Login: React.FC = () => {
     const checkAuth = async () => {
       try {
         const response = await authApi.getNeedInit(); // 替换为你的权限接口
-        setIsRegister(response.data === true); // 根据接口返回值决定是否显示注册表单
+        const needInit = response.data === true;
+        setIsRegister(needInit); // 根据接口返回值决定是否显示注册表单
+        if (!needInit) {
+          await fetchCasProviders();
+        }
       } catch (err) {
         setIsRegister(false); // 默认显示登录表单
       }
@@ -23,6 +36,36 @@ const Login: React.FC = () => {
 
     checkAuth();
   }, []);
+
+  const fetchCasProviders = async () => {
+    try {
+      const res = await api.get("/admins/cas/providers");
+      setCasProviders(Array.isArray(res?.data) ? res.data : []);
+    } catch {
+      setCasProviders([]);
+    }
+  };
+
+  const buildAuthorizeUrl = (path: string, provider: string) => {
+    const apiPrefix = api.defaults.baseURL || "/api/v1";
+    const apiBaseUrl = new URL(apiPrefix, window.location.origin);
+    if (!apiBaseUrl.pathname.endsWith("/")) {
+      apiBaseUrl.pathname += "/";
+    }
+
+    const authUrl = new URL(path.replace(/^\//, ""), apiBaseUrl);
+    authUrl.searchParams.set("provider", provider);
+    return authUrl.toString();
+  };
+
+  const handleCasLogin = (provider: IdpProvider) => {
+    setLastAuthState({
+      type: "CAS",
+      provider: provider.provider,
+      sloEnabled: !!provider.sloEnabled,
+    });
+    window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
+  };
 
   // 登录表单提交
   const handleLogin = async (values: { username: string; password: string }) => {
@@ -36,6 +79,7 @@ const Login: React.FC = () => {
       const accessToken = response.data.access_token;
       localStorage.setItem('access_token', accessToken);
       localStorage.setItem('userInfo', JSON.stringify(response.data));
+      setLastAuthState({ type: "BUILTIN" });
       navigate('/portals');
     } catch {
       setError("账号或密码错误");
@@ -110,6 +154,26 @@ const Login: React.FC = () => {
                 登录
               </Button>
             </Form.Item>
+
+            {casProviders.length > 0 && (
+              <>
+                <Divider plain className="text-gray-400">
+                  或
+                </Divider>
+                <div className="flex flex-col gap-2">
+                  {casProviders.map((provider) => (
+                    <Button
+                      key={provider.provider}
+                      className="w-full"
+                      size="large"
+                      onClick={() => handleCasLogin(provider)}
+                    >
+                      使用 {provider.name || provider.provider} 登录
+                    </Button>
+                  ))}
+                </div>
+              </>
+            )}
           </Form>
         )}
 

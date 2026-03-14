@@ -77,6 +77,7 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         provider: casConfig.provider,
         name: casConfig.name,
         enabled: casConfig.enabled,
+        sloEnabled: casConfig.sloEnabled ?? false,
         type: casConfig.type,
         serverUrl: casConfig.serverUrl,
         loginEndpoint: casConfig.loginEndpoint,
@@ -213,6 +214,7 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
           provider: values.provider,
           name: values.name,
           enabled: values.enabled ?? true,
+          sloEnabled: values.sloEnabled ?? false,
           serverUrl: values.serverUrl,
           loginEndpoint: values.loginEndpoint || '',
           validateEndpoint: values.validateEndpoint || '',
@@ -903,6 +905,15 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         label="登出地址"
       >
         <Input placeholder="可选，默认由服务地址推导 /logout"/>
+      </Form.Item>
+
+      <Form.Item
+        name="sloEnabled"
+        label="单点登出"
+        valuePropName="checked"
+        extra="启用后，前端退出登录将跳转到 CAS 登出地址。"
+      >
+        <Switch />
       </Form.Item>
 
       <div className="-ml-3">

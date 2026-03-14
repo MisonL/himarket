@@ -3,6 +3,7 @@ import { Button, Avatar, Dropdown, Skeleton, message } from "antd";
 import { useNavigate } from "react-router-dom";
 import { LogOut, UserRoundCheck } from "./icon";
 import APIs from "../lib/apis";
+import { clearLastAuthState, getLastAuthState } from "../lib/authStorage";
 import "./UserInfo.css";
 
 interface UserInfo {
@@ -81,24 +82,47 @@ export function UserInfo() {
   }, []);
 
   const handleLogout = async () => {
+    const lastAuth = getLastAuthState();
+    const shouldCasSlo =
+      lastAuth?.type === "CAS" && !!lastAuth.provider && lastAuth.sloEnabled === true;
+    let serverLogoutSucceeded = false;
+
+    const buildAuthorizeUrl = (path: string, provider: string) => {
+      const apiPrefix = import.meta.env.VITE_API_BASE_URL || "/api/v1";
+      const apiBaseUrl = new URL(apiPrefix, window.location.origin);
+      if (!apiBaseUrl.pathname.endsWith("/")) {
+        apiBaseUrl.pathname += "/";
+      }
+
+      const url = new URL(path.replace(/^\//, ""), apiBaseUrl);
+      url.searchParams.set("provider", provider);
+      return url.toString();
+    };
+
     try {
-      // 调用后端logout接口，使token失效
       await APIs.developerLogout();
+      serverLogoutSucceeded = true;
     } catch (error) {
-      // 即使接口调用失败，也要清除本地token，避免用户被卡住
       console.error('退出登录接口调用失败:', error);
+      message.error("服务端登出失败，已清理本地登录状态");
     } finally {
-      // 清除localStorage中的token
       localStorage.removeItem('access_token');
+      clearLastAuthState();
       // 清除全局用户信息
       globalUserInfo = null;
       globalLoading = false;
       setUserInfo(null);
-      // 显示成功消息
-      message.success('退出登录成功', 1);
-      // 跳转到登录页
-      navigate('/login');
     }
+
+    if (shouldCasSlo && lastAuth?.provider) {
+      window.location.href = buildAuthorizeUrl("/developers/cas/logout", lastAuth.provider);
+      return;
+    }
+
+    if (serverLogoutSucceeded) {
+      message.success("退出登录成功", 1);
+    }
+    navigate("/login");
   };
 
   const menuItems = [

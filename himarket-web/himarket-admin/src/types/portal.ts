@@ -26,6 +26,7 @@ export interface CasConfig {
   provider: string;
   name: string;
   enabled: boolean;
+  sloEnabled?: boolean;
   serverUrl: string;
   loginEndpoint?: string;
   validateEndpoint?: string;

@@ -11,11 +11,16 @@ import ApiProductDetail from "@/pages/ApiProductDetail";
 import Login from "@/pages/Login";
 import ModelDashboard from "@/pages/ModelDashboard";
 import McpMonitor from "@/pages/McpMonitor";
+import CasCallback from "@/pages/CasCallback";
 
 export const router = createBrowserRouter([
   {
     path: "/login",
     element: <Login />,
+  },
+  {
+    path: "/cas/callback",
+    element: <CasCallback />,
   },
   {
     path: "/",

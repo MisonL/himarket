@@ -15,6 +15,7 @@ const request: AxiosInstance = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
   paramsSerializer: params => {
     return qs.stringify(params, {
       arrayFormat: 'repeat',  // 数组格式: ids=1&ids=2（而不是 ids[]=1）
