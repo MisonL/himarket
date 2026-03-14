@@ -7,12 +7,14 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "../components/Layout";
 import request from "../lib/request";
 import APIs, { type IIdpProvider } from "../lib/apis";
+import { setLastAuthState } from "../lib/authStorage";
 
 import aliyunIcon from "../assets/aliyun.png";
 import githubIcon from "../assets/github.png";
 import googleIcon from "../assets/google.png";
 
 type LoginProvider = IIdpProvider & {
+  sloEnabled?: boolean;
   authType: "OIDC" | "CAS";
 };
 
@@ -72,6 +74,7 @@ const Login: React.FC = () => {
       if (res && res.data && res.data.access_token) {
         message.success(t("loginSuccess"), 1);
         localStorage.setItem("access_token", res.data.access_token);
+        setLastAuthState({ type: "BUILTIN" });
 
         const returnUrl = searchParams.get("returnUrl");
         if (returnUrl) {
@@ -104,12 +107,18 @@ const Login: React.FC = () => {
     return authUrl.toString();
   };
 
-  const handleOidcLogin = (provider: string) => {
-    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider);
+  const handleOidcLogin = (provider: LoginProvider) => {
+    setLastAuthState({ type: "OIDC", provider: provider.provider });
+    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider.provider);
   };
 
-  const handleCasLogin = (provider: string) => {
-    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider);
+  const handleCasLogin = (provider: LoginProvider) => {
+    setLastAuthState({
+      type: "CAS",
+      provider: provider.provider,
+      sloEnabled: !!provider.sloEnabled,
+    });
+    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider.provider);
   };
 
   return (
@@ -183,14 +192,12 @@ const Login: React.FC = () => {
                       key={provider.provider}
                       onClick={() =>
                         provider.authType === "CAS"
-                          ? handleCasLogin(provider.provider)
-                          : handleOidcLogin(provider.provider)
+                          ? handleCasLogin(provider)
+                          : handleOidcLogin(provider)
                       }
                       className="w-full flex items-center justify-center"
                       size="large"
-                      icon={
-                        oidcIcons[provider.provider.toLowerCase()] || <span />
-                      }
+                      icon={oidcIcons[provider.provider.toLowerCase()] || <span />}
                     >
                       {t("loginWithProvider", {
                         provider: provider.name || provider.provider,

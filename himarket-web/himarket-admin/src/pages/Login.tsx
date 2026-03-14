@@ -1,30 +1,71 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Alert, Button, Divider, Form, Input } from "antd";
 import api from "../lib/api";
-import { authApi } from '@/lib/api'
-import { Form, Input, Button, Alert } from "antd";
+import { authApi } from "@/lib/api";
+import { setLastAuthState } from "@/lib/authStorage";
+
+interface IdpProvider {
+  provider: string;
+  name?: string;
+  type?: string;
+  sloEnabled?: boolean;
+}
 
 const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isRegister, setIsRegister] = useState<boolean | null>(null); // null 表示正在加载
+  const [isRegister, setIsRegister] = useState<boolean | null>(null);
+  const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
 
-  // 页面加载时检查权限
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await authApi.getNeedInit(); // 替换为你的权限接口
-        setIsRegister(response.data === true); // 根据接口返回值决定是否显示注册表单
-      } catch (err) {
-        setIsRegister(false); // 默认显示登录表单
+        const response = await authApi.getNeedInit();
+        const needInit = response.data === true;
+        setIsRegister(needInit);
+        if (!needInit) {
+          await fetchCasProviders();
+        }
+      } catch {
+        setIsRegister(false);
       }
     };
 
     checkAuth();
   }, []);
 
-  // 登录表单提交
+  const fetchCasProviders = async () => {
+    try {
+      const res = await api.get("/admins/cas/providers");
+      setCasProviders(Array.isArray(res?.data) ? res.data : []);
+    } catch {
+      setCasProviders([]);
+    }
+  };
+
+  const buildAuthorizeUrl = (path: string, provider: string) => {
+    const apiPrefix = api.defaults.baseURL || "/api/v1";
+    const apiBaseUrl = new URL(apiPrefix, window.location.origin);
+    if (!apiBaseUrl.pathname.endsWith("/")) {
+      apiBaseUrl.pathname += "/";
+    }
+
+    const authUrl = new URL(path.replace(/^\//, ""), apiBaseUrl);
+    authUrl.searchParams.set("provider", provider);
+    return authUrl.toString();
+  };
+
+  const handleCasLogin = (provider: IdpProvider) => {
+    setLastAuthState({
+      type: "CAS",
+      provider: provider.provider,
+      sloEnabled: !!provider.sloEnabled,
+    });
+    window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
+  };
+
   const handleLogin = async (values: { username: string; password: string }) => {
     setLoading(true);
     setError("");
@@ -34,9 +75,10 @@ const Login: React.FC = () => {
         password: values.password,
       });
       const accessToken = response.data.access_token;
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
-      navigate('/portals');
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("userInfo", JSON.stringify(response.data));
+      setLastAuthState({ type: "BUILTIN" });
+      navigate("/portals");
     } catch {
       setError("账号或密码错误");
     } finally {
@@ -44,8 +86,11 @@ const Login: React.FC = () => {
     }
   };
 
-  // 注册表单提交
-  const handleRegister = async (values: { username: string; password: string; confirmPassword: string }) => {
+  const handleRegister = async (values: {
+    username: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
     setLoading(true);
     setError("");
     if (values.password !== values.confirmPassword) {
@@ -59,7 +104,8 @@ const Login: React.FC = () => {
         password: values.password,
       });
       if (response.data.adminId) {
-        setIsRegister(false); // 初始化成功后切换到登录状态
+        setIsRegister(false);
+        await fetchCasProviders();
       }
     } catch {
       setError("初始化失败，请重试");
@@ -70,28 +116,30 @@ const Login: React.FC = () => {
 
   return (
     <div className="flex min-h-screen">
-      {/* 左侧品牌区域 - 移动端隐藏 */}
       <div
         className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)' }}
+        style={{
+          background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)",
+        }}
       >
-        {/* 装饰性背景元素 */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-white" />
           <div className="absolute bottom-32 right-16 w-48 h-48 rounded-full bg-white" />
           <div className="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-white" />
         </div>
         <div className="text-center text-white relative z-10">
-          <img src="/logo.png" alt="Logo" className="w-20 h-20 mx-auto mb-6 drop-shadow-lg" />
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="w-20 h-20 mx-auto mb-6 drop-shadow-lg"
+          />
           <h1 className="text-3xl font-bold mb-3">HiMarket</h1>
           <p className="text-lg opacity-80">企业级 AI 开放平台管理后台</p>
         </div>
       </div>
 
-      {/* 右侧表单区域 */}
       <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white md:bg-white">
         <div className="w-full max-w-md px-8">
-          {/* 移动端 Logo */}
           <div className="md:hidden mb-6 text-center">
             <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
           </div>
@@ -100,7 +148,6 @@ const Login: React.FC = () => {
             {isRegister ? "注册Admin账号" : "登录HiMarket-后台"}
           </h2>
 
-          {/* 登录表单 */}
           {!isRegister && (
             <Form
               className="w-full flex flex-col gap-4"
@@ -131,10 +178,29 @@ const Login: React.FC = () => {
                   登录
                 </Button>
               </Form.Item>
+
+              {casProviders.length > 0 && (
+                <>
+                  <Divider plain className="text-gray-400">
+                    或
+                  </Divider>
+                  <div className="flex flex-col gap-2">
+                    {casProviders.map(provider => (
+                      <Button
+                        key={provider.provider}
+                        className="w-full"
+                        size="large"
+                        onClick={() => handleCasLogin(provider)}
+                      >
+                        使用 {provider.name || provider.provider} 登录
+                      </Button>
+                    ))}
+                  </div>
+                </>
+              )}
             </Form>
           )}
 
-          {/* 注册表单 */}
           {isRegister && (
             <Form
               className="w-full flex flex-col gap-4"
