@@ -35,4 +35,6 @@ public interface CasService {
             String ticket, String state, HttpServletRequest request, HttpServletResponse response);
 
     List<IdpResult> getAvailableProviders();
+
+    String buildLogoutRedirectUrl(String provider);
 }

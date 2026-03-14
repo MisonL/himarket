@@ -17,52 +17,38 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service;
+package com.alibaba.himarket.config;
 
-import com.alibaba.himarket.support.enums.PublicKeyFormat;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OAuth2Config;
-import com.alibaba.himarket.support.portal.OidcConfig;
-import java.security.PublicKey;
 import java.util.List;
+import lombok.Data;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
-public interface IdpService {
-
-    /**
-     * 验证OIDC配置
-     *
-     * @param oidcConfigs
-     */
-    void validateOidcConfigs(List<OidcConfig> oidcConfigs);
-
-    /**
-     * 验证OAuth2配置
-     *
-     * @param oauth2Configs
-     */
-    void validateOAuth2Configs(List<OAuth2Config> oauth2Configs);
+@Data
+@Configuration
+@ConfigurationProperties(prefix = "admin.auth")
+public class AdminAuthConfig {
 
     /**
-     * 验证CAS配置
-     *
-     * @param casConfigs
+     * Admin frontend base URL used to build authentication callback URLs.
      */
-    void validateCasConfigs(List<CasConfig> casConfigs);
+    private String frontendRedirectUrl;
 
     /**
-     * 验证LDAP配置
-     *
-     * @param ldapConfigs
+     * CAS configurations for admin authentication.
      */
-    void validateLdapConfigs(List<LdapConfig> ldapConfigs);
+    private List<CasConfig> casConfigs;
 
     /**
-     * 加载JWT公钥
-     *
-     * @param format
-     * @param publicKey
-     * @return
+     * LDAP configurations for admin authentication.
      */
-    PublicKey loadPublicKey(PublicKeyFormat format, String publicKey);
+    private List<LdapConfig> ldapConfigs;
+
+    /**
+     * OAuth2 configurations for admin authentication (JWT bearer).
+     */
+    private List<OAuth2Config> oauth2Configs;
 }

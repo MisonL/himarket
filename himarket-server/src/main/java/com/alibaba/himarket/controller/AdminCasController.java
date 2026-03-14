@@ -22,7 +22,7 @@ package com.alibaba.himarket.controller;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
-import com.alibaba.himarket.service.CasService;
+import com.alibaba.himarket.service.AdminCasService;
 import com.alibaba.himarket.service.idp.IdpStateCookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -37,11 +37,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
 @RestController
-@RequestMapping("/developers/cas")
+@RequestMapping("/admins/cas")
 @RequiredArgsConstructor
-public class CasController {
+public class AdminCasController {
 
-    private final CasService casService;
+    private final AdminCasService adminCasService;
 
     @GetMapping("/authorize")
     public void authorize(
@@ -51,9 +51,9 @@ public class CasController {
             HttpServletResponse response)
             throws IOException {
         IdpAuthorizeResult result =
-                casService.buildAuthorizationResult(provider, apiPrefix, request);
-        IdpStateCookie.writeCasStateCookie(request, response, result.getState());
-        log.info("Redirecting to CAS login, provider={}", provider);
+                adminCasService.buildAuthorizationResult(provider, apiPrefix, request);
+        IdpStateCookie.writeAdminCasStateCookie(request, response, result.getState());
+        log.info("Redirecting to CAS login for admin, provider={}", provider);
         response.sendRedirect(result.getRedirectUrl());
     }
 
@@ -63,18 +63,21 @@ public class CasController {
             @RequestParam String state,
             HttpServletRequest request,
             HttpServletResponse response) {
-        return casService.handleCallback(ticket, state, request, response);
+        IdpStateCookie.assertAdminCasStateCookieMatches(request, state);
+        AuthResult result = adminCasService.handleCallback(ticket, state, request, response);
+        IdpStateCookie.clearAdminCasStateCookie(request, response);
+        return result;
     }
 
     @GetMapping("/providers")
     public List<IdpResult> getProviders() {
-        return casService.getAvailableProviders();
+        return adminCasService.getAvailableProviders();
     }
 
     @GetMapping("/logout")
     public void logout(@RequestParam String provider, HttpServletResponse response)
             throws IOException {
-        String url = casService.buildLogoutRedirectUrl(provider);
+        String url = adminCasService.buildLogoutRedirectUrl(provider);
         response.sendRedirect(url);
     }
 }
