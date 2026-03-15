@@ -31,4 +31,6 @@ public class CasProxyConfig {
     private String callbackUrlPattern;
 
     private String proxyEndpoint;
+
+    private String targetServicePattern;
 }
