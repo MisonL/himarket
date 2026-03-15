@@ -27,40 +27,50 @@ import com.alibaba.himarket.core.exception.BusinessException;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-class CasTicketValidationParserTest {
+class CasJsonTicketValidationParserTest {
 
-    private final CasTicketValidationParser parser = new CasTicketValidationParser();
+    private final CasJsonTicketValidationParser parser = new CasJsonTicketValidationParser();
 
     @Test
-    void parseShouldExtractUserAndAttributes() {
-        String xml =
-                "<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
-                        + "<cas:authenticationSuccess>"
-                        + "<cas:user>alice</cas:user>"
-                        + "<cas:proxyGrantingTicket>PGTIOU-1</cas:proxyGrantingTicket>"
-                        + "<cas:attributes>"
-                        + "<cas:mail>alice@example.com</cas:mail>"
-                        + "</cas:attributes>"
-                        + "</cas:authenticationSuccess>"
-                        + "</cas:serviceResponse>";
+    void parseShouldExtractUserAndJsonAttributes() {
+        String json =
+                """
+                {
+                  "serviceResponse": {
+                    "authenticationSuccess": {
+                      "user": "alice",
+                      "proxyGrantingTicket": "PGTIOU-1",
+                      "attributes": {
+                        "mail": "alice@example.com",
+                        "groups": ["dev", "admin"]
+                      }
+                    }
+                  }
+                }
+                """;
 
-        Map<String, Object> attributes = parser.parse(xml);
+        Map<String, Object> attributes = parser.parse(json);
 
         assertEquals("alice", attributes.get("user"));
         assertEquals("alice@example.com", attributes.get("mail"));
+        assertEquals("dev,admin", attributes.get("groups"));
         assertEquals("PGTIOU-1", attributes.get(IdpConstants.PROXY_GRANTING_TICKET));
     }
 
     @Test
-    void parseShouldRejectDoctypePayload() {
-        String xml =
-                "<!DOCTYPE cas:serviceResponse [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]>"
-                        + "<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
-                        + "<cas:authenticationSuccess>"
-                        + "<cas:user>&xxe;</cas:user>"
-                        + "</cas:authenticationSuccess>"
-                        + "</cas:serviceResponse>";
+    void parseShouldRejectFailurePayload() {
+        String json =
+                """
+                {
+                  "serviceResponse": {
+                    "authenticationFailure": {
+                      "code": "INVALID_TICKET",
+                      "description": "bad ticket"
+                    }
+                  }
+                }
+                """;
 
-        assertThrows(BusinessException.class, () -> parser.parse(xml));
+        assertThrows(BusinessException.class, () -> parser.parse(json));
     }
 }

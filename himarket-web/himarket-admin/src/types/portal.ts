@@ -22,6 +22,21 @@ export interface OidcConfig {
   identityMapping?: IdentityMapping;
 }
 
+export type CasProtocolVersion = 'CAS1' | 'CAS2' | 'CAS3' | 'SAML1';
+
+export type CasValidationResponseFormat = 'XML' | 'JSON';
+
+export interface CasLoginConfig {
+  gateway?: boolean;
+  renew?: boolean;
+  warn?: boolean;
+}
+
+export interface CasValidationConfig {
+  protocolVersion?: CasProtocolVersion;
+  responseFormat?: CasValidationResponseFormat;
+}
+
 export interface CasConfig {
   provider: string;
   name: string;
@@ -31,6 +46,8 @@ export interface CasConfig {
   loginEndpoint?: string;
   validateEndpoint?: string;
   logoutEndpoint?: string;
+  login?: CasLoginConfig;
+  validation?: CasValidationConfig;
   identityMapping?: IdentityMapping;
 }
 

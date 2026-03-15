@@ -31,6 +31,19 @@ public interface AuthSessionStore {
 
     int revokeCasSession(CasSessionScope scope, String sessionIndex);
 
+    void saveCasProxyGrantingTicket(String pgtIou, String pgtId, Duration ttl);
+
+    String consumeCasProxyGrantingTicket(String pgtIou);
+
+    void bindCasProxyGrantingTicket(
+            CasSessionScope scope,
+            String provider,
+            String userId,
+            String sessionIndex,
+            String pgtId);
+
+    String getCasProxyGrantingTicket(CasSessionScope scope, String provider, String userId);
+
     void revokeToken(String token);
 
     boolean isTokenRevoked(String token);

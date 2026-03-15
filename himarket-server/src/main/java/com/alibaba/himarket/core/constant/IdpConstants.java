@@ -65,6 +65,14 @@ public class IdpConstants {
 
     public static final String LOGOUT_REQUEST = "logoutRequest";
 
+    public static final String GATEWAY = "gateway";
+
+    public static final String RENEW = "renew";
+
+    public static final String WARN = "warn";
+
+    public static final String FORMAT = "format";
+
     /**
      * State TTL, also used by OIDC/CAS callback to reject stale requests.
      */
@@ -91,6 +99,20 @@ public class IdpConstants {
      * Ticket
      */
     public static final String TICKET = "ticket";
+
+    public static final String PGT = "pgt";
+
+    public static final String PGT_ID = "pgtId";
+
+    public static final String PGT_IOU = "pgtIou";
+
+    public static final String PGT_URL = "pgtUrl";
+
+    public static final String TARGET_SERVICE = "targetService";
+
+    public static final String PROXY_GRANTING_TICKET = "proxyGrantingTicket";
+
+    public static final String PROXY_TICKET = "proxyTicket";
 
     /**
      * Service
@@ -138,12 +160,32 @@ public class IdpConstants {
     public static final String CAS_LOGIN_PATH = "/login";
 
     /**
+     * Default CAS 1.0 validate path
+     */
+    public static final String CAS1_VALIDATE_PATH = "/validate";
+
+    /**
+     * Default CAS 2.0 validate path
+     */
+    public static final String CAS2_VALIDATE_PATH = "/serviceValidate";
+
+    /**
      * Default CAS validate path
      */
     public static final String CAS_VALIDATE_PATH = "/p3/serviceValidate";
 
     /**
+     * Default CAS SAML validate path
+     */
+    public static final String CAS_SAML1_VALIDATE_PATH = "/samlValidate";
+
+    /**
      * Default CAS logout path
      */
     public static final String CAS_LOGOUT_PATH = "/logout";
+
+    /**
+     * Default CAS proxy path
+     */
+    public static final String CAS_PROXY_PATH = "/proxy";
 }

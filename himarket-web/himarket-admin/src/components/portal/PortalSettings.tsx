@@ -331,10 +331,11 @@ export function PortalSettings({portal, onRefresh}: PortalSettingsProps) {
 
                     {/* 第三方认证管理 */}
                     <Divider/>
-                    <ThirdPartyAuthManager
-                        configs={thirdPartyAuthConfigs}
-                        onSave={handleSaveThirdPartyAuth}
-                    />
+                        <ThirdPartyAuthManager
+                            portalId={portal.portalId}
+                            configs={thirdPartyAuthConfigs}
+                            onSave={handleSaveThirdPartyAuth}
+                        />
                 </div>
             )
         },
