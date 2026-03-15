@@ -480,6 +480,22 @@ main() {
           "sloEnabled": true,
           "serverUrl": $casServerUrl,
           "validateEndpoint": "http://cas:8080/cas/p3/serviceValidate",
+          "validation": {
+            "protocolVersion": "CAS3",
+            "responseFormat": "JSON"
+          },
+          "proxy": {
+            "enabled": true,
+            "callbackPath": "http://himarket-server:8080/developers/cas/proxy-callback",
+            "proxyEndpoint": "http://cas:8080/cas/proxy"
+          },
+          "attributeRelease": {
+            "allowedAttributes": ["user", "mail"]
+          },
+          "accessStrategy": {
+            "enabled": true,
+            "ssoEnabled": true
+          },
           "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
         }
       ]
@@ -525,6 +541,45 @@ main() {
 
   log "verify developer cas providers"
   curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
+
+  log "preview portal cas service definition"
+  local portal_cas_service_definition
+  portal_cas_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas/service-definition")"
+  echo "${portal_cas_service_definition}" | jq -e '
+    .data.serviceId? // .serviceId
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS30")
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.logoutType // .logoutType) == "BACK_CHANNEL"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/developers/cas/proxy-callback")
+  ' >/dev/null
+
+  log "developer cas authorize flag passthrough"
+  local developer_flag_headers
+  developer_flag_headers="$(mktemp)"
+  curl -sS -D "${developer_flag_headers}" -o /dev/null \
+    "http://localhost:8081/developers/cas/authorize?provider=cas&gateway=true&warn=true" || true
+  local developer_flag_redirect
+  developer_flag_redirect="$(extract_header_value "$(cat "${developer_flag_headers}")" "Location")"
+  if [[ -z "${developer_flag_redirect}" ]]; then
+    err "missing redirect location from developer cas flag authorize"
+    cat "${developer_flag_headers}" >&2
+    exit 1
+  fi
+  [[ "$(parse_query_param "${developer_flag_redirect}" "gateway")" == "true" ]] || {
+    err "developer cas gateway flag missing from redirect"
+    echo "${developer_flag_redirect}" >&2
+    exit 1
+  }
+  [[ "$(parse_query_param "${developer_flag_redirect}" "warn")" == "true" ]] || {
+    err "developer cas warn flag missing from redirect"
+    echo "${developer_flag_redirect}" >&2
+    exit 1
+  }
 
   log "developer cas authorize (capture state cookie and service url)"
   local cas_headers
@@ -604,6 +659,13 @@ main() {
   developer_cas_token="$(exchange_code_for_token "developer cas" "http://localhost:8081/developers/cas/exchange" "${developer_cas_code}")"
   curl -fsS -H "Authorization: Bearer ${developer_cas_token}" "http://localhost:8081/developers/profile" >/dev/null
 
+  log "developer cas proxy ticket"
+  curl -fsS -X POST "http://localhost:8081/developers/cas/proxy-ticket" \
+    -H "Authorization: Bearer ${developer_cas_token}" \
+    -H 'Content-Type: application/json' \
+    -d '{"provider":"cas","targetService":"http://localhost:5173/proxy-target"}' \
+    | jq -e '.data.proxyTicket | startswith("PT-")' >/dev/null
+
   log "developer cas back-channel logout"
   local developer_logout_request
   local developer_ticket
@@ -639,6 +701,16 @@ main() {
 
   log "verify admin cas providers"
   curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
+
+  log "preview admin cas service definition"
+  local admin_cas_service_definition
+  admin_cas_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas/service-definition")"
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.serviceId // .serviceId) | contains("/admins/cas/callback")
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/admins/cas/proxy-callback")
+  ' >/dev/null
 
   log "admin cas authorize"
   local admin_cookie
@@ -707,6 +779,13 @@ main() {
   local admin_cas_token
   admin_cas_token="$(exchange_code_for_token "admin cas" "http://localhost:8081/admins/cas/exchange" "${admin_cas_code}")"
   curl -fsS -H "Authorization: Bearer ${admin_cas_token}" "http://localhost:8081/admins" >/dev/null
+
+  log "admin cas proxy ticket"
+  curl -fsS -X POST "http://localhost:8081/admins/cas/proxy-ticket" \
+    -H "Authorization: Bearer ${admin_cas_token}" \
+    -H 'Content-Type: application/json' \
+    -d '{"provider":"cas","targetService":"http://localhost:5174/admin-proxy-target"}' \
+    | jq -e '.data.proxyTicket | startswith("PT-")' >/dev/null
 
   log "admin cas back-channel logout"
   local admin_logout_request

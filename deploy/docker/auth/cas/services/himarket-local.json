@@ -1,6 +1,12 @@
 {
-  "@class": "org.apereo.cas.services.RegexRegisteredService",
+  "@class": "org.apereo.cas.services.CasRegisteredService",
   "serviceId": "^(http|https)://(localhost|127\\.0\\.0\\.1)(:\\d+)?/.*",
+  "proxyPolicy": {
+    "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
+    "pattern": "^http://himarket-server:8080/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
+    "useServiceId": false,
+    "exactMatch": false
+  },
   "name": "HiMarket Local",
   "id": 1000,
   "evaluationOrder": 1
