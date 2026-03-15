@@ -32,6 +32,10 @@ public class RedisAuthSessionStore implements AuthSessionStore {
 
     private static final String SESSION_PREFIX = "hm:auth:cas:session:";
 
+    private static final String PGT_IOU_PREFIX = "hm:auth:cas:pgt-iou:";
+
+    private static final String PGT_PREFIX = "hm:auth:cas:pgt:";
+
     private static final String REVOKE_PREFIX = "hm:auth:revoke:";
 
     private final StringRedisTemplate redisTemplate;
@@ -55,7 +59,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
     public void bindCasSessionToken(CasSessionScope scope, String sessionIndex, String token) {
         String key = sessionKey(scope, sessionIndex);
         long expireAt = TokenUtil.getTokenExpireTime(token);
-        String payload = TokenUtil.getTokenDigest(token) + ":" + expireAt;
+        String payload = "token:" + TokenUtil.getTokenDigest(token) + ":" + expireAt;
         redisTemplate.opsForSet().add(key, payload);
         extendSessionKey(key, expireAt);
     }
@@ -70,17 +74,51 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         }
         int revoked = 0;
         for (String entry : entries) {
-            String[] parts = entry.split(":", 2);
-            if (parts.length != 2) {
+            String[] parts = entry.split(":", 3);
+            if (parts.length < 2) {
                 continue;
             }
-            try {
-                revokeTokenDigest(parts[0], Long.parseLong(parts[1]));
-                revoked++;
-            } catch (NumberFormatException ignored) {
+            if ("token".equals(parts[0]) && parts.length == 3) {
+                try {
+                    revokeTokenDigest(parts[1], Long.parseLong(parts[2]));
+                    revoked++;
+                } catch (NumberFormatException ignored) {
+                }
+                continue;
+            }
+            if ("pgt".equals(parts[0]) && parts.length == 3) {
+                redisTemplate.delete(proxyGrantingTicketKey(scope, parts[1], parts[2]));
             }
         }
         return revoked;
+    }
+
+    @Override
+    public void saveCasProxyGrantingTicket(String pgtIou, String pgtId, Duration ttl) {
+        redisTemplate.opsForValue().set(proxyGrantingTicketIouKey(pgtIou), pgtId, ttl);
+    }
+
+    @Override
+    public String consumeCasProxyGrantingTicket(String pgtIou) {
+        return redisTemplate.opsForValue().getAndDelete(proxyGrantingTicketIouKey(pgtIou));
+    }
+
+    @Override
+    public void bindCasProxyGrantingTicket(
+            CasSessionScope scope,
+            String provider,
+            String userId,
+            String sessionIndex,
+            String pgtId) {
+        redisTemplate.opsForValue().set(proxyGrantingTicketKey(scope, provider, userId), pgtId);
+        redisTemplate
+                .opsForSet()
+                .add(sessionKey(scope, sessionIndex), "pgt:" + provider + ":" + userId);
+    }
+
+    @Override
+    public String getCasProxyGrantingTicket(CasSessionScope scope, String provider, String userId) {
+        return redisTemplate.opsForValue().get(proxyGrantingTicketKey(scope, provider, userId));
     }
 
     @Override
@@ -121,6 +159,14 @@ public class RedisAuthSessionStore implements AuthSessionStore {
 
     private String sessionKey(CasSessionScope scope, String sessionIndex) {
         return SESSION_PREFIX + scope.name() + ":" + sessionIndex;
+    }
+
+    private String proxyGrantingTicketIouKey(String pgtIou) {
+        return PGT_IOU_PREFIX + pgtIou;
+    }
+
+    private String proxyGrantingTicketKey(CasSessionScope scope, String provider, String userId) {
+        return PGT_PREFIX + scope.name() + ":" + provider + ":" + userId;
     }
 
     private String revokeKey(String tokenDigest) {

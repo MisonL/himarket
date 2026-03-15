@@ -17,24 +17,13 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.idp.session;
+package com.alibaba.himarket.service.idp;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.Map;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CasLoginContext {
+public interface CasServiceDefinitionService {
 
-    private CasSessionScope scope;
+    Map<String, Object> exportPortalServiceDefinition(String portalId, String provider);
 
-    private String provider;
-
-    private String userId;
-
-    private String sessionIndex;
-
-    private String proxyGrantingTicketIou;
+    Map<String, Object> exportAdminServiceDefinition(String provider);
 }

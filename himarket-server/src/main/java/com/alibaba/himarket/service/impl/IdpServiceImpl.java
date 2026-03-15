@@ -37,6 +37,11 @@ import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OAuth2Config;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.PublicKeyConfig;
+import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
+import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
+import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
+import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import java.math.BigInteger;
 import java.net.URI;
 import java.security.KeyFactory;
@@ -147,7 +152,50 @@ public class IdpServiceImpl implements IdpService {
                     validateEndpoint(config.getLoginEndpoint(), "CAS login endpoint");
                     validateEndpoint(config.getValidateEndpoint(), "CAS validate endpoint");
                     validateEndpoint(config.getLogoutEndpoint(), "CAS logout endpoint");
+                    validateCasLoginConfig(config.getProvider(), config.resolveLoginConfig());
+                    validateCasProxyConfig(config.getProvider(), config.resolveProxyConfig());
+                    validateCasValidationConfig(
+                            config.getProvider(), config.resolveValidationConfig());
                 });
+    }
+
+    private void validateCasLoginConfig(String provider, CasLoginConfig loginConfig) {
+        if (Boolean.TRUE.equals(loginConfig.getGateway())
+                && Boolean.TRUE.equals(loginConfig.getRenew())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "CAS config {} cannot enable gateway and renew at the same time",
+                            provider));
+        }
+    }
+
+    private void validateCasValidationConfig(
+            String provider, CasValidationConfig validationConfig) {
+        if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1
+                && validationConfig.getResponseFormat() == CasValidationResponseFormat.JSON) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "CAS config {} cannot use JSON response with SAML1 validation",
+                            provider));
+        }
+    }
+
+    private void validateCasProxyConfig(String provider, CasProxyConfig proxyConfig) {
+        if (!Boolean.TRUE.equals(proxyConfig.getEnabled())) {
+            return;
+        }
+        validateEndpoint(proxyConfig.getProxyEndpoint(), "CAS proxy endpoint");
+        String callbackPath = proxyConfig.getCallbackPath();
+        if (StrUtil.isNotBlank(callbackPath)
+                && !StrUtil.startWithAnyIgnoreCase(callbackPath, "/", "http://", "https://")) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "CAS config {} proxy callback path must be absolute path or URL",
+                            provider));
+        }
     }
 
     @Override

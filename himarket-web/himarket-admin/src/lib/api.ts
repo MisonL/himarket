@@ -115,6 +115,9 @@ export const portalApi = {
   updatePortalSettings: (portalId: string, settings: UpdatePortalSettingsRequest) => {
     return api.put(`/portals/${portalId}/setting`, settings)
   },
+  exportCasServiceDefinition: (portalId: string, provider: string) => {
+    return api.get(`/portals/${portalId}/cas/${provider}/service-definition`)
+  },
   // 获取Portal的开发者列表
   getDeveloperList: (portalId: string, pagination?: { page: number; size: number }) => {
     return api.get(`/developers`, {

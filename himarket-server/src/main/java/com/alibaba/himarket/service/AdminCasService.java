@@ -19,7 +19,9 @@
 
 package com.alibaba.himarket.service;
 
+import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.CasProxyTicketResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,7 +31,10 @@ import java.util.List;
 public interface AdminCasService {
 
     IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request);
+            String provider,
+            String apiPrefix,
+            CasAuthorizeOptions options,
+            HttpServletRequest request);
 
     String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response);
@@ -37,6 +42,10 @@ public interface AdminCasService {
     AuthResult exchangeCode(String code);
 
     int handleLogoutRequest(String logoutRequest);
+
+    void handleProxyCallback(String pgtIou, String pgtId);
+
+    CasProxyTicketResult issueProxyTicket(String provider, String targetService);
 
     List<IdpResult> getAvailableProviders();
 
