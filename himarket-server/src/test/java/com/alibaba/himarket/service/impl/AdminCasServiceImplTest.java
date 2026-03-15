@@ -35,6 +35,7 @@ import com.alibaba.himarket.service.idp.CasJsonTicketValidationParser;
 import com.alibaba.himarket.service.idp.CasLogoutRequestParser;
 import com.alibaba.himarket.service.idp.CasProxyTicketClient;
 import com.alibaba.himarket.service.idp.CasProxyTicketParser;
+import com.alibaba.himarket.service.idp.CasSamlTicketValidationParser;
 import com.alibaba.himarket.service.idp.CasTicketValidationParser;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
 import com.alibaba.himarket.service.idp.session.MemoryAuthSessionStore;
@@ -123,7 +124,8 @@ class AdminCasServiceImplTest {
                         authSessionStore,
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
                                 new CasTicketValidationParser(),
-                                new CasJsonTicketValidationParser()),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
                         new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
@@ -179,7 +181,8 @@ class AdminCasServiceImplTest {
                                 new AuthSessionConfig().getCas().getLoginCodeTtl()),
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
                                 new CasTicketValidationParser(),
-                                new CasJsonTicketValidationParser()),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
                         new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
@@ -261,7 +264,8 @@ class AdminCasServiceImplTest {
                         authSessionStore,
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
                                 new CasTicketValidationParser(),
-                                new CasJsonTicketValidationParser()),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
                         new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
