@@ -231,6 +231,23 @@ parse_query_param() {
   ' "$url" "$key"
 }
 
+extract_html_input_value() {
+  local html="$1"
+  local name="$2"
+  printf '%s' "${html}" | node -e '
+    const fs = require("fs");
+    const html = fs.readFileSync(0, "utf8");
+    const name = process.argv[1];
+    const tagMatch = html.match(new RegExp(`<input[^>]*name=["\\x27]${name}["\\x27][^>]*>`, "i"));
+    if (!tagMatch) {
+      console.log("");
+      process.exit(0);
+    }
+    const valueMatch = tagMatch[0].match(/value=["\x27]([^"\x27]*)["\x27]/i);
+    console.log(valueMatch ? valueMatch[1] : "");
+  ' "${name}"
+}
+
 build_logout_request() {
   local session_index="$1"
   printf '%s' "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\"><samlp:SessionIndex>${session_index}</samlp:SessionIndex></samlp:LogoutRequest>"
@@ -539,34 +556,36 @@ main() {
     exit 1
   fi
 
-  log "cas rest: request tgt"
-  local tgt_headers
-  tgt_headers="$(mktemp)"
-  curl -sS -D "${tgt_headers}" -o /dev/null \
-    -X POST "http://localhost:${cas_http_port}/cas/v1/tickets" \
-    -H 'Content-Type: application/x-www-form-urlencoded' \
-    --data-urlencode "username=alice" \
-    --data-urlencode "password=alice"
-  local tgt_location
-  tgt_location="$(extract_header_value "$(cat "${tgt_headers}")" "Location")"
-  if [[ -z "${tgt_location}" ]]; then
-    err "failed to create tgt via cas rest"
-    cat "${tgt_headers}" >&2
+  log "cas login form (developer)"
+  local developer_login_html
+  developer_login_html="$(curl -fsS -b "${cookie_jar}" -c "${cookie_jar}" "${redirect}")"
+  local developer_execution
+  developer_execution="$(extract_html_input_value "${developer_login_html}" "execution")"
+  if [[ -z "${developer_execution}" ]]; then
+    err "missing execution token from developer cas login page"
     exit 1
   fi
-
-  log "cas rest: request service ticket"
-  local st
-  st="$(curl -fsS -X POST "${tgt_location}" -H 'Content-Type: application/x-www-form-urlencoded' --data-urlencode "service=${service_url}")"
-  if [[ -z "${st}" ]]; then
-    err "failed to get service ticket"
+  local developer_login_headers
+  developer_login_headers="$(mktemp)"
+  curl -sS -D "${developer_login_headers}" -o /dev/null -b "${cookie_jar}" -c "${cookie_jar}" \
+    -X POST "${redirect}" \
+    --data-urlencode "username=alice" \
+    --data-urlencode "password=alice" \
+    --data-urlencode "execution=${developer_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local developer_service_redirect
+  developer_service_redirect="$(extract_header_value "$(cat "${developer_login_headers}")" "Location")"
+  if [[ -z "${developer_service_redirect}" ]]; then
+    err "missing callback redirect from developer cas login submit"
+    cat "${developer_login_headers}" >&2
     exit 1
   fi
 
   log "himarket cas callback via public service url"
   local cas_callback_headers
   cas_callback_headers="$(mktemp)"
-  curl -sS -D "${cas_callback_headers}" -o /dev/null -b "${cookie_jar}" -G "${service_url}" --data-urlencode "ticket=${st}" || true
+  curl -sS -D "${cas_callback_headers}" -o /dev/null -b "${cookie_jar}" "${developer_service_redirect}" || true
   local frontend_cas_redirect
   frontend_cas_redirect="$(extract_header_value "$(cat "${cas_callback_headers}")" "Location")"
   if [[ -z "${frontend_cas_redirect}" ]]; then
@@ -587,7 +606,9 @@ main() {
 
   log "developer cas back-channel logout"
   local developer_logout_request
-  developer_logout_request="$(build_logout_request "${st}")"
+  local developer_ticket
+  developer_ticket="$(parse_query_param "${developer_service_redirect}" "ticket")"
+  developer_logout_request="$(build_logout_request "${developer_ticket}")"
   curl -fsS -X POST "${service_url}" --data-urlencode "logoutRequest=${developer_logout_request}" >/dev/null
   expect_auth_rejected "developer cas revoked token" "http://localhost:8081/developers/profile" "${developer_cas_token}"
 
@@ -639,32 +660,36 @@ main() {
   local admin_state
   admin_state="$(parse_query_param "${admin_service_url}" "state")"
 
-  log "cas rest: request tgt for admin"
-  local tgt_admin_headers
-  tgt_admin_headers="$(mktemp)"
-  curl -sS -D "${tgt_admin_headers}" -o /dev/null \
-    -X POST "http://localhost:${cas_http_port}/cas/v1/tickets" \
-    -H 'Content-Type: application/x-www-form-urlencoded' \
-    --data-urlencode "username=admin" \
-    --data-urlencode "password=admin"
-  local tgt_admin_location
-  tgt_admin_location="$(extract_header_value "$(cat "${tgt_admin_headers}")" "Location")"
-  if [[ -z "${tgt_admin_location}" ]]; then
-    err "failed to create admin tgt via cas rest"
-    cat "${tgt_admin_headers}" >&2
+  log "cas login form (admin)"
+  local admin_login_html
+  admin_login_html="$(curl -fsS -b "${admin_cookie}" -c "${admin_cookie}" "${admin_redirect}")"
+  local admin_execution
+  admin_execution="$(extract_html_input_value "${admin_login_html}" "execution")"
+  if [[ -z "${admin_execution}" ]]; then
+    err "missing execution token from admin cas login page"
     exit 1
   fi
-  local st_admin
-  st_admin="$(curl -fsS -X POST "${tgt_admin_location}" -H 'Content-Type: application/x-www-form-urlencoded' --data-urlencode "service=${admin_service_url}")"
-  if [[ -z "${st_admin}" ]]; then
-    err "failed to get admin service ticket"
+  local admin_login_headers
+  admin_login_headers="$(mktemp)"
+  curl -sS -D "${admin_login_headers}" -o /dev/null -b "${admin_cookie}" -c "${admin_cookie}" \
+    -X POST "${admin_redirect}" \
+    --data-urlencode "username=admin" \
+    --data-urlencode "password=admin" \
+    --data-urlencode "execution=${admin_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local admin_service_redirect
+  admin_service_redirect="$(extract_header_value "$(cat "${admin_login_headers}")" "Location")"
+  if [[ -z "${admin_service_redirect}" ]]; then
+    err "missing callback redirect from admin cas login submit"
+    cat "${admin_login_headers}" >&2
     exit 1
   fi
 
   log "himarket admin cas callback via public service url"
   local admin_callback_headers
   admin_callback_headers="$(mktemp)"
-  curl -sS -D "${admin_callback_headers}" -o /dev/null -b "${admin_cookie}" -G "${admin_service_url}" --data-urlencode "ticket=${st_admin}" || true
+  curl -sS -D "${admin_callback_headers}" -o /dev/null -b "${admin_cookie}" "${admin_service_redirect}" || true
   local admin_frontend_redirect
   admin_frontend_redirect="$(extract_header_value "$(cat "${admin_callback_headers}")" "Location")"
   if [[ -z "${admin_frontend_redirect}" ]]; then
@@ -685,7 +710,9 @@ main() {
 
   log "admin cas back-channel logout"
   local admin_logout_request
-  admin_logout_request="$(build_logout_request "${st_admin}")"
+  local admin_ticket
+  admin_ticket="$(parse_query_param "${admin_service_redirect}" "ticket")"
+  admin_logout_request="$(build_logout_request "${admin_ticket}")"
   curl -fsS -X POST "${admin_service_url}" --data-urlencode "logoutRequest=${admin_logout_request}" >/dev/null
   expect_auth_rejected "admin cas revoked token" "http://localhost:8081/admins" "${admin_cas_token}"
 
