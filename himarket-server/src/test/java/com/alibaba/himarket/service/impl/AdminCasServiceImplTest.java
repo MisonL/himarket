@@ -199,12 +199,14 @@ class AdminCasServiceImplTest {
                                         CasAuthorizeOptions.builder()
                                                 .gateway(true)
                                                 .warn(true)
+                                                .rememberMe(true)
                                                 .build(),
                                         request)
                                 .getRedirectUrl());
 
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.GATEWAY));
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.WARN));
+        assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.REMEMBER_ME));
     }
 
     @Test

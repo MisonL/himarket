@@ -93,6 +93,7 @@ export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAut
         loginGateway: casConfig.login?.gateway ?? false,
         loginRenew: casConfig.login?.renew ?? false,
         loginWarn: casConfig.login?.warn ?? false,
+        loginRememberMe: casConfig.login?.rememberMe ?? false,
         validationProtocolVersion: casConfig.validation?.protocolVersion || 'CAS3',
         validationResponseFormat: casConfig.validation?.responseFormat || 'XML',
         userIdField: casConfig.identityMapping?.userIdField,
@@ -185,7 +186,8 @@ export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAut
             validationResponseFormat: 'XML',
             loginGateway: false,
             loginRenew: false,
-            loginWarn: false
+            loginWarn: false,
+            loginRememberMe: false
           })
         } else if (values.type === AuthenticationType.LDAP) {
           form.setFieldsValue({
@@ -284,7 +286,8 @@ export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAut
           login: {
             gateway: values.loginGateway ?? false,
             renew: values.loginRenew ?? false,
-            warn: values.loginWarn ?? false
+            warn: values.loginWarn ?? false,
+            rememberMe: values.loginRememberMe ?? false
           },
           validation: {
             protocolVersion: values.validationProtocolVersion || 'CAS3',
@@ -1225,7 +1228,7 @@ export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAut
         <Switch />
       </Form.Item>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <Form.Item
           name="loginGateway"
           label="Gateway"
@@ -1247,6 +1250,14 @@ export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAut
           label="Warn"
           valuePropName="checked"
           extra="切换到 CAS 前要求确认。"
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="loginRememberMe"
+          label="Remember Me"
+          valuePropName="checked"
+          extra="请求 CAS 记住登录状态。"
         >
           <Switch />
         </Form.Item>

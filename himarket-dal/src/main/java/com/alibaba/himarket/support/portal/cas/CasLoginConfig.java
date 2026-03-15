@@ -29,4 +29,6 @@ public class CasLoginConfig {
     private Boolean renew = false;
 
     private Boolean warn = false;
+
+    private Boolean rememberMe = false;
 }

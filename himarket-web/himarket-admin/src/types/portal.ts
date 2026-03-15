@@ -30,6 +30,7 @@ export interface CasLoginConfig {
   gateway?: boolean;
   renew?: boolean;
   warn?: boolean;
+  rememberMe?: boolean;
 }
 
 export interface CasValidationConfig {

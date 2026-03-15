@@ -31,4 +31,6 @@ public class CasAuthorizeOptions {
     private Boolean renew;
 
     private Boolean warn;
+
+    private Boolean rememberMe;
 }

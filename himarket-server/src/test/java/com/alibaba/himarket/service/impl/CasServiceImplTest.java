@@ -322,13 +322,17 @@ class CasServiceImplTest {
                         .buildAuthorizationResult(
                                 "cas",
                                 "/api/v1",
-                                CasAuthorizeOptions.builder().gateway(true).build(),
+                                CasAuthorizeOptions.builder()
+                                        .gateway(true)
+                                        .rememberMe(true)
+                                        .build(),
                                 buildRequest(443))
                         .getRedirectUrl();
 
         URI uri = URI.create(redirectUrl);
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.GATEWAY));
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.WARN));
+        assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.REMEMBER_ME));
         assertEquals(null, splitQueryValue(uri.getQuery(), IdpConstants.RENEW));
     }
 
