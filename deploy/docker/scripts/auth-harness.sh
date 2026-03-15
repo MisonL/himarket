@@ -489,12 +489,28 @@ main() {
             "callbackPath": "http://himarket-server:8080/developers/cas/proxy-callback",
             "proxyEndpoint": "http://cas:8080/cas/proxy"
           },
+          "serviceDefinition": {
+            "evaluationOrder": 7,
+            "responseType": "POST",
+            "logoutType": "FRONT_CHANNEL",
+            "logoutUrl": "http://localhost:5173/login"
+          },
           "attributeRelease": {
-            "allowedAttributes": ["user", "mail"]
+            "allowedAttributes": ["user", "mail", "displayName"]
+          },
+          "multifactorPolicy": {
+            "providers": ["mfa-duo"],
+            "bypassEnabled": true,
+            "forceExecution": true
           },
           "accessStrategy": {
             "enabled": true,
-            "ssoEnabled": true
+            "ssoEnabled": true,
+            "delegatedAuthenticationPolicy": {
+              "allowedProviders": ["GithubClient"],
+              "permitUndefined": false,
+              "exclusive": true
+            }
           },
           "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
         }
@@ -552,10 +568,40 @@ main() {
     (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS30")
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
-    (.data.logoutType // .logoutType) == "BACK_CHANNEL"
+    ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/developers/cas/proxy-callback")
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
-    ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/developers/cas/proxy-callback")
+    (.data.evaluationOrder // .evaluationOrder) == 7
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.responseType // .responseType) == "POST"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.logoutType // .logoutType) == "FRONT_CHANNEL"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.attributeReleasePolicy // .attributeReleasePolicy).allowedAttributes // [])[1][]? | select(.=="displayName")
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-duo")
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).bypassEnabled == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="GithubClient")
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).permitUndefined == false
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).exclusive == true
   ' >/dev/null
 
   log "developer cas authorize flag passthrough"
