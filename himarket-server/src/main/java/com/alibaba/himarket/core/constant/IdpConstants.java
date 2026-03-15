@@ -71,6 +71,8 @@ public class IdpConstants {
 
     public static final String WARN = "warn";
 
+    public static final String REMEMBER_ME = "rememberMe";
+
     public static final String FORMAT = "format";
 
     /**

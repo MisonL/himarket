@@ -60,6 +60,7 @@ public class CasController {
             @RequestParam(required = false) Boolean gateway,
             @RequestParam(required = false) Boolean renew,
             @RequestParam(required = false) Boolean warn,
+            @RequestParam(required = false) Boolean rememberMe,
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException {
@@ -71,6 +72,7 @@ public class CasController {
                                 .gateway(gateway)
                                 .renew(renew)
                                 .warn(warn)
+                                .rememberMe(rememberMe)
                                 .build(),
                         request);
         IdpStateCookie.writeCasStateCookie(request, response, result.getState());
