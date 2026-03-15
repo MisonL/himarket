@@ -243,6 +243,9 @@ public class CasServiceImpl implements CasService {
                 resolveLoginFlag(options, CasAuthorizeOptions::getRenew, loginConfig.getRenew());
         boolean warn =
                 resolveLoginFlag(options, CasAuthorizeOptions::getWarn, loginConfig.getWarn());
+        boolean rememberMe =
+                resolveLoginFlag(
+                        options, CasAuthorizeOptions::getRememberMe, loginConfig.getRememberMe());
         if (gateway && renew) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER,
@@ -259,6 +262,9 @@ public class CasServiceImpl implements CasService {
         }
         if (warn) {
             builder.queryParam(IdpConstants.WARN, true);
+        }
+        if (rememberMe) {
+            builder.queryParam(IdpConstants.REMEMBER_ME, true);
         }
         return builder.build().toUriString();
     }

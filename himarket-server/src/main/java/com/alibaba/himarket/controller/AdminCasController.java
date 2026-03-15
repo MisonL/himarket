@@ -65,6 +65,7 @@ public class AdminCasController {
             @RequestParam(required = false) Boolean gateway,
             @RequestParam(required = false) Boolean renew,
             @RequestParam(required = false) Boolean warn,
+            @RequestParam(required = false) Boolean rememberMe,
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException {
@@ -76,6 +77,7 @@ public class AdminCasController {
                                 .gateway(gateway)
                                 .renew(renew)
                                 .warn(warn)
+                                .rememberMe(rememberMe)
                                 .build(),
                         request);
         IdpStateCookie.writeAdminCasStateCookie(request, response, result.getState());
