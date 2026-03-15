@@ -936,6 +936,154 @@ main() {
   curl -fsS -X POST "${developer_saml_service_url}" --data-urlencode "logoutRequest=${developer_saml_logout_request}" >/dev/null
   expect_auth_rejected "developer cas saml1 revoked token" "http://localhost:8081/developers/profile" "${developer_saml_token}"
 
+  log "developer cas1 authorize"
+  local developer_cas1_cookie
+  local developer_cas1_headers
+  developer_cas1_cookie="$(mktemp)"
+  developer_cas1_headers="$(mktemp)"
+  curl -sS -D "${developer_cas1_headers}" -o /dev/null -c "${developer_cas1_cookie}" "http://localhost:8081/developers/cas/authorize?provider=cas1" || true
+  local developer_cas1_redirect
+  developer_cas1_redirect="$(extract_header_value "$(cat "${developer_cas1_headers}")" "Location")"
+  if [[ -z "${developer_cas1_redirect}" ]]; then
+    err "missing redirect location from developer cas1 authorize"
+    cat "${developer_cas1_headers}" >&2
+    exit 1
+  fi
+  local developer_cas1_service_encoded
+  developer_cas1_service_encoded="$(parse_query_param "${developer_cas1_redirect}" "service")"
+  local developer_cas1_service_url
+  developer_cas1_service_url="$(url_decode "${developer_cas1_service_encoded}")"
+
+  log "cas login form (developer cas1)"
+  local developer_cas1_login_html
+  developer_cas1_login_html="$(curl -fsS -b "${developer_cas1_cookie}" -c "${developer_cas1_cookie}" "${developer_cas1_redirect}")"
+  local developer_cas1_execution
+  developer_cas1_execution="$(extract_html_input_value "${developer_cas1_login_html}" "execution")"
+  if [[ -z "${developer_cas1_execution}" ]]; then
+    err "missing execution token from developer cas1 login page"
+    exit 1
+  fi
+  local developer_cas1_login_headers
+  developer_cas1_login_headers="$(mktemp)"
+  curl -sS -D "${developer_cas1_login_headers}" -o /dev/null -b "${developer_cas1_cookie}" -c "${developer_cas1_cookie}" \
+    -X POST "${developer_cas1_redirect}" \
+    --data-urlencode "username=alice" \
+    --data-urlencode "password=alice" \
+    --data-urlencode "execution=${developer_cas1_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local developer_cas1_service_redirect
+  developer_cas1_service_redirect="$(extract_header_value "$(cat "${developer_cas1_login_headers}")" "Location")"
+  if [[ -z "${developer_cas1_service_redirect}" ]]; then
+    err "missing callback redirect from developer cas1 login submit"
+    cat "${developer_cas1_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket cas1 callback via public service url"
+  local developer_cas1_callback_headers
+  developer_cas1_callback_headers="$(mktemp)"
+  curl -sS -D "${developer_cas1_callback_headers}" -o /dev/null -b "${developer_cas1_cookie}" "${developer_cas1_service_redirect}" || true
+  local developer_cas1_frontend_redirect
+  developer_cas1_frontend_redirect="$(extract_header_value "$(cat "${developer_cas1_callback_headers}")" "Location")"
+  if [[ -z "${developer_cas1_frontend_redirect}" ]]; then
+    err "missing frontend redirect from developer cas1 callback"
+    cat "${developer_cas1_callback_headers}" >&2
+    exit 1
+  fi
+  local developer_cas1_code
+  developer_cas1_code="$(parse_query_param "${developer_cas1_frontend_redirect}" "code")"
+  if [[ -z "${developer_cas1_code}" ]]; then
+    err "missing developer cas1 code in redirect"
+    echo "${developer_cas1_frontend_redirect}" >&2
+    exit 1
+  fi
+  local developer_cas1_token
+  developer_cas1_token="$(exchange_code_for_token "developer cas1" "http://localhost:8081/developers/cas/exchange" "${developer_cas1_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_cas1_token}" "http://localhost:8081/developers/profile" >/dev/null
+
+  log "developer cas1 back-channel logout"
+  local developer_cas1_logout_request
+  local developer_cas1_ticket
+  developer_cas1_ticket="$(parse_query_param "${developer_cas1_service_redirect}" "ticket")"
+  developer_cas1_logout_request="$(build_logout_request "${developer_cas1_ticket}")"
+  curl -fsS -X POST "${developer_cas1_service_url}" --data-urlencode "logoutRequest=${developer_cas1_logout_request}" >/dev/null
+  expect_auth_rejected "developer cas1 revoked token" "http://localhost:8081/developers/profile" "${developer_cas1_token}"
+
+  log "developer cas2 authorize"
+  local developer_cas2_cookie
+  local developer_cas2_headers
+  developer_cas2_cookie="$(mktemp)"
+  developer_cas2_headers="$(mktemp)"
+  curl -sS -D "${developer_cas2_headers}" -o /dev/null -c "${developer_cas2_cookie}" "http://localhost:8081/developers/cas/authorize?provider=cas2" || true
+  local developer_cas2_redirect
+  developer_cas2_redirect="$(extract_header_value "$(cat "${developer_cas2_headers}")" "Location")"
+  if [[ -z "${developer_cas2_redirect}" ]]; then
+    err "missing redirect location from developer cas2 authorize"
+    cat "${developer_cas2_headers}" >&2
+    exit 1
+  fi
+  local developer_cas2_service_encoded
+  developer_cas2_service_encoded="$(parse_query_param "${developer_cas2_redirect}" "service")"
+  local developer_cas2_service_url
+  developer_cas2_service_url="$(url_decode "${developer_cas2_service_encoded}")"
+
+  log "cas login form (developer cas2)"
+  local developer_cas2_login_html
+  developer_cas2_login_html="$(curl -fsS -b "${developer_cas2_cookie}" -c "${developer_cas2_cookie}" "${developer_cas2_redirect}")"
+  local developer_cas2_execution
+  developer_cas2_execution="$(extract_html_input_value "${developer_cas2_login_html}" "execution")"
+  if [[ -z "${developer_cas2_execution}" ]]; then
+    err "missing execution token from developer cas2 login page"
+    exit 1
+  fi
+  local developer_cas2_login_headers
+  developer_cas2_login_headers="$(mktemp)"
+  curl -sS -D "${developer_cas2_login_headers}" -o /dev/null -b "${developer_cas2_cookie}" -c "${developer_cas2_cookie}" \
+    -X POST "${developer_cas2_redirect}" \
+    --data-urlencode "username=alice" \
+    --data-urlencode "password=alice" \
+    --data-urlencode "execution=${developer_cas2_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local developer_cas2_service_redirect
+  developer_cas2_service_redirect="$(extract_header_value "$(cat "${developer_cas2_login_headers}")" "Location")"
+  if [[ -z "${developer_cas2_service_redirect}" ]]; then
+    err "missing callback redirect from developer cas2 login submit"
+    cat "${developer_cas2_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket cas2 callback via public service url"
+  local developer_cas2_callback_headers
+  developer_cas2_callback_headers="$(mktemp)"
+  curl -sS -D "${developer_cas2_callback_headers}" -o /dev/null -b "${developer_cas2_cookie}" "${developer_cas2_service_redirect}" || true
+  local developer_cas2_frontend_redirect
+  developer_cas2_frontend_redirect="$(extract_header_value "$(cat "${developer_cas2_callback_headers}")" "Location")"
+  if [[ -z "${developer_cas2_frontend_redirect}" ]]; then
+    err "missing frontend redirect from developer cas2 callback"
+    cat "${developer_cas2_callback_headers}" >&2
+    exit 1
+  fi
+  local developer_cas2_code
+  developer_cas2_code="$(parse_query_param "${developer_cas2_frontend_redirect}" "code")"
+  if [[ -z "${developer_cas2_code}" ]]; then
+    err "missing developer cas2 code in redirect"
+    echo "${developer_cas2_frontend_redirect}" >&2
+    exit 1
+  fi
+  local developer_cas2_token
+  developer_cas2_token="$(exchange_code_for_token "developer cas2" "http://localhost:8081/developers/cas/exchange" "${developer_cas2_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_cas2_token}" "http://localhost:8081/developers/profile" >/dev/null
+
+  log "developer cas2 back-channel logout"
+  local developer_cas2_logout_request
+  local developer_cas2_ticket
+  developer_cas2_ticket="$(parse_query_param "${developer_cas2_service_redirect}" "ticket")"
+  developer_cas2_logout_request="$(build_logout_request "${developer_cas2_ticket}")"
+  curl -fsS -X POST "${developer_cas2_service_url}" --data-urlencode "logoutRequest=${developer_cas2_logout_request}" >/dev/null
+  expect_auth_rejected "developer cas2 revoked token" "http://localhost:8081/developers/profile" "${developer_cas2_token}"
+
   log "verify ldap login (developer)"
   curl -fsS "http://localhost:8081/developers/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
   local ldap_login
