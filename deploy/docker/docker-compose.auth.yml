@@ -4,18 +4,35 @@ networks:
 
 services:
   cas:
-    image: ${CAS_IMAGE:-apereo/cas}
+    image: ${CAS_IMAGE:-apereo/cas:7.0.0}
     platform: ${CAS_PLATFORM:-linux/arm64}
     container_name: himarket-cas
     entrypoint:
-      - java
-      - -server
-      - -noverify
-      - -Xms256m
-      - -Xmx1024m
-      - -XX:+UseSerialGC
-      - -jar
-      - cas.war
+      - sh
+      - -lc
+      - |
+        set -eu
+        CAS_EXPLODED_DIR=/tmp/cas-exploded
+        rm -rf "$${CAS_EXPLODED_DIR}"
+        mkdir -p "$${CAS_EXPLODED_DIR}"
+        cd "$${CAS_EXPLODED_DIR}"
+        jar xf /docker/cas/war/cas.war
+        if [ -d /docker/cas/modules ]; then
+          cp -f /docker/cas/modules/*.jar "$${CAS_EXPLODED_DIR}/WEB-INF/lib/" 2>/dev/null || true
+        fi
+        exec java \
+          -server \
+          -noverify \
+          -Xms512m \
+          -Xmx1536m \
+          -XX:+UseSerialGC \
+          -XX:TieredStopAtLevel=1 \
+          -Dspring.devtools.restart.enabled=false \
+          -Dlog4j2.is.webapp=false \
+          -Dspring.main.lazy-initialization=true \
+          -Dserver.servlet.context-parameters.isLog4jAutoInitializationDisabled=true \
+          -cp "$${CAS_EXPLODED_DIR}/WEB-INF/classes:$${CAS_EXPLODED_DIR}/WEB-INF/lib/*" \
+          org.apereo.cas.web.CasWebApplication
     environment:
       - SERVER_SSL_ENABLED=false
       - SERVER_PORT=8080
@@ -24,6 +41,7 @@ services:
       - CAS_SERVICE_REGISTRY_JSON_LOCATION=file:/etc/cas/services
     volumes:
       - ./auth/cas/services/himarket-local.json:/etc/cas/services/himarket-local-1000.json:ro
+      - ./auth/cas/modules/lib:/docker/cas/modules:ro
     ports:
       - "${CAS_HTTP_PORT:-8083}:8080"
     networks:

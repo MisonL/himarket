@@ -7,12 +7,34 @@ DOCKER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_DIR="$(cd "${DOCKER_DIR}/../.." && pwd)"
 DATA_DIR="${DOCKER_DIR}/data"
 ENV_FILE="${DATA_DIR}/.env"
+CAS_MODULES_DIR="${DOCKER_DIR}/auth/cas/modules"
+CAS_MODULES_LIB_DIR="${CAS_MODULES_DIR}/lib"
 
 log() { echo "[auth-harness $(date +'%H:%M:%S')] $*"; }
 err() { echo "[auth-harness][ERROR] $*" >&2; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { err "missing command: $1"; exit 1; }
+}
+
+prepare_cas_modules() {
+  local sentinel="${CAS_MODULES_LIB_DIR}/cas-server-support-saml-7.0.0.jar"
+  if [[ -f "${sentinel}" ]]; then
+    log "cas modules ready"
+    return 0
+  fi
+
+  require_cmd mvn
+  mkdir -p "${CAS_MODULES_LIB_DIR}"
+  log "prepare cas modules"
+  mvn -q -f "${CAS_MODULES_DIR}/pom.xml" dependency:copy-dependencies \
+    -DincludeScope=runtime \
+    -DoutputDirectory="${CAS_MODULES_LIB_DIR}"
+  if [[ ! -f "${sentinel}" ]]; then
+    err "cas saml module not prepared"
+    exit 1
+  fi
+  log "cas modules prepared"
 }
 
 curl_json() {
@@ -95,17 +117,19 @@ wait_openldap_ready() {
 wait_cas_ready() {
   local max_wait="${1:-900}"
   local interval=5
+  local cas_http_port="${CAS_HTTP_PORT:-8083}"
+  local cas_login_url="http://localhost:${cas_http_port}/cas/login"
   local start_ts
   start_ts="$(date +%s)"
 
-  log "wait service: cas"
+  log "wait service: cas url=${cas_login_url}"
   while true; do
     local elapsed
     elapsed=$(( $(date +%s) - start_ts ))
     if (( elapsed >= max_wait )); then
       break
     fi
-    if grep -q "Ready to process requests @" < <(docker logs himarket-cas 2>&1); then
+    if curl --max-time 5 -fsS "${cas_login_url}" >/dev/null 2>&1; then
       log "service ready: cas"
       return 0
     fi
@@ -297,6 +321,7 @@ main() {
   require_cmd curl
   require_cmd jq
   require_cmd node
+  prepare_cas_modules
 
   if ! docker compose version >/dev/null 2>&1; then
     err "docker compose is not available"
@@ -513,6 +538,54 @@ main() {
             }
           },
           "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
+        },
+        {
+          "provider": "cas-saml1",
+          "name": "CAS SAML1",
+          "enabled": true,
+          "sloEnabled": true,
+          "serverUrl": $casServerUrl,
+          "validateEndpoint": "http://cas:8080/cas/samlValidate",
+          "validation": {
+            "protocolVersion": "SAML1",
+            "responseFormat": "XML"
+          },
+          "serviceDefinition": {
+            "evaluationOrder": 11,
+            "responseType": "POST",
+            "logoutType": "FRONT_CHANNEL",
+            "logoutUrl": "http://localhost:5173/login"
+          },
+          "attributeRelease": {
+            "allowedAttributes": ["user", "mail"]
+          },
+          "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
+        },
+        {
+          "provider": "cas1",
+          "name": "CAS1",
+          "enabled": true,
+          "sloEnabled": true,
+          "serverUrl": $casServerUrl,
+          "validateEndpoint": "http://cas:8080/cas/validate",
+          "validation": {
+            "protocolVersion": "CAS1",
+            "responseFormat": "XML"
+          },
+          "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
+        },
+        {
+          "provider": "cas2",
+          "name": "CAS2",
+          "enabled": true,
+          "sloEnabled": true,
+          "serverUrl": $casServerUrl,
+          "validateEndpoint": "http://cas:8080/cas/serviceValidate",
+          "validation": {
+            "protocolVersion": "CAS2",
+            "responseFormat": "XML"
+          },
+          "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
         }
       ]
     | .ldapConfigs = [
@@ -557,6 +630,9 @@ main() {
 
   log "verify developer cas providers"
   curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
+  curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas-saml1")' >/dev/null
+  curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas1")' >/dev/null
+  curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas2")' >/dev/null
 
   log "preview portal cas service definition"
   local portal_cas_service_definition
@@ -602,6 +678,39 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).exclusive == true
+  ' >/dev/null
+
+  log "preview portal cas saml1 service definition"
+  local portal_cas_saml1_service_definition
+  portal_cas_saml1_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas-saml1/service-definition")"
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    (.data.evaluationOrder // .evaluationOrder) == 11
+  ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    (.data.responseType // .responseType) == "POST"
+  ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    (.data.logoutType // .logoutType) == "FRONT_CHANNEL"
+  ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    (.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"
+  ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="SAML1")
+  ' >/dev/null
+
+  log "preview portal cas1 service definition"
+  local portal_cas1_service_definition
+  portal_cas1_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas1/service-definition")"
+  echo "${portal_cas1_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS10")
+  ' >/dev/null
+
+  log "preview portal cas2 service definition"
+  local portal_cas2_service_definition
+  portal_cas2_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas2/service-definition")"
+  echo "${portal_cas2_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS20")
   ' >/dev/null
 
   log "developer cas authorize flag passthrough"
@@ -752,6 +861,80 @@ main() {
   developer_logout_request="$(build_logout_request "${developer_ticket}")"
   curl -fsS -X POST "${service_url}" --data-urlencode "logoutRequest=${developer_logout_request}" >/dev/null
   expect_auth_rejected "developer cas revoked token" "http://localhost:8081/developers/profile" "${developer_cas_token}"
+
+  log "developer cas saml1 authorize"
+  local developer_saml_cookie
+  local developer_saml_headers
+  developer_saml_cookie="$(mktemp)"
+  developer_saml_headers="$(mktemp)"
+  curl -sS -D "${developer_saml_headers}" -o /dev/null -c "${developer_saml_cookie}" "http://localhost:8081/developers/cas/authorize?provider=cas-saml1" || true
+  local developer_saml_redirect
+  developer_saml_redirect="$(extract_header_value "$(cat "${developer_saml_headers}")" "Location")"
+  if [[ -z "${developer_saml_redirect}" ]]; then
+    err "missing redirect location from developer cas saml1 authorize"
+    cat "${developer_saml_headers}" >&2
+    exit 1
+  fi
+  local developer_saml_service_encoded
+  developer_saml_service_encoded="$(parse_query_param "${developer_saml_redirect}" "service")"
+  local developer_saml_service_url
+  developer_saml_service_url="$(url_decode "${developer_saml_service_encoded}")"
+
+  log "cas login form (developer saml1)"
+  local developer_saml_login_html
+  developer_saml_login_html="$(curl -fsS -b "${developer_saml_cookie}" -c "${developer_saml_cookie}" "${developer_saml_redirect}")"
+  local developer_saml_execution
+  developer_saml_execution="$(extract_html_input_value "${developer_saml_login_html}" "execution")"
+  if [[ -z "${developer_saml_execution}" ]]; then
+    err "missing execution token from developer cas saml1 login page"
+    exit 1
+  fi
+  local developer_saml_login_headers
+  developer_saml_login_headers="$(mktemp)"
+  curl -sS -D "${developer_saml_login_headers}" -o /dev/null -b "${developer_saml_cookie}" -c "${developer_saml_cookie}" \
+    -X POST "${developer_saml_redirect}" \
+    --data-urlencode "username=alice" \
+    --data-urlencode "password=alice" \
+    --data-urlencode "execution=${developer_saml_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local developer_saml_service_redirect
+  developer_saml_service_redirect="$(extract_header_value "$(cat "${developer_saml_login_headers}")" "Location")"
+  if [[ -z "${developer_saml_service_redirect}" ]]; then
+    err "missing callback redirect from developer cas saml1 login submit"
+    cat "${developer_saml_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket cas saml1 callback via public service url"
+  local developer_saml_callback_headers
+  developer_saml_callback_headers="$(mktemp)"
+  curl -sS -D "${developer_saml_callback_headers}" -o /dev/null -b "${developer_saml_cookie}" "${developer_saml_service_redirect}" || true
+  local developer_saml_frontend_redirect
+  developer_saml_frontend_redirect="$(extract_header_value "$(cat "${developer_saml_callback_headers}")" "Location")"
+  if [[ -z "${developer_saml_frontend_redirect}" ]]; then
+    err "missing frontend redirect from developer cas saml1 callback"
+    cat "${developer_saml_callback_headers}" >&2
+    exit 1
+  fi
+  local developer_saml_code
+  developer_saml_code="$(parse_query_param "${developer_saml_frontend_redirect}" "code")"
+  if [[ -z "${developer_saml_code}" ]]; then
+    err "missing developer cas saml1 code in redirect"
+    echo "${developer_saml_frontend_redirect}" >&2
+    exit 1
+  fi
+  local developer_saml_token
+  developer_saml_token="$(exchange_code_for_token "developer cas saml1" "http://localhost:8081/developers/cas/exchange" "${developer_saml_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_saml_token}" "http://localhost:8081/developers/profile" >/dev/null
+
+  log "developer cas saml1 back-channel logout"
+  local developer_saml_logout_request
+  local developer_saml_ticket
+  developer_saml_ticket="$(parse_query_param "${developer_saml_service_redirect}" "ticket")"
+  developer_saml_logout_request="$(build_logout_request "${developer_saml_ticket}")"
+  curl -fsS -X POST "${developer_saml_service_url}" --data-urlencode "logoutRequest=${developer_saml_logout_request}" >/dev/null
+  expect_auth_rejected "developer cas saml1 revoked token" "http://localhost:8081/developers/profile" "${developer_saml_token}"
 
   log "verify ldap login (developer)"
   curl -fsS "http://localhost:8081/developers/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
