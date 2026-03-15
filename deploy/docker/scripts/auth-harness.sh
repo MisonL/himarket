@@ -790,6 +790,39 @@ main() {
   echo "${admin_cas_service_definition}" | jq -e '
     ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/admins/cas/proxy-callback")
   ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.evaluationOrder // .evaluationOrder) == 9
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.responseType // .responseType) == "POST"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.logoutType // .logoutType) == "FRONT_CHANNEL"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.logoutUrl // .logoutUrl) == "http://localhost:5174/login"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.attributeReleasePolicy // .attributeReleasePolicy).allowedAttributes // [])[1][]? | select(.=="displayName")
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-duo")
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).bypassEnabled == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="GithubClient")
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).permitUndefined == false
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).exclusive == true
+  ' >/dev/null
 
   log "admin cas authorize"
   local admin_cookie
