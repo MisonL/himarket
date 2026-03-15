@@ -512,6 +512,7 @@ main() {
           "proxy": {
             "enabled": true,
             "callbackPath": "http://himarket-server:8080/developers/cas/proxy-callback",
+            "targetServicePattern": "^http://localhost:5173/.*$",
             "proxyEndpoint": "http://cas:8080/cas/proxy"
           },
           "serviceDefinition": {
@@ -853,6 +854,13 @@ main() {
     -H 'Content-Type: application/json' \
     -d '{"provider":"cas","targetService":"http://localhost:5173/proxy-target"}' \
     | jq -e '.data.proxyTicket | startswith("PT-")' >/dev/null
+  local developer_proxy_reject
+  developer_proxy_reject="$(curl_json POST "http://localhost:8081/developers/cas/proxy-ticket" '{"provider":"cas","targetService":"http://localhost:5174/forbidden"}' "Authorization: Bearer ${developer_cas_token}")"
+  [[ "$(echo "${developer_proxy_reject}" | head -n 1)" == "400" ]] || {
+    err "developer cas proxy target policy should reject forbidden target service"
+    echo "${developer_proxy_reject}" | tail -n +2 >&2
+    exit 1
+  }
 
   log "developer cas back-channel logout"
   local developer_logout_request
@@ -1265,6 +1273,13 @@ main() {
     -H 'Content-Type: application/json' \
     -d '{"provider":"cas","targetService":"http://localhost:5174/admin-proxy-target"}' \
     | jq -e '.data.proxyTicket | startswith("PT-")' >/dev/null
+  local admin_proxy_reject
+  admin_proxy_reject="$(curl_json POST "http://localhost:8081/admins/cas/proxy-ticket" '{"provider":"cas","targetService":"http://localhost:5173/forbidden"}' "Authorization: Bearer ${admin_cas_token}")"
+  [[ "$(echo "${admin_proxy_reject}" | head -n 1)" == "400" ]] || {
+    err "admin cas proxy target policy should reject forbidden target service"
+    echo "${admin_proxy_reject}" | tail -n +2 >&2
+    exit 1
+  }
 
   log "admin cas back-channel logout"
   local admin_logout_request

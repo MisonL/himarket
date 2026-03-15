@@ -170,6 +170,7 @@ export function ThirdPartyAuthManager({
         proxyCallbackPath: casConfig.proxy?.callbackPath,
         proxyCallbackUrlPattern: casConfig.proxy?.callbackUrlPattern,
         proxyEndpoint: casConfig.proxy?.proxyEndpoint,
+        proxyTargetServicePattern: casConfig.proxy?.targetServicePattern,
         serviceDefinitionServiceIdPattern:
           casConfig.serviceDefinition?.serviceIdPattern,
         serviceDefinitionServiceId: casConfig.serviceDefinition?.serviceId,
@@ -426,6 +427,8 @@ export function ThirdPartyAuthManager({
             callbackPath: values.proxyCallbackPath || undefined,
             callbackUrlPattern: values.proxyCallbackUrlPattern || undefined,
             proxyEndpoint: values.proxyEndpoint || undefined,
+            targetServicePattern:
+              values.proxyTargetServicePattern || undefined,
           },
           serviceDefinition: {
             serviceIdPattern:
@@ -1057,6 +1060,13 @@ export function ThirdPartyAuthManager({
                       extra="可选，用于导出 CAS proxyPolicy 正则。"
                     >
                       <Input placeholder="如: ^https://portal.example.com/.*/proxy-callback$" />
+                    </Form.Item>
+                    <Form.Item
+                      name="proxyTargetServicePattern"
+                      label="Target Service Pattern"
+                      extra="可选，用于限制可申请 PT 的目标服务正则。"
+                    >
+                      <Input placeholder="如: ^https://api.example.com/.*$" />
                     </Form.Item>
                   </div>
 

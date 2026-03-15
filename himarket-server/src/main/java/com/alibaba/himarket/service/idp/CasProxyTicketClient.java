@@ -25,6 +25,8 @@ import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.support.portal.CasConfig;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpMethod;
@@ -43,6 +45,7 @@ public class CasProxyTicketClient {
 
     public String requestProxyTicket(
             CasConfig config, String proxyGrantingTicket, String targetService) {
+        validateTargetService(config, targetService);
         String proxyUrl =
                 UriComponentsBuilder.fromUriString(buildProxyUrl(config))
                         .queryParam(IdpConstants.PGT, proxyGrantingTicket)
@@ -60,6 +63,23 @@ public class CasProxyTicketClient {
                     "Failed to request CAS proxy ticket for provider {}", config.getProvider(), e);
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST, "CAS proxy ticket request failed");
+        }
+    }
+
+    private void validateTargetService(CasConfig config, String targetService) {
+        String pattern = config.resolveProxyConfig().getTargetServicePattern();
+        if (StrUtil.isBlank(pattern)) {
+            return;
+        }
+        try {
+            if (!Pattern.matches(pattern, targetService)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PARAMETER,
+                        "CAS proxy target service is not allowed by current provider policy");
+            }
+        } catch (PatternSyntaxException e) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER, "CAS proxy target service pattern is invalid");
         }
     }
 

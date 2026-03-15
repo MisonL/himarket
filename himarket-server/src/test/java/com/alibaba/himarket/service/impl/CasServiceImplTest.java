@@ -428,6 +428,56 @@ class CasServiceImplTest {
                         .getProxyTicket());
     }
 
+    @Test
+    void issueProxyTicketShouldRejectDisallowedDeveloperTargetService() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        proxyConfig.setTargetServicePattern("^https://allowed\\.example\\.com/.*$");
+        casConfig.setProxy(proxyConfig);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(contextHolder.getUser()).thenReturn("dev-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        authSessionStore.bindCasProxyGrantingTicket(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                "cas",
+                "dev-1",
+                "ST-1",
+                "PGT-DEV-1");
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        assertThrows(
+                com.alibaba.himarket.core.exception.BusinessException.class,
+                () -> casService.issueProxyTicket("cas", "https://forbidden.example.com/service"));
+    }
+
     private MockHttpServletRequest buildRequest(int port) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setScheme("http");

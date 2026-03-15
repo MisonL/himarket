@@ -47,6 +47,7 @@ export interface CasProxyConfig {
   callbackPath?: string;
   callbackUrlPattern?: string;
   proxyEndpoint?: string;
+  targetServicePattern?: string;
 }
 
 export interface CasServiceDefinitionConfig {

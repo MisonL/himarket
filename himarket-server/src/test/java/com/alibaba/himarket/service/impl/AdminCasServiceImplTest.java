@@ -21,6 +21,7 @@ package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
 import com.alibaba.himarket.config.AdminAuthConfig;
@@ -294,6 +295,53 @@ class AdminCasServiceImplTest {
                 "PT-ADMIN-1",
                 service.issueProxyTicket("cas", "https://target.example.com/service")
                         .getProxyTicket());
+    }
+
+    @Test
+    void issueProxyTicketShouldRejectDisallowedAdminTargetService() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        proxyConfig.setTargetServicePattern("^https://allowed\\.example\\.com/.*$");
+        casConfig.setProxy(proxyConfig);
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com/");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        when(contextHolder.getUser()).thenReturn("admin-1");
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        authSessionStore.bindCasProxyGrantingTicket(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                "cas",
+                "admin-1",
+                "ST-ADMIN-1",
+                "PGT-ADMIN-1");
+        AdminCasServiceImpl service =
+                new AdminCasServiceImpl(
+                        adminAuthConfig,
+                        new AuthSessionConfig(),
+                        administratorRepository,
+                        contextHolder,
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
+                                adminAuthConfig),
+                        new IdpStateCodec());
+
+        assertThrows(
+                com.alibaba.himarket.core.exception.BusinessException.class,
+                () -> service.issueProxyTicket("cas", "https://forbidden.example.com/service"));
     }
 
     private IdentityMapping identityMapping() {
