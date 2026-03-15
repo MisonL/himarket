@@ -10,6 +10,8 @@
   "supportedProtocols": [
     "java.util.HashSet",
     [
+      "CAS10",
+      "CAS20",
       "CAS30",
       "SAML1"
     ]
