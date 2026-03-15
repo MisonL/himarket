@@ -1111,6 +1111,9 @@ main() {
 
   log "verify admin cas providers"
   curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
+  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-saml1")' >/dev/null
+  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas1")' >/dev/null
+  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas2")' >/dev/null
 
   log "preview admin cas service definition"
   local admin_cas_service_definition
@@ -1153,6 +1156,39 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     ((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).exclusive == true
+  ' >/dev/null
+
+  log "preview admin cas saml1 service definition"
+  local admin_cas_saml1_service_definition
+  admin_cas_saml1_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas-saml1/service-definition")"
+  echo "${admin_cas_saml1_service_definition}" | jq -e '
+    (.data.evaluationOrder // .evaluationOrder) == 13
+  ' >/dev/null
+  echo "${admin_cas_saml1_service_definition}" | jq -e '
+    (.data.responseType // .responseType) == "POST"
+  ' >/dev/null
+  echo "${admin_cas_saml1_service_definition}" | jq -e '
+    (.data.logoutType // .logoutType) == "FRONT_CHANNEL"
+  ' >/dev/null
+  echo "${admin_cas_saml1_service_definition}" | jq -e '
+    (.data.logoutUrl // .logoutUrl) == "http://localhost:5174/login"
+  ' >/dev/null
+  echo "${admin_cas_saml1_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="SAML1")
+  ' >/dev/null
+
+  log "preview admin cas1 service definition"
+  local admin_cas1_service_definition
+  admin_cas1_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas1/service-definition")"
+  echo "${admin_cas1_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS10")
+  ' >/dev/null
+
+  log "preview admin cas2 service definition"
+  local admin_cas2_service_definition
+  admin_cas2_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas2/service-definition")"
+  echo "${admin_cas2_service_definition}" | jq -e '
+    (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS20")
   ' >/dev/null
 
   log "admin cas authorize"
@@ -1237,6 +1273,228 @@ main() {
   admin_logout_request="$(build_logout_request "${admin_ticket}")"
   curl -fsS -X POST "${admin_service_url}" --data-urlencode "logoutRequest=${admin_logout_request}" >/dev/null
   expect_auth_rejected "admin cas revoked token" "http://localhost:8081/admins" "${admin_cas_token}"
+
+  log "admin cas saml1 authorize"
+  local admin_saml_cookie
+  local admin_saml_headers
+  admin_saml_cookie="$(mktemp)"
+  admin_saml_headers="$(mktemp)"
+  curl -sS -D "${admin_saml_headers}" -o /dev/null -c "${admin_saml_cookie}" "http://localhost:8081/admins/cas/authorize?provider=cas-saml1" || true
+  local admin_saml_redirect
+  admin_saml_redirect="$(extract_header_value "$(cat "${admin_saml_headers}")" "Location")"
+  if [[ -z "${admin_saml_redirect}" ]]; then
+    err "missing redirect location from admin cas saml1 authorize"
+    cat "${admin_saml_headers}" >&2
+    exit 1
+  fi
+  local admin_saml_service_encoded
+  admin_saml_service_encoded="$(parse_query_param "${admin_saml_redirect}" "service")"
+  local admin_saml_service_url
+  admin_saml_service_url="$(url_decode "${admin_saml_service_encoded}")"
+
+  log "cas login form (admin saml1)"
+  local admin_saml_login_html
+  admin_saml_login_html="$(curl -fsS -b "${admin_saml_cookie}" -c "${admin_saml_cookie}" "${admin_saml_redirect}")"
+  local admin_saml_execution
+  admin_saml_execution="$(extract_html_input_value "${admin_saml_login_html}" "execution")"
+  if [[ -z "${admin_saml_execution}" ]]; then
+    err "missing execution token from admin cas saml1 login page"
+    exit 1
+  fi
+  local admin_saml_login_headers
+  admin_saml_login_headers="$(mktemp)"
+  curl -sS -D "${admin_saml_login_headers}" -o /dev/null -b "${admin_saml_cookie}" -c "${admin_saml_cookie}" \
+    -X POST "${admin_saml_redirect}" \
+    --data-urlencode "username=admin" \
+    --data-urlencode "password=admin" \
+    --data-urlencode "execution=${admin_saml_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local admin_saml_service_redirect
+  admin_saml_service_redirect="$(extract_header_value "$(cat "${admin_saml_login_headers}")" "Location")"
+  if [[ -z "${admin_saml_service_redirect}" ]]; then
+    err "missing callback redirect from admin cas saml1 login submit"
+    cat "${admin_saml_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket admin cas saml1 callback via public service url"
+  local admin_saml_callback_headers
+  admin_saml_callback_headers="$(mktemp)"
+  curl -sS -D "${admin_saml_callback_headers}" -o /dev/null -b "${admin_saml_cookie}" "${admin_saml_service_redirect}" || true
+  local admin_saml_frontend_redirect
+  admin_saml_frontend_redirect="$(extract_header_value "$(cat "${admin_saml_callback_headers}")" "Location")"
+  if [[ -z "${admin_saml_frontend_redirect}" ]]; then
+    err "missing frontend redirect from admin cas saml1 callback"
+    cat "${admin_saml_callback_headers}" >&2
+    exit 1
+  fi
+  local admin_saml_code
+  admin_saml_code="$(parse_query_param "${admin_saml_frontend_redirect}" "code")"
+  if [[ -z "${admin_saml_code}" ]]; then
+    err "missing admin cas saml1 code in redirect"
+    echo "${admin_saml_frontend_redirect}" >&2
+    exit 1
+  fi
+  local admin_saml_token
+  admin_saml_token="$(exchange_code_for_token "admin cas saml1" "http://localhost:8081/admins/cas/exchange" "${admin_saml_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_saml_token}" "http://localhost:8081/admins" >/dev/null
+
+  log "admin cas saml1 back-channel logout"
+  local admin_saml_logout_request
+  local admin_saml_ticket
+  admin_saml_ticket="$(parse_query_param "${admin_saml_service_redirect}" "ticket")"
+  admin_saml_logout_request="$(build_logout_request "${admin_saml_ticket}")"
+  curl -fsS -X POST "${admin_saml_service_url}" --data-urlencode "logoutRequest=${admin_saml_logout_request}" >/dev/null
+  expect_auth_rejected "admin cas saml1 revoked token" "http://localhost:8081/admins" "${admin_saml_token}"
+
+  log "admin cas1 authorize"
+  local admin_cas1_cookie
+  local admin_cas1_headers
+  admin_cas1_cookie="$(mktemp)"
+  admin_cas1_headers="$(mktemp)"
+  curl -sS -D "${admin_cas1_headers}" -o /dev/null -c "${admin_cas1_cookie}" "http://localhost:8081/admins/cas/authorize?provider=cas1" || true
+  local admin_cas1_redirect
+  admin_cas1_redirect="$(extract_header_value "$(cat "${admin_cas1_headers}")" "Location")"
+  if [[ -z "${admin_cas1_redirect}" ]]; then
+    err "missing redirect location from admin cas1 authorize"
+    cat "${admin_cas1_headers}" >&2
+    exit 1
+  fi
+  local admin_cas1_service_encoded
+  admin_cas1_service_encoded="$(parse_query_param "${admin_cas1_redirect}" "service")"
+  local admin_cas1_service_url
+  admin_cas1_service_url="$(url_decode "${admin_cas1_service_encoded}")"
+
+  log "cas login form (admin cas1)"
+  local admin_cas1_login_html
+  admin_cas1_login_html="$(curl -fsS -b "${admin_cas1_cookie}" -c "${admin_cas1_cookie}" "${admin_cas1_redirect}")"
+  local admin_cas1_execution
+  admin_cas1_execution="$(extract_html_input_value "${admin_cas1_login_html}" "execution")"
+  if [[ -z "${admin_cas1_execution}" ]]; then
+    err "missing execution token from admin cas1 login page"
+    exit 1
+  fi
+  local admin_cas1_login_headers
+  admin_cas1_login_headers="$(mktemp)"
+  curl -sS -D "${admin_cas1_login_headers}" -o /dev/null -b "${admin_cas1_cookie}" -c "${admin_cas1_cookie}" \
+    -X POST "${admin_cas1_redirect}" \
+    --data-urlencode "username=admin" \
+    --data-urlencode "password=admin" \
+    --data-urlencode "execution=${admin_cas1_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local admin_cas1_service_redirect
+  admin_cas1_service_redirect="$(extract_header_value "$(cat "${admin_cas1_login_headers}")" "Location")"
+  if [[ -z "${admin_cas1_service_redirect}" ]]; then
+    err "missing callback redirect from admin cas1 login submit"
+    cat "${admin_cas1_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket admin cas1 callback via public service url"
+  local admin_cas1_callback_headers
+  admin_cas1_callback_headers="$(mktemp)"
+  curl -sS -D "${admin_cas1_callback_headers}" -o /dev/null -b "${admin_cas1_cookie}" "${admin_cas1_service_redirect}" || true
+  local admin_cas1_frontend_redirect
+  admin_cas1_frontend_redirect="$(extract_header_value "$(cat "${admin_cas1_callback_headers}")" "Location")"
+  if [[ -z "${admin_cas1_frontend_redirect}" ]]; then
+    err "missing frontend redirect from admin cas1 callback"
+    cat "${admin_cas1_callback_headers}" >&2
+    exit 1
+  fi
+  local admin_cas1_code
+  admin_cas1_code="$(parse_query_param "${admin_cas1_frontend_redirect}" "code")"
+  if [[ -z "${admin_cas1_code}" ]]; then
+    err "missing admin cas1 code in redirect"
+    echo "${admin_cas1_frontend_redirect}" >&2
+    exit 1
+  fi
+  local admin_cas1_token
+  admin_cas1_token="$(exchange_code_for_token "admin cas1" "http://localhost:8081/admins/cas/exchange" "${admin_cas1_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_cas1_token}" "http://localhost:8081/admins" >/dev/null
+
+  log "admin cas1 back-channel logout"
+  local admin_cas1_logout_request
+  local admin_cas1_ticket
+  admin_cas1_ticket="$(parse_query_param "${admin_cas1_service_redirect}" "ticket")"
+  admin_cas1_logout_request="$(build_logout_request "${admin_cas1_ticket}")"
+  curl -fsS -X POST "${admin_cas1_service_url}" --data-urlencode "logoutRequest=${admin_cas1_logout_request}" >/dev/null
+  expect_auth_rejected "admin cas1 revoked token" "http://localhost:8081/admins" "${admin_cas1_token}"
+
+  log "admin cas2 authorize"
+  local admin_cas2_cookie
+  local admin_cas2_headers
+  admin_cas2_cookie="$(mktemp)"
+  admin_cas2_headers="$(mktemp)"
+  curl -sS -D "${admin_cas2_headers}" -o /dev/null -c "${admin_cas2_cookie}" "http://localhost:8081/admins/cas/authorize?provider=cas2" || true
+  local admin_cas2_redirect
+  admin_cas2_redirect="$(extract_header_value "$(cat "${admin_cas2_headers}")" "Location")"
+  if [[ -z "${admin_cas2_redirect}" ]]; then
+    err "missing redirect location from admin cas2 authorize"
+    cat "${admin_cas2_headers}" >&2
+    exit 1
+  fi
+  local admin_cas2_service_encoded
+  admin_cas2_service_encoded="$(parse_query_param "${admin_cas2_redirect}" "service")"
+  local admin_cas2_service_url
+  admin_cas2_service_url="$(url_decode "${admin_cas2_service_encoded}")"
+
+  log "cas login form (admin cas2)"
+  local admin_cas2_login_html
+  admin_cas2_login_html="$(curl -fsS -b "${admin_cas2_cookie}" -c "${admin_cas2_cookie}" "${admin_cas2_redirect}")"
+  local admin_cas2_execution
+  admin_cas2_execution="$(extract_html_input_value "${admin_cas2_login_html}" "execution")"
+  if [[ -z "${admin_cas2_execution}" ]]; then
+    err "missing execution token from admin cas2 login page"
+    exit 1
+  fi
+  local admin_cas2_login_headers
+  admin_cas2_login_headers="$(mktemp)"
+  curl -sS -D "${admin_cas2_login_headers}" -o /dev/null -b "${admin_cas2_cookie}" -c "${admin_cas2_cookie}" \
+    -X POST "${admin_cas2_redirect}" \
+    --data-urlencode "username=admin" \
+    --data-urlencode "password=admin" \
+    --data-urlencode "execution=${admin_cas2_execution}" \
+    --data-urlencode "_eventId=submit" \
+    --data-urlencode "geolocation=" || true
+  local admin_cas2_service_redirect
+  admin_cas2_service_redirect="$(extract_header_value "$(cat "${admin_cas2_login_headers}")" "Location")"
+  if [[ -z "${admin_cas2_service_redirect}" ]]; then
+    err "missing callback redirect from admin cas2 login submit"
+    cat "${admin_cas2_login_headers}" >&2
+    exit 1
+  fi
+
+  log "himarket admin cas2 callback via public service url"
+  local admin_cas2_callback_headers
+  admin_cas2_callback_headers="$(mktemp)"
+  curl -sS -D "${admin_cas2_callback_headers}" -o /dev/null -b "${admin_cas2_cookie}" "${admin_cas2_service_redirect}" || true
+  local admin_cas2_frontend_redirect
+  admin_cas2_frontend_redirect="$(extract_header_value "$(cat "${admin_cas2_callback_headers}")" "Location")"
+  if [[ -z "${admin_cas2_frontend_redirect}" ]]; then
+    err "missing frontend redirect from admin cas2 callback"
+    cat "${admin_cas2_callback_headers}" >&2
+    exit 1
+  fi
+  local admin_cas2_code
+  admin_cas2_code="$(parse_query_param "${admin_cas2_frontend_redirect}" "code")"
+  if [[ -z "${admin_cas2_code}" ]]; then
+    err "missing admin cas2 code in redirect"
+    echo "${admin_cas2_frontend_redirect}" >&2
+    exit 1
+  fi
+  local admin_cas2_token
+  admin_cas2_token="$(exchange_code_for_token "admin cas2" "http://localhost:8081/admins/cas/exchange" "${admin_cas2_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_cas2_token}" "http://localhost:8081/admins" >/dev/null
+
+  log "admin cas2 back-channel logout"
+  local admin_cas2_logout_request
+  local admin_cas2_ticket
+  admin_cas2_ticket="$(parse_query_param "${admin_cas2_service_redirect}" "ticket")"
+  admin_cas2_logout_request="$(build_logout_request "${admin_cas2_ticket}")"
+  curl -fsS -X POST "${admin_cas2_service_url}" --data-urlencode "logoutRequest=${admin_cas2_logout_request}" >/dev/null
+  expect_auth_rejected "admin cas2 revoked token" "http://localhost:8081/admins" "${admin_cas2_token}"
 
   log "verify admin ldap login"
   curl -fsS "http://localhost:8081/admins/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
