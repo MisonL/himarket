@@ -562,7 +562,7 @@ main() {
   local developer_flag_headers
   developer_flag_headers="$(mktemp)"
   curl -sS -D "${developer_flag_headers}" -o /dev/null \
-    "http://localhost:8081/developers/cas/authorize?provider=cas&gateway=true&warn=true" || true
+    "http://localhost:8081/developers/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true" || true
   local developer_flag_redirect
   developer_flag_redirect="$(extract_header_value "$(cat "${developer_flag_headers}")" "Location")"
   if [[ -z "${developer_flag_redirect}" ]]; then
@@ -578,6 +578,39 @@ main() {
   [[ "$(parse_query_param "${developer_flag_redirect}" "warn")" == "true" ]] || {
     err "developer cas warn flag missing from redirect"
     echo "${developer_flag_redirect}" >&2
+    exit 1
+  }
+  [[ "$(parse_query_param "${developer_flag_redirect}" "rememberMe")" == "true" ]] || {
+    err "developer cas rememberMe flag missing from redirect"
+    echo "${developer_flag_redirect}" >&2
+    exit 1
+  }
+
+  log "admin cas authorize flag passthrough"
+  local admin_flag_headers
+  admin_flag_headers="$(mktemp)"
+  curl -sS -D "${admin_flag_headers}" -o /dev/null \
+    "http://localhost:8081/admins/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true" || true
+  local admin_flag_redirect
+  admin_flag_redirect="$(extract_header_value "$(cat "${admin_flag_headers}")" "Location")"
+  if [[ -z "${admin_flag_redirect}" ]]; then
+    err "missing redirect location from admin cas flag authorize"
+    cat "${admin_flag_headers}" >&2
+    exit 1
+  fi
+  [[ "$(parse_query_param "${admin_flag_redirect}" "gateway")" == "true" ]] || {
+    err "admin cas gateway flag missing from redirect"
+    echo "${admin_flag_redirect}" >&2
+    exit 1
+  }
+  [[ "$(parse_query_param "${admin_flag_redirect}" "warn")" == "true" ]] || {
+    err "admin cas warn flag missing from redirect"
+    echo "${admin_flag_redirect}" >&2
+    exit 1
+  }
+  [[ "$(parse_query_param "${admin_flag_redirect}" "rememberMe")" == "true" ]] || {
+    err "admin cas rememberMe flag missing from redirect"
+    echo "${admin_flag_redirect}" >&2
     exit 1
   }
 
