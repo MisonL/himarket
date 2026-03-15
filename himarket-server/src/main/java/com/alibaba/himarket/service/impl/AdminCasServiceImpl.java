@@ -28,8 +28,11 @@ import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.constant.Resources;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
+import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
+import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.CasProxyTicketResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.idp.IdpResult;
 import com.alibaba.himarket.dto.result.idp.IdpState;
@@ -38,6 +41,7 @@ import com.alibaba.himarket.repository.AdministratorRepository;
 import com.alibaba.himarket.service.AdminCasService;
 import com.alibaba.himarket.service.idp.AdminFrontendUrlResolver;
 import com.alibaba.himarket.service.idp.CasLogoutRequestParser;
+import com.alibaba.himarket.service.idp.CasProxyTicketClient;
 import com.alibaba.himarket.service.idp.CasTicketValidator;
 import com.alibaba.himarket.service.idp.FrontendApiUrlBuilder;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
@@ -47,6 +51,8 @@ import com.alibaba.himarket.service.idp.session.CasLoginContext;
 import com.alibaba.himarket.service.idp.session.CasSessionScope;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
+import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
+import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Collections;
@@ -70,9 +76,13 @@ public class AdminCasServiceImpl implements AdminCasService {
 
     private final AdministratorRepository administratorRepository;
 
+    private final ContextHolder contextHolder;
+
     private final AuthSessionStore authSessionStore;
 
     private final CasTicketValidator casTicketValidator;
+
+    private final CasProxyTicketClient casProxyTicketClient;
 
     private final CasLogoutRequestParser casLogoutRequestParser;
 
@@ -82,15 +92,14 @@ public class AdminCasServiceImpl implements AdminCasService {
 
     @Override
     public IdpAuthorizeResult buildAuthorizationResult(
-            String provider, String apiPrefix, HttpServletRequest request) {
+            String provider,
+            String apiPrefix,
+            CasAuthorizeOptions options,
+            HttpServletRequest request) {
         CasConfig config = findCasConfig(provider);
         String state = encodeState(createState(provider, apiPrefix));
         String serviceUrl = buildServiceCallbackUrl(apiPrefix, state);
-        String loginUrl =
-                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                        .queryParam(IdpConstants.SERVICE, serviceUrl)
-                        .build()
-                        .toUriString();
+        String loginUrl = buildLoginUrl(config, serviceUrl, options);
         return IdpAuthorizeResult.builder().redirectUrl(loginUrl).state(state).build();
     }
 
@@ -101,9 +110,19 @@ public class AdminCasServiceImpl implements AdminCasService {
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());
         String serviceUrl = buildServiceCallbackUrl(idpState.getApiPrefix(), state);
-        Map<String, Object> userInfo = casTicketValidator.validate(config, ticket, serviceUrl);
+        Map<String, Object> userInfo =
+                casTicketValidator.validate(
+                        config,
+                        ticket,
+                        serviceUrl,
+                        resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String adminId = getAdminId(userInfo, config);
-        String code = issueLoginCode(config.getProvider(), adminId, ticket);
+        String code =
+                issueLoginCode(
+                        config.getProvider(),
+                        adminId,
+                        ticket,
+                        resolveProxyGrantingTicketIou(config, userInfo));
         IdpStateCookie.clearAdminCasStateCookie(request, response);
         return buildFrontendRedirectUrl(code);
     }
@@ -114,6 +133,7 @@ public class AdminCasServiceImpl implements AdminCasService {
         String accessToken = TokenUtil.generateAdminToken(loginContext.getUserId());
         authSessionStore.bindCasSessionToken(
                 loginContext.getScope(), loginContext.getSessionIndex(), accessToken);
+        bindProxyGrantingTicket(loginContext);
         return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
     }
 
@@ -121,6 +141,31 @@ public class AdminCasServiceImpl implements AdminCasService {
     public int handleLogoutRequest(String logoutRequest) {
         String sessionIndex = casLogoutRequestParser.parseSessionIndex(logoutRequest);
         return authSessionStore.revokeCasSession(CasSessionScope.ADMIN, sessionIndex);
+    }
+
+    @Override
+    public void handleProxyCallback(String pgtIou, String pgtId) {
+        authSessionStore.saveCasProxyGrantingTicket(
+                pgtIou, pgtId, authSessionConfig.getCas().getLoginCodeTtl());
+    }
+
+    @Override
+    public CasProxyTicketResult issueProxyTicket(String provider, String targetService) {
+        CasConfig config = findCasConfig(provider);
+        assertProxyEnabled(config);
+        String proxyGrantingTicket =
+                authSessionStore.getCasProxyGrantingTicket(
+                        CasSessionScope.ADMIN, provider, contextHolder.getUser());
+        if (StrUtil.isBlank(proxyGrantingTicket)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "CAS proxy granting ticket is not available for current admin session");
+        }
+        return CasProxyTicketResult.builder()
+                .proxyTicket(
+                        casProxyTicketClient.requestProxyTicket(
+                                config, proxyGrantingTicket, targetService))
+                .build();
     }
 
     @Override
@@ -179,6 +224,44 @@ public class AdminCasServiceImpl implements AdminCasService {
         return joinUrl(config.getServerUrl(), endpoint);
     }
 
+    private String buildLoginUrl(CasConfig config, String serviceUrl, CasAuthorizeOptions options) {
+        CasLoginConfig loginConfig = config.resolveLoginConfig();
+        boolean gateway =
+                resolveLoginFlag(
+                        options, CasAuthorizeOptions::getGateway, loginConfig.getGateway());
+        boolean renew =
+                resolveLoginFlag(options, CasAuthorizeOptions::getRenew, loginConfig.getRenew());
+        boolean warn =
+                resolveLoginFlag(options, CasAuthorizeOptions::getWarn, loginConfig.getWarn());
+        if (gateway && renew) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    "CAS authorize request cannot enable gateway and renew together");
+        }
+        UriComponentsBuilder builder =
+                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
+                        .queryParam(IdpConstants.SERVICE, serviceUrl);
+        if (gateway) {
+            builder.queryParam(IdpConstants.GATEWAY, true);
+        }
+        if (renew) {
+            builder.queryParam(IdpConstants.RENEW, true);
+        }
+        if (warn) {
+            builder.queryParam(IdpConstants.WARN, true);
+        }
+        return builder.build().toUriString();
+    }
+
+    private boolean resolveLoginFlag(
+            CasAuthorizeOptions options,
+            java.util.function.Function<CasAuthorizeOptions, Boolean> accessor,
+            Boolean fallback) {
+        return options != null && accessor.apply(options) != null
+                ? Boolean.TRUE.equals(accessor.apply(options))
+                : Boolean.TRUE.equals(fallback);
+    }
+
     private String buildServiceCallbackUrl(String apiPrefix, String state) {
         String callbackUrl =
                 FrontendApiUrlBuilder.buildApiUrl(
@@ -197,6 +280,20 @@ public class AdminCasServiceImpl implements AdminCasService {
                 .queryParam(IdpConstants.CODE, code)
                 .build()
                 .toUriString();
+    }
+
+    private String resolveProxyCallbackUrl(CasConfig config, String apiPrefix) {
+        if (!Boolean.TRUE.equals(config.resolveProxyConfig().getEnabled())) {
+            return null;
+        }
+        String callbackPath = config.resolveProxyConfig().getCallbackPath();
+        if (StrUtil.startWithAnyIgnoreCase(callbackPath, "http://", "https://")) {
+            return callbackPath;
+        }
+        return FrontendApiUrlBuilder.buildApiUrl(
+                adminFrontendUrlResolver.getFrontendBaseUrl(),
+                apiPrefix,
+                StrUtil.blankToDefault(callbackPath, "/admins/cas/proxy-callback"));
     }
 
     private IdpState createState(String provider, String apiPrefix) {
@@ -227,11 +324,17 @@ public class AdminCasServiceImpl implements AdminCasService {
         return idpState;
     }
 
-    private String issueLoginCode(String provider, String userId, String sessionIndex) {
+    private String issueLoginCode(
+            String provider, String userId, String sessionIndex, String proxyGrantingTicketIou) {
         String code = IdUtil.fastSimpleUUID();
         authSessionStore.saveCasLoginContext(
                 code,
-                new CasLoginContext(CasSessionScope.ADMIN, provider, userId, sessionIndex),
+                new CasLoginContext(
+                        CasSessionScope.ADMIN,
+                        provider,
+                        userId,
+                        sessionIndex,
+                        proxyGrantingTicketIou),
                 authSessionConfig.getCas().getLoginCodeTtl());
         return code;
     }
@@ -247,6 +350,47 @@ public class AdminCasServiceImpl implements AdminCasService {
                     ErrorCode.INVALID_REQUEST, "CAS login code does not belong to admin flow");
         }
         return loginContext;
+    }
+
+    private String resolveProxyGrantingTicketIou(CasConfig config, Map<String, Object> userInfo) {
+        if (!Boolean.TRUE.equals(config.resolveProxyConfig().getEnabled())) {
+            return null;
+        }
+        String pgtIou = Convert.toStr(userInfo.get(IdpConstants.PROXY_GRANTING_TICKET));
+        if (StrUtil.isBlank(pgtIou)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "CAS validation response is missing proxy granting ticket");
+        }
+        return pgtIou;
+    }
+
+    private void bindProxyGrantingTicket(CasLoginContext loginContext) {
+        if (StrUtil.isBlank(loginContext.getProxyGrantingTicketIou())) {
+            return;
+        }
+        String pgtId =
+                authSessionStore.consumeCasProxyGrantingTicket(
+                        loginContext.getProxyGrantingTicketIou());
+        if (StrUtil.isBlank(pgtId)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "CAS proxy granting ticket callback has not completed");
+        }
+        authSessionStore.bindCasProxyGrantingTicket(
+                loginContext.getScope(),
+                loginContext.getProvider(),
+                loginContext.getUserId(),
+                loginContext.getSessionIndex(),
+                pgtId);
+    }
+
+    private void assertProxyEnabled(CasConfig config) {
+        CasProxyConfig proxyConfig = config.resolveProxyConfig();
+        if (!Boolean.TRUE.equals(proxyConfig.getEnabled())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "CAS proxy is not enabled for this provider");
+        }
     }
 
     private String getAdminId(Map<String, Object> userInfo, CasConfig config) {

@@ -17,24 +17,22 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.idp.session;
+package com.alibaba.himarket.support.portal.cas;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CasLoginContext {
+public class CasServiceDefinitionConfig {
 
-    private CasSessionScope scope;
+    private String serviceIdPattern;
 
-    private String provider;
+    private Long serviceId;
 
-    private String userId;
+    private Integer evaluationOrder = 0;
 
-    private String sessionIndex;
+    private CasServiceResponseType responseType = CasServiceResponseType.REDIRECT;
 
-    private String proxyGrantingTicketIou;
+    private CasServiceLogoutType logoutType;
+
+    private String logoutUrl;
 }

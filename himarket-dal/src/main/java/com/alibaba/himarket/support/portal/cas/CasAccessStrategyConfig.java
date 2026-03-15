@@ -17,24 +17,16 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.idp.session;
+package com.alibaba.himarket.support.portal.cas;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CasLoginContext {
+public class CasAccessStrategyConfig {
 
-    private CasSessionScope scope;
+    private Boolean enabled = true;
 
-    private String provider;
+    private Boolean ssoEnabled = true;
 
-    private String userId;
-
-    private String sessionIndex;
-
-    private String proxyGrantingTicketIou;
+    private CasDelegatedAuthenticationPolicyConfig delegatedAuthenticationPolicy;
 }

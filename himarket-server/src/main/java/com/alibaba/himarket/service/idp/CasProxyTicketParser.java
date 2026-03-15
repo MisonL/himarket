@@ -24,8 +24,6 @@ import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
 import java.io.StringReader;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import lombok.extern.slf4j.Slf4j;
@@ -38,22 +36,25 @@ import org.xml.sax.InputSource;
 
 @Component
 @Slf4j
-public class CasTicketValidationParser {
+public class CasProxyTicketParser {
 
-    public Map<String, Object> parse(String responseBody) {
+    public String parse(String responseBody) {
         if (StrUtil.isBlank(responseBody)) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "CAS validation returned empty response");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS proxy response is empty");
         }
         Document document = parseXml(responseBody);
-        Element success = findFirstElement(document, "authenticationSuccess");
+        Element success = findFirstElement(document, "proxySuccess");
         if (success == null) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,
-                    StrUtil.blankToDefault(
-                            extractFailureMessage(document), "CAS ticket validation failed"));
+                    StrUtil.blankToDefault(extractFailureMessage(document), "CAS proxy failed"));
         }
-        return extractAttributes(success);
+        Element proxyTicket = findFirstElement(success, IdpConstants.PROXY_TICKET);
+        if (proxyTicket == null || StrUtil.isBlank(proxyTicket.getTextContent())) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "CAS proxy response is missing proxy ticket");
+        }
+        return StrUtil.trim(proxyTicket.getTextContent());
     }
 
     private Document parseXml(String responseBody) {
@@ -69,46 +70,14 @@ public class CasTicketValidationParser {
             return factory.newDocumentBuilder()
                     .parse(new InputSource(new StringReader(responseBody)));
         } catch (Exception e) {
-            log.error("Failed to parse CAS validation response", e);
+            log.error("Failed to parse CAS proxy response", e);
             throw new BusinessException(
-                    ErrorCode.INTERNAL_ERROR, "Failed to parse CAS validation response");
+                    ErrorCode.INTERNAL_ERROR, "Failed to parse CAS proxy response");
         }
-    }
-
-    private Map<String, Object> extractAttributes(Element success) {
-        Map<String, Object> attributes = new LinkedHashMap<>();
-        Element user = findFirstElement(success, "user");
-        if (user != null) {
-            attributes.put("user", StrUtil.trim(user.getTextContent()));
-        }
-        Element proxyGrantingTicket = findFirstElement(success, IdpConstants.PROXY_GRANTING_TICKET);
-        if (proxyGrantingTicket != null
-                && StrUtil.isNotBlank(proxyGrantingTicket.getTextContent())) {
-            attributes.put(
-                    IdpConstants.PROXY_GRANTING_TICKET,
-                    StrUtil.trim(proxyGrantingTicket.getTextContent()));
-        }
-
-        Element attributeRoot = findFirstElement(success, "attributes");
-        if (attributeRoot == null) {
-            return attributes;
-        }
-
-        NodeList children = attributeRoot.getChildNodes();
-        for (int i = 0; i < children.getLength(); i++) {
-            Node node = children.item(i);
-            if (node instanceof Element element) {
-                String value = StrUtil.trim(element.getTextContent());
-                if (StrUtil.isNotBlank(value)) {
-                    attributes.put(resolveElementName(element), value);
-                }
-            }
-        }
-        return attributes;
     }
 
     private String extractFailureMessage(Document document) {
-        Element failure = findFirstElement(document, "authenticationFailure");
+        Element failure = findFirstElement(document, "proxyFailure");
         return failure == null ? null : StrUtil.blankToDefault(failure.getTextContent(), null);
     }
 
@@ -116,7 +85,6 @@ public class CasTicketValidationParser {
         if (node instanceof Element element && expectedName.equals(resolveElementName(element))) {
             return element;
         }
-
         NodeList children = node.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             Element found = findFirstElement(children.item(i), expectedName);
