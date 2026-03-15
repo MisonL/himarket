@@ -26,6 +26,9 @@ services:
       - ADMIN_AUTH_CAS_CONFIGS_0_SERVER_URL=http://localhost:${CAS_HTTP_PORT:-8083}/cas
       # Internal URL for server-to-server ticket validation.
       - ADMIN_AUTH_CAS_CONFIGS_0_VALIDATE_ENDPOINT=http://cas:8080/cas/p3/serviceValidate
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_ENABLED=true
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://himarket-server:8080/admins/cas/proxy-callback
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_PROXY_ENDPOINT=http://cas:8080/cas/proxy
 
       - ADMIN_AUTH_LDAP_CONFIGS_0_PROVIDER=ldap
       - ADMIN_AUTH_LDAP_CONFIGS_0_NAME=LDAP
