@@ -31,6 +31,7 @@ import com.alibaba.himarket.dto.result.portal.PortalResult;
 import com.alibaba.himarket.dto.result.product.ProductPublicationResult;
 import com.alibaba.himarket.dto.result.product.SubscriptionResult;
 import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.service.idp.CasServiceDefinitionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -49,6 +50,8 @@ import org.springframework.web.bind.annotation.*;
 public class PortalController {
 
     private final PortalService portalService;
+
+    private final CasServiceDefinitionService casServiceDefinitionService;
 
     @Operation(summary = "创建门户")
     @PostMapping
@@ -121,5 +124,12 @@ public class PortalController {
     public PageResult<SubscriptionResult> listSubscriptions(
             @PathVariable String portalId, QuerySubscriptionParam param, Pageable pageable) {
         return portalService.listSubscriptions(portalId, param, pageable);
+    }
+
+    @Operation(summary = "导出门户 CAS registered service 定义")
+    @GetMapping("/{portalId}/cas/{provider}/service-definition")
+    public java.util.Map<String, Object> exportCasServiceDefinition(
+            @PathVariable String portalId, @PathVariable String provider) {
+        return casServiceDefinitionService.exportPortalServiceDefinition(portalId, provider);
     }
 }

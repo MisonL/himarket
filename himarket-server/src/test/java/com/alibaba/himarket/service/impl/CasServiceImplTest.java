@@ -29,13 +29,17 @@ import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
 import com.alibaba.himarket.core.utils.TokenUtil;
+import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
 import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
 import com.alibaba.himarket.dto.result.portal.PortalResult;
 import com.alibaba.himarket.service.DeveloperService;
 import com.alibaba.himarket.service.PortalService;
+import com.alibaba.himarket.service.idp.CasJsonTicketValidationParser;
 import com.alibaba.himarket.service.idp.CasLogoutRequestParser;
+import com.alibaba.himarket.service.idp.CasProxyTicketClient;
+import com.alibaba.himarket.service.idp.CasProxyTicketParser;
 import com.alibaba.himarket.service.idp.CasTicketValidationParser;
 import com.alibaba.himarket.service.idp.IdpStateCodec;
 import com.alibaba.himarket.service.idp.PortalFrontendUrlResolver;
@@ -43,6 +47,8 @@ import com.alibaba.himarket.service.idp.session.MemoryAuthSessionStore;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
+import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
+import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -126,7 +132,9 @@ class CasServiceImplTest {
                         new MemoryAuthSessionStore(
                                 new AuthSessionConfig().getCas().getLoginCodeTtl()),
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
-                                new CasTicketValidationParser()),
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new PortalFrontendUrlResolver(portalService, contextHolder),
                         new IdpStateCodec());
@@ -134,7 +142,7 @@ class CasServiceImplTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         IdpAuthorizeResult authorizeResult =
-                casService.buildAuthorizationResult("cas", "/api/v1", request);
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request);
         URI authUri = URI.create(authorizeResult.getRedirectUrl());
         assertEquals(
                 serverUrl + "/login",
@@ -184,7 +192,9 @@ class CasServiceImplTest {
                         new MemoryAuthSessionStore(
                                 new AuthSessionConfig().getCas().getLoginCodeTtl()),
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
-                                new CasTicketValidationParser()),
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new PortalFrontendUrlResolver(portalService, contextHolder),
                         new IdpStateCodec());
@@ -192,7 +202,8 @@ class CasServiceImplTest {
         MockHttpServletRequest request = buildRequest(18080);
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        String state = casService.buildAuthorizationResult("cas", "/api/v1", request).getState();
+        String state =
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request).getState();
 
         assertThrows(
                 com.alibaba.himarket.core.exception.BusinessException.class,
@@ -244,7 +255,9 @@ class CasServiceImplTest {
                         new AuthSessionConfig(),
                         authSessionStore,
                         new com.alibaba.himarket.service.idp.CasTicketValidator(
-                                new CasTicketValidationParser()),
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
                         new CasLogoutRequestParser(),
                         new PortalFrontendUrlResolver(portalService, contextHolder),
                         new IdpStateCodec());
@@ -253,7 +266,7 @@ class CasServiceImplTest {
         MockHttpServletResponse response = new MockHttpServletResponse();
 
         IdpAuthorizeResult authorizeResult =
-                casService.buildAuthorizationResult("cas", "/api/v1", request);
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request);
         String state = authorizeResult.getState();
         request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
         String serviceUrl =
@@ -267,6 +280,142 @@ class CasServiceImplTest {
         assertEquals(false, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
         assertEquals(1, casService.handleLogoutRequest(logoutRequest("ST-1")));
         assertEquals(true, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
+    }
+
+    @Test
+    void buildAuthorizationResultShouldMergeRequestLoginFlags() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasLoginConfig loginConfig = new CasLoginConfig();
+        loginConfig.setWarn(true);
+        casConfig.setLogin(loginConfig);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        String redirectUrl =
+                casService
+                        .buildAuthorizationResult(
+                                "cas",
+                                "/api/v1",
+                                CasAuthorizeOptions.builder().gateway(true).build(),
+                                buildRequest(443))
+                        .getRedirectUrl();
+
+        URI uri = URI.create(redirectUrl);
+        assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.GATEWAY));
+        assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.WARN));
+        assertEquals(null, splitQueryValue(uri.getQuery(), IdpConstants.RENEW));
+    }
+
+    @Test
+    void issueProxyTicketShouldUseBoundDeveloperProxyGrantingTicket() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        String[] expectedPgtUrlHolder = new String[1];
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new ValidateHandler(
+                        expectedServiceHolder,
+                        expectedPgtUrlHolder,
+                        "alice",
+                        "alice@example.com",
+                        "PGTIOU-1"));
+        server.createContext("/cas/proxy", new ProxyHandler("PGT-DEV-1", "PT-DEV-1"));
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        casConfig.setIdentityMapping(defaultIdentityMapping());
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        casConfig.setProxy(proxyConfig);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(contextHolder.getUser()).thenReturn("dev-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        when(developerService.getExternalDeveloper("cas", "alice")).thenReturn(null);
+
+        DeveloperResult developerResult = new DeveloperResult();
+        developerResult.setDeveloperId("dev-1");
+        when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
+
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+        MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        IdpAuthorizeResult authorizeResult =
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request);
+        String serviceUrl =
+                splitQueryValue(URI.create(authorizeResult.getRedirectUrl()).getQuery(), "service");
+        String state = splitQueryValue(URI.create(serviceUrl).getQuery(), "state");
+        expectedServiceHolder[0] = serviceUrl;
+        expectedPgtUrlHolder[0] = "https://portal.example.com/api/v1/developers/cas/proxy-callback";
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
+
+        String redirectUrl = casService.handleCallback("ST-1", state, request, response);
+        casService.handleProxyCallback("PGTIOU-1", "PGT-DEV-1");
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+        casService.exchangeCode(code);
+
+        assertEquals(
+                "PT-DEV-1",
+                casService
+                        .issueProxyTicket("cas", "https://target.example.com/service")
+                        .getProxyTicket());
     }
 
     private MockHttpServletRequest buildRequest(int port) {
@@ -308,16 +457,33 @@ class CasServiceImplTest {
 
         private final String[] expectedServiceHolder;
 
+        private final String[] expectedPgtUrlHolder;
+
         private final byte[] successBody;
 
         private ValidateHandler(String[] expectedServiceHolder, String user, String mail) {
+            this(expectedServiceHolder, new String[1], user, mail, null);
+        }
+
+        private ValidateHandler(
+                String[] expectedServiceHolder,
+                String[] expectedPgtUrlHolder,
+                String user,
+                String mail,
+                String proxyGrantingTicket) {
             this.expectedServiceHolder = expectedServiceHolder;
+            this.expectedPgtUrlHolder = expectedPgtUrlHolder;
             this.successBody =
                     ("<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
                                     + "<cas:authenticationSuccess>"
                                     + "<cas:user>"
                                     + user
                                     + "</cas:user>"
+                                    + (proxyGrantingTicket == null
+                                            ? ""
+                                            : "<cas:proxyGrantingTicket>"
+                                                    + proxyGrantingTicket
+                                                    + "</cas:proxyGrantingTicket>")
                                     + "<cas:attributes>"
                                     + "<cas:user>"
                                     + user
@@ -336,13 +502,60 @@ class CasServiceImplTest {
             String query = exchange.getRequestURI().getQuery();
             String service = extract(query, "service");
             String ticket = extract(query, "ticket");
+            String pgtUrl = extract(query, IdpConstants.PGT_URL);
             if (!expectedServiceHolder[0].equals(service) || !"ST-1".equals(ticket)) {
                 throw new IOException("Unexpected CAS validate request");
+            }
+            if (expectedPgtUrlHolder[0] != null && !expectedPgtUrlHolder[0].equals(pgtUrl)) {
+                throw new IOException("Unexpected CAS proxy callback URL");
             }
             exchange.getResponseHeaders().set("Content-Type", "application/xml");
             exchange.sendResponseHeaders(200, successBody.length);
             try (OutputStream outputStream = exchange.getResponseBody()) {
                 outputStream.write(successBody);
+            }
+        }
+
+        private String extract(String query, String key) {
+            String prefix = key + "=";
+            for (String item : query.split("&")) {
+                if (item.startsWith(prefix)) {
+                    return java.net.URLDecoder.decode(
+                            item.substring(prefix.length()), StandardCharsets.UTF_8);
+                }
+            }
+            return null;
+        }
+    }
+
+    private static class ProxyHandler implements HttpHandler {
+
+        private final String expectedPgt;
+
+        private final String proxyTicket;
+
+        private ProxyHandler(String expectedPgt, String proxyTicket) {
+            this.expectedPgt = expectedPgt;
+            this.proxyTicket = proxyTicket;
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String query = exchange.getRequestURI().getQuery();
+            if (!expectedPgt.equals(extract(query, IdpConstants.PGT))) {
+                throw new IOException("Unexpected PGT");
+            }
+            byte[] body =
+                    ("<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
+                                    + "<cas:proxySuccess><cas:proxyTicket>"
+                                    + proxyTicket
+                                    + "</cas:proxyTicket></cas:proxySuccess>"
+                                    + "</cas:serviceResponse>")
+                            .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/xml");
+            exchange.sendResponseHeaders(200, body.length);
+            try (OutputStream outputStream = exchange.getResponseBody()) {
+                outputStream.write(body);
             }
         }
 

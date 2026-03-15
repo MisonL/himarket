@@ -17,24 +17,15 @@
  * under the License.
  */
 
-package com.alibaba.himarket.service.idp.session;
+package com.alibaba.himarket.dto.params.idp;
 
-import lombok.AllArgsConstructor;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CasLoginContext {
+public class CasProxyTicketParam {
 
-    private CasSessionScope scope;
+    @NotBlank private String provider;
 
-    private String provider;
-
-    private String userId;
-
-    private String sessionIndex;
-
-    private String proxyGrantingTicketIou;
+    @NotBlank private String targetService;
 }

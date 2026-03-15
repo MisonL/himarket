@@ -27,6 +27,11 @@ import com.alibaba.himarket.support.portal.AuthCodeConfig;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OidcConfig;
+import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
+import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
+import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
+import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -102,6 +107,54 @@ class IdpServiceImplTest {
         casConfig.setLogoutEndpoint("/logout");
 
         new IdpServiceImpl().validateCasConfigs(List.of(casConfig));
+    }
+
+    @Test
+    void validateCasConfigsShouldRejectGatewayRenewConflict() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasLoginConfig loginConfig = new CasLoginConfig();
+        loginConfig.setGateway(true);
+        loginConfig.setRenew(true);
+        casConfig.setLogin(loginConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateCasConfigs(List.of(casConfig)));
+    }
+
+    @Test
+    void validateCasConfigsShouldRejectJsonSamlValidation() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasValidationConfig validationConfig = new CasValidationConfig();
+        validationConfig.setProtocolVersion(CasProtocolVersion.SAML1);
+        validationConfig.setResponseFormat(CasValidationResponseFormat.JSON);
+        casConfig.setValidation(validationConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateCasConfigs(List.of(casConfig)));
+    }
+
+    @Test
+    void validateCasConfigsShouldRejectRelativeProxyCallbackPathWithoutSlash() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        proxyConfig.setCallbackPath("developers/cas/proxy-callback");
+        casConfig.setProxy(proxyConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateCasConfigs(List.of(casConfig)));
     }
 
     @Test

@@ -228,6 +228,7 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
                         
                         {/* 第三方认证管理器 - 内部已有标题，不需要重复添加 */}
                         <ThirdPartyAuthManager
+                            portalId={portal.portalId}
                             configs={thirdPartyAuthConfigs}
                             onSave={handleSaveThirdPartyAuth}
                         />

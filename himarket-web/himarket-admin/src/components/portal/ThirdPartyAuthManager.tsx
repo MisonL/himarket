@@ -2,13 +2,15 @@ import {useState} from 'react'
 import {Button, Form, Input, Select, Switch, Table, Modal, Space, message, Divider, Steps, Card, Tabs, Collapse, Radio} from 'antd'
 import {PlusOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, MinusCircleOutlined, KeyOutlined, CheckCircleFilled, MinusCircleFilled} from '@ant-design/icons'
 import {ThirdPartyAuthConfig, AuthenticationType, GrantType, AuthCodeConfig, CasConfig, OAuth2Config, OidcConfig, PublicKeyFormat, LdapConfig} from '@/types'
+import {portalApi} from '@/lib/api'
 
 interface ThirdPartyAuthManagerProps {
+  portalId?: string
   configs: ThirdPartyAuthConfig[]
   onSave: (configs: ThirdPartyAuthConfig[]) => Promise<void>
 }
 
-export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerProps) {
+export function ThirdPartyAuthManager({portalId, configs, onSave}: ThirdPartyAuthManagerProps) {
   const [form] = Form.useForm()
   const [modalVisible, setModalVisible] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -91,6 +93,11 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         loginEndpoint: casConfig.loginEndpoint,
         validateEndpoint: casConfig.validateEndpoint,
         logoutEndpoint: casConfig.logoutEndpoint,
+        loginGateway: casConfig.login?.gateway ?? false,
+        loginRenew: casConfig.login?.renew ?? false,
+        loginWarn: casConfig.login?.warn ?? false,
+        validationProtocolVersion: casConfig.validation?.protocolVersion || 'CAS3',
+        validationResponseFormat: casConfig.validation?.responseFormat || 'XML',
         userIdField: casConfig.identityMapping?.userIdField,
         userNameField: casConfig.identityMapping?.userNameField,
         emailField: casConfig.identityMapping?.emailField
@@ -135,6 +142,29 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
     })
   }
 
+  const handlePreviewCasServiceDefinition = async (provider: string) => {
+    if (!portalId) {
+      message.error('当前页面未提供 Portal 上下文，无法导出 CAS service definition')
+      return
+    }
+
+    try {
+      const definition = await portalApi.exportCasServiceDefinition(portalId, provider)
+      Modal.info({
+        title: `CAS Service Definition: ${provider}`,
+        width: 860,
+        okText: '关闭',
+        content: (
+          <pre className="max-h-[60vh] overflow-auto rounded bg-gray-50 p-4 text-xs leading-5 text-gray-800">
+            {JSON.stringify(definition, null, 2)}
+          </pre>
+        ),
+      })
+    } catch (error) {
+      message.error('导出 CAS service definition 失败')
+    }
+  }
+
 
   // 下一步
   const handleNext = async () => {
@@ -153,7 +183,12 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
           })
         } else if (values.type === AuthenticationType.CAS) {
           form.setFieldsValue({
-            enabled: true
+            enabled: true,
+            validationProtocolVersion: 'CAS3',
+            validationResponseFormat: 'XML',
+            loginGateway: false,
+            loginRenew: false,
+            loginWarn: false
           })
         } else if (values.type === AuthenticationType.LDAP) {
           form.setFieldsValue({
@@ -248,6 +283,15 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
           loginEndpoint: values.loginEndpoint || '',
           validateEndpoint: values.validateEndpoint || '',
           logoutEndpoint: values.logoutEndpoint || '',
+          login: {
+            gateway: values.loginGateway ?? false,
+            renew: values.loginRenew ?? false,
+            warn: values.loginWarn ?? false
+          },
+          validation: {
+            protocolVersion: values.validationProtocolVersion || 'CAS3',
+            responseFormat: values.validationResponseFormat || 'XML'
+          },
           identityMapping: {
             userIdField: values.userIdField || null,
             userNameField: values.userNameField || null,
@@ -376,9 +420,15 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
     {
       title: '操作',
       key: 'action',
-      width: 150,
+      width: 220,
       render: (_: any, record: ThirdPartyAuthConfig) => (
         <Space>
+          <Button
+            type="link"
+            onClick={() => handlePreviewCasServiceDefinition(record.provider)}
+          >
+            预览定义
+          </Button>
           <Button
             type="link"
             icon={<EditOutlined/>}
@@ -1144,6 +1194,31 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
         </Form.Item>
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <Form.Item
+          name="validationProtocolVersion"
+          label="校验协议版本"
+          initialValue="CAS3"
+        >
+          <Select>
+            <Select.Option value="CAS1">CAS 1.0</Select.Option>
+            <Select.Option value="CAS2">CAS 2.0</Select.Option>
+            <Select.Option value="CAS3">CAS 3.0</Select.Option>
+            <Select.Option value="SAML1">SAML 1.1</Select.Option>
+          </Select>
+        </Form.Item>
+        <Form.Item
+          name="validationResponseFormat"
+          label="校验响应格式"
+          initialValue="XML"
+        >
+          <Select>
+            <Select.Option value="XML">XML</Select.Option>
+            <Select.Option value="JSON">JSON</Select.Option>
+          </Select>
+        </Form.Item>
+      </div>
+
       <Form.Item
         name="logoutEndpoint"
         label="登出地址"
@@ -1159,6 +1234,33 @@ export function ThirdPartyAuthManager({configs, onSave}: ThirdPartyAuthManagerPr
       >
         <Switch />
       </Form.Item>
+
+      <div className="grid grid-cols-3 gap-4">
+        <Form.Item
+          name="loginGateway"
+          label="Gateway"
+          valuePropName="checked"
+          extra="启用无交互网关登录。"
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="loginRenew"
+          label="Renew"
+          valuePropName="checked"
+          extra="强制重新认证。"
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="loginWarn"
+          label="Warn"
+          valuePropName="checked"
+          extra="切换到 CAS 前要求确认。"
+        >
+          <Switch />
+        </Form.Item>
+      </div>
 
       <div className="-ml-3">
         <Collapse
