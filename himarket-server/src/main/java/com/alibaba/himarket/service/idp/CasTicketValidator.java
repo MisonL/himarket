@@ -31,7 +31,10 @@ import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -47,6 +50,8 @@ public class CasTicketValidator {
 
     private final CasJsonTicketValidationParser casJsonTicketValidationParser;
 
+    private final CasSamlTicketValidationParser casSamlTicketValidationParser;
+
     public Map<String, Object> validate(CasConfig config, String ticket, String serviceUrl) {
         return validate(config, ticket, serviceUrl, null);
     }
@@ -54,24 +59,10 @@ public class CasTicketValidator {
     public Map<String, Object> validate(
             CasConfig config, String ticket, String serviceUrl, String proxyCallbackUrl) {
         CasValidationConfig validationConfig = config.resolveValidationConfig();
-        String validateUrl =
-                UriComponentsBuilder.fromUriString(buildValidateUrl(config))
-                        .queryParam(IdpConstants.SERVICE, serviceUrl)
-                        .queryParam(IdpConstants.TICKET, ticket)
-                        .queryParamIfPresent(
-                                IdpConstants.PGT_URL,
-                                java.util.Optional.ofNullable(proxyCallbackUrl))
-                        .queryParamIfPresent(
-                                IdpConstants.FORMAT,
-                                java.util.Optional.ofNullable(
-                                        resolveFormatQueryParam(validationConfig)))
-                        .build()
-                        .toUriString();
         try {
             String response =
-                    restTemplate
-                            .exchange(validateUrl, HttpMethod.GET, null, String.class)
-                            .getBody();
+                    executeValidationRequest(
+                            config, validationConfig, ticket, serviceUrl, proxyCallbackUrl);
             return parseResponse(validationConfig, response);
         } catch (BusinessException e) {
             throw e;
@@ -79,6 +70,76 @@ public class CasTicketValidator {
             log.error("Failed to validate CAS ticket for provider {}", config.getProvider(), e);
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS ticket validation failed");
         }
+    }
+
+    private String executeValidationRequest(
+            CasConfig config,
+            CasValidationConfig validationConfig,
+            String ticket,
+            String serviceUrl,
+            String proxyCallbackUrl) {
+        if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1) {
+            return restTemplate
+                    .exchange(
+                            buildSamlValidateUrl(config, serviceUrl),
+                            HttpMethod.POST,
+                            buildSamlValidationRequest(ticket),
+                            String.class)
+                    .getBody();
+        }
+        return restTemplate
+                .exchange(
+                        buildValidateGetUrl(
+                                config, validationConfig, ticket, serviceUrl, proxyCallbackUrl),
+                        HttpMethod.GET,
+                        null,
+                        String.class)
+                .getBody();
+    }
+
+    private String buildValidateGetUrl(
+            CasConfig config,
+            CasValidationConfig validationConfig,
+            String ticket,
+            String serviceUrl,
+            String proxyCallbackUrl) {
+        return UriComponentsBuilder.fromUriString(buildValidateUrl(config))
+                .queryParam(IdpConstants.SERVICE, serviceUrl)
+                .queryParam(IdpConstants.TICKET, ticket)
+                .queryParamIfPresent(
+                        IdpConstants.PGT_URL, java.util.Optional.ofNullable(proxyCallbackUrl))
+                .queryParamIfPresent(
+                        IdpConstants.FORMAT,
+                        java.util.Optional.ofNullable(resolveFormatQueryParam(validationConfig)))
+                .build()
+                .toUriString();
+    }
+
+    private String buildSamlValidateUrl(CasConfig config, String serviceUrl) {
+        return UriComponentsBuilder.fromUriString(buildValidateUrl(config))
+                .queryParam("TARGET", serviceUrl)
+                .build()
+                .toUriString();
+    }
+
+    private HttpEntity<String> buildSamlValidationRequest(String ticket) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.TEXT_XML);
+        return new HttpEntity<>(buildSamlValidationEnvelope(ticket), headers);
+    }
+
+    private String buildSamlValidationEnvelope(String ticket) {
+        return """
+        <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
+          <SOAP-ENV:Header/>
+          <SOAP-ENV:Body>
+            <saml1p:Request xmlns:saml1p="urn:oasis:names:tc:SAML:1.0:protocol" MajorVersion="1" MinorVersion="1">
+              <saml1p:AssertionArtifact>%s</saml1p:AssertionArtifact>
+            </saml1p:Request>
+          </SOAP-ENV:Body>
+        </SOAP-ENV:Envelope>
+        """
+                .formatted(ticket);
     }
 
     private String buildValidateUrl(CasConfig config) {
@@ -117,7 +178,9 @@ public class CasTicketValidator {
         if (validationConfig.getProtocolVersion() == CasProtocolVersion.CAS1) {
             return parseCas1Response(responseBody);
         }
-        throwIfUnsupported(validationConfig);
+        if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1) {
+            return casSamlTicketValidationParser.parse(responseBody);
+        }
         return casTicketValidationParser.parse(responseBody);
     }
 
@@ -127,13 +190,6 @@ public class CasTicketValidator {
             return Map.of("user", StrUtil.trim(lines[1]));
         }
         throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS ticket validation failed");
-    }
-
-    private void throwIfUnsupported(CasValidationConfig validationConfig) {
-        if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_PARAMETER, "CAS SAML1 validation is not implemented yet");
-        }
     }
 
     private String joinUrl(String baseUrl, String path) {
