@@ -17,14 +17,18 @@ export interface OidcConfig {
   name: string;
   logoUrl?: string | null;
   enabled: boolean;
-  grantType: 'AUTHORIZATION_CODE';
+  grantType: "AUTHORIZATION_CODE";
   authCodeConfig: AuthCodeConfig;
   identityMapping?: IdentityMapping;
 }
 
-export type CasProtocolVersion = 'CAS1' | 'CAS2' | 'CAS3' | 'SAML1';
+export type CasProtocolVersion = "CAS1" | "CAS2" | "CAS3" | "SAML1";
 
-export type CasValidationResponseFormat = 'XML' | 'JSON';
+export type CasValidationResponseFormat = "XML" | "JSON";
+
+export type CasServiceResponseType = "REDIRECT" | "POST" | "HEADER";
+
+export type CasServiceLogoutType = "NONE" | "BACK_CHANNEL" | "FRONT_CHANNEL";
 
 export interface CasLoginConfig {
   gateway?: boolean;
@@ -38,6 +42,44 @@ export interface CasValidationConfig {
   responseFormat?: CasValidationResponseFormat;
 }
 
+export interface CasProxyConfig {
+  enabled?: boolean;
+  callbackPath?: string;
+  callbackUrlPattern?: string;
+  proxyEndpoint?: string;
+}
+
+export interface CasServiceDefinitionConfig {
+  serviceIdPattern?: string;
+  serviceId?: number;
+  evaluationOrder?: number;
+  responseType?: CasServiceResponseType;
+  logoutType?: CasServiceLogoutType;
+  logoutUrl?: string;
+}
+
+export interface CasDelegatedAuthenticationPolicyConfig {
+  allowedProviders?: string[];
+  permitUndefined?: boolean;
+  exclusive?: boolean;
+}
+
+export interface CasAccessStrategyConfig {
+  enabled?: boolean;
+  ssoEnabled?: boolean;
+  delegatedAuthenticationPolicy?: CasDelegatedAuthenticationPolicyConfig;
+}
+
+export interface CasAttributeReleasePolicyConfig {
+  allowedAttributes?: string[];
+}
+
+export interface CasMultifactorPolicyConfig {
+  providers?: string[];
+  bypassEnabled?: boolean;
+  forceExecution?: boolean;
+}
+
 export interface CasConfig {
   provider: string;
   name: string;
@@ -49,6 +91,11 @@ export interface CasConfig {
   logoutEndpoint?: string;
   login?: CasLoginConfig;
   validation?: CasValidationConfig;
+  proxy?: CasProxyConfig;
+  serviceDefinition?: CasServiceDefinitionConfig;
+  accessStrategy?: CasAccessStrategyConfig;
+  attributeRelease?: CasAttributeReleasePolicyConfig;
+  multifactorPolicy?: CasMultifactorPolicyConfig;
   identityMapping?: IdentityMapping;
 }
 
@@ -66,20 +113,20 @@ export interface LdapConfig {
 
 // 第三方认证相关类型定义
 export enum AuthenticationType {
-  OIDC = 'OIDC',
-  CAS = 'CAS',
-  LDAP = 'LDAP',
-  OAUTH2 = 'OAUTH2'
+  OIDC = "OIDC",
+  CAS = "CAS",
+  LDAP = "LDAP",
+  OAUTH2 = "OAUTH2",
 }
 
 export enum GrantType {
-  AUTHORIZATION_CODE = 'AUTHORIZATION_CODE',
-  JWT_BEARER = 'JWT_BEARER'
+  AUTHORIZATION_CODE = "AUTHORIZATION_CODE",
+  JWT_BEARER = "JWT_BEARER",
 }
 
 export enum PublicKeyFormat {
-  PEM = 'PEM',
-  JWK = 'JWK'
+  PEM = "PEM",
+  JWK = "JWK",
 }
 
 export interface PublicKeyConfig {
@@ -114,18 +161,18 @@ export interface OAuth2Config {
 }
 
 // 为了UI显示方便，给配置添加类型标识的联合类型
-export type ThirdPartyAuthConfig = 
+export type ThirdPartyAuthConfig =
   | (OidcConfig & { type: AuthenticationType.OIDC })
   | (CasConfig & { type: AuthenticationType.CAS })
   | (LdapConfig & { type: AuthenticationType.LDAP })
-  | (OAuth2Config & { type: AuthenticationType.OAUTH2 })
+  | (OAuth2Config & { type: AuthenticationType.OAUTH2 });
 
 export interface PortalSettingConfig {
   builtinAuthEnabled: boolean;
   autoApproveDevelopers: boolean;
   autoApproveSubscriptions: boolean;
   frontendRedirectUrl?: string;
-  
+
   // 第三方认证配置（分离存储）
   oidcConfigs?: OidcConfig[];
   casConfigs?: CasConfig[];
@@ -153,7 +200,7 @@ export interface Portal {
   portalSettingConfig: PortalSettingConfig;
   portalUiConfig: PortalUiConfig;
   portalDomainConfig: PortalDomainConfig[];
-} 
+}
 
 export interface Developer {
   portalId: string;
