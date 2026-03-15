@@ -28,7 +28,10 @@ import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
@@ -129,17 +132,19 @@ public class CasTicketValidator {
     }
 
     private String buildSamlValidationEnvelope(String ticket) {
+        String requestId = "_" + UUID.randomUUID().toString().replace("-", "");
+        String issueInstant = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
         return """
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
           <SOAP-ENV:Header/>
           <SOAP-ENV:Body>
-            <saml1p:Request xmlns:saml1p="urn:oasis:names:tc:SAML:1.0:protocol" MajorVersion="1" MinorVersion="1">
+            <saml1p:Request xmlns:saml1p="urn:oasis:names:tc:SAML:1.0:protocol" MajorVersion="1" MinorVersion="1" RequestID="%s" IssueInstant="%s">
               <saml1p:AssertionArtifact>%s</saml1p:AssertionArtifact>
             </saml1p:Request>
           </SOAP-ENV:Body>
         </SOAP-ENV:Envelope>
         """
-                .formatted(ticket);
+                .formatted(requestId, issueInstant, ticket);
     }
 
     private String buildValidateUrl(CasConfig config) {

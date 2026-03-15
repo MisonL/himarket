@@ -7,6 +7,13 @@
     "useServiceId": false,
     "exactMatch": false
   },
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS30",
+      "SAML1"
+    ]
+  ],
   "name": "HiMarket Local",
   "id": 1000,
   "evaluationOrder": 1
