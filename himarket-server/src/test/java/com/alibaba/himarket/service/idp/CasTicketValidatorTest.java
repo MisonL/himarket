@@ -76,6 +76,8 @@ class CasTicketValidatorTest {
         assertEquals("POST", methodHolder[0]);
         assertTrue(queryHolder[0].contains("TARGET=https://portal.example.com/callback"));
         assertTrue(bodyHolder[0].contains("ST-SAML-1"));
+        assertTrue(bodyHolder[0].contains("RequestID=\"_"));
+        assertTrue(bodyHolder[0].contains("IssueInstant=\""));
         assertEquals("alice", attributes.get("user"));
         assertEquals("alice@example.com", attributes.get("mail"));
     }
