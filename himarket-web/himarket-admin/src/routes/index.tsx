@@ -1,26 +1,34 @@
+import { Suspense, lazy, type ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import LayoutWrapper from "@/components/LayoutWrapper";
-import Portals from "@/pages/Portals";
-import ProductTypePage from "@/pages/ProductTypePage";
-import ProductCategories from "@/pages/ProductCategories";
-import ProductCategoryDetail from "@/pages/ProductCategoryDetail";
-import GatewayConsoles from "@/pages/GatewayConsoles";
-import NacosConsoles from "@/pages/NacosConsoles";
-import PortalDetail from "@/pages/PortalDetail";
-import ApiProductDetail from "@/pages/ApiProductDetail";
-import Login from "@/pages/Login";
-import ModelDashboard from "@/pages/ModelDashboard";
-import McpMonitor from "@/pages/McpMonitor";
-import CasCallback from "@/pages/CasCallback";
+
+const Portals = lazy(() => import("@/pages/Portals"));
+const ProductTypePage = lazy(() => import("@/pages/ProductTypePage"));
+const ProductCategories = lazy(() => import("@/pages/ProductCategories"));
+const ProductCategoryDetail = lazy(
+  () => import("@/pages/ProductCategoryDetail")
+);
+const GatewayConsoles = lazy(() => import("@/pages/GatewayConsoles"));
+const NacosConsoles = lazy(() => import("@/pages/NacosConsoles"));
+const PortalDetail = lazy(() => import("@/pages/PortalDetail"));
+const ApiProductDetail = lazy(() => import("@/pages/ApiProductDetail"));
+const Login = lazy(() => import("@/pages/Login"));
+const ModelDashboard = lazy(() => import("@/pages/ModelDashboard"));
+const McpMonitor = lazy(() => import("@/pages/McpMonitor"));
+const CasCallback = lazy(() => import("@/pages/CasCallback"));
+
+function withSuspense(node: ReactNode) {
+  return <Suspense fallback={null}>{node}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: <Login />,
+    element: withSuspense(<Login />),
   },
   {
     path: "/cas/callback",
-    element: <CasCallback />,
+    element: withSuspense(<CasCallback />),
   },
   {
     path: "/",
@@ -32,11 +40,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "portals",
-        element: <Portals />,
+        element: withSuspense(<Portals />),
       },
       {
         path: "portals/:portalId",
-        element: <PortalDetail />,
+        element: withSuspense(<PortalDetail />),
       },
       {
         path: "api-products",
@@ -47,41 +55,41 @@ export const router = createBrowserRouter([
           },
           {
             path: "model-api",
-            element: <ProductTypePage productType="MODEL_API" />,
+            element: withSuspense(<ProductTypePage productType="MODEL_API" />),
           },
           {
             path: "mcp-server",
-            element: <ProductTypePage productType="MCP_SERVER" />,
+            element: withSuspense(<ProductTypePage productType="MCP_SERVER" />),
           },
           {
             path: "agent-skill",
-            element: <ProductTypePage productType="AGENT_SKILL" />,
+            element: withSuspense(<ProductTypePage productType="AGENT_SKILL" />),
           },
           {
             path: "worker",
-            element: <ProductTypePage productType="WORKER" />,
+            element: withSuspense(<ProductTypePage productType="WORKER" />),
           },
           {
             path: "agent-api",
-            element: <ProductTypePage productType="AGENT_API" />,
+            element: withSuspense(<ProductTypePage productType="AGENT_API" />),
           },
           {
             path: "rest-api",
-            element: <ProductTypePage productType="REST_API" />,
+            element: withSuspense(<ProductTypePage productType="REST_API" />),
           },
           {
             path: ":productId",
-            element: <ApiProductDetail />,
+            element: withSuspense(<ApiProductDetail />),
           },
         ],
       },
       {
         path: "product-categories",
-        element: <ProductCategories />,
+        element: withSuspense(<ProductCategories />),
       },
       {
         path: "product-categories/:categoryId",
-        element: <ProductCategoryDetail />,
+        element: withSuspense(<ProductCategoryDetail />),
       },
       {
         path: "consoles",
@@ -89,11 +97,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "consoles/gateway",
-        element: <GatewayConsoles />,
+        element: withSuspense(<GatewayConsoles />),
       },
       {
         path: "consoles/nacos",
-        element: <NacosConsoles />,
+        element: withSuspense(<NacosConsoles />),
       },
       {
         path: "observability",
@@ -101,11 +109,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "observability/model-dashboard",
-        element: <ModelDashboard />,
+        element: withSuspense(<ModelDashboard />),
       },
       {
         path: "observability/mcp-monitor",
-        element: <McpMonitor />,
+        element: withSuspense(<McpMonitor />),
       },
       {
         path: "*",
