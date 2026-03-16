@@ -2,6 +2,8 @@ services:
   himarket-server:
     build:
       context: ../../himarket-bootstrap
+      args:
+        INSTALL_ARTHAS: "false"
     image: himarket-server-local:dev
     environment:
       - DB_HOST=${DB_HOST:-mysql}
