@@ -42,6 +42,7 @@ import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
+import com.alibaba.himarket.support.portal.cas.CasServiceContactConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
@@ -104,6 +105,13 @@ class CasServiceDefinitionServiceImplTest {
         expirationPolicy.setNotifyWhenExpired(true);
         expirationPolicy.setNotifyWhenDeleted(true);
         casConfig.setExpirationPolicy(expirationPolicy);
+        CasServiceContactConfig contact = new CasServiceContactConfig();
+        contact.setName("Portal SRE");
+        contact.setEmail("sre@example.com");
+        contact.setPhone("+86-21-12345678");
+        contact.setDepartment("Platform");
+        contact.setType("TECHNICAL");
+        casConfig.setContacts(List.of(contact));
 
         PortalSettingConfig settingConfig = new PortalSettingConfig();
         settingConfig.setFrontendRedirectUrl("https://portal.example.com");
@@ -177,6 +185,17 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(true, expirationPolicyJson.get("deleteWhenExpired"));
         assertEquals(true, expirationPolicyJson.get("notifyWhenExpired"));
         assertEquals(true, expirationPolicyJson.get("notifyWhenDeleted"));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> contacts = (List<Map<String, Object>>) definition.get("contacts");
+        assertEquals(1, contacts.size());
+        assertEquals(
+                "org.apereo.cas.services.DefaultRegisteredServiceContact",
+                contacts.get(0).get("@class"));
+        assertEquals("Portal SRE", contacts.get(0).get("name"));
+        assertEquals("sre@example.com", contacts.get(0).get("email"));
+        assertEquals("+86-21-12345678", contacts.get(0).get("phone"));
+        assertEquals("Platform", contacts.get(0).get("department"));
+        assertEquals("TECHNICAL", contacts.get(0).get("type"));
         @SuppressWarnings("unchecked")
         Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
         assertEquals(

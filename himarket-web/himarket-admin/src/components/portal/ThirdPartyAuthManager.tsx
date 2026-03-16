@@ -124,6 +124,34 @@ export function ThirdPartyAuthManager({
     );
   };
 
+  const parseServiceContacts = (value?: string) => {
+    if (!value || !String(value).trim()) {
+      return undefined;
+    }
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) {
+      throw new Error("Service Contacts 必须是 JSON 数组");
+    }
+    return parsed
+      .filter(item => item && typeof item === "object" && !Array.isArray(item))
+      .map(item => ({
+        name: typeof item.name === "string" ? item.name : undefined,
+        email: typeof item.email === "string" ? item.email : undefined,
+        phone: typeof item.phone === "string" ? item.phone : undefined,
+        department:
+          typeof item.department === "string" ? item.department : undefined,
+        type: typeof item.type === "string" ? item.type : undefined,
+      }))
+      .filter(
+        item =>
+          item.name ||
+          item.email ||
+          item.phone ||
+          item.department ||
+          item.type
+      );
+  };
+
   const parseOptionalNumber = (value?: string | number) => {
     if (value === undefined || value === null || value === "") {
       return undefined;
@@ -315,6 +343,7 @@ export function ThirdPartyAuthManager({
           casConfig.expirationPolicy?.notifyWhenExpired ?? false,
         expirationPolicyNotifyWhenDeleted:
           casConfig.expirationPolicy?.notifyWhenDeleted ?? false,
+        serviceContacts: JSON.stringify(casConfig.contacts || [], null, 2),
         userIdField: casConfig.identityMapping?.userIdField,
         userNameField: casConfig.identityMapping?.userNameField,
         emailField: casConfig.identityMapping?.emailField,
@@ -435,6 +464,7 @@ export function ThirdPartyAuthManager({
             expirationPolicyDeleteWhenExpired: false,
             expirationPolicyNotifyWhenExpired: false,
             expirationPolicyNotifyWhenDeleted: false,
+            serviceContacts: "",
             serviceDefinitionResponseType: "REDIRECT",
             serviceDefinitionEvaluationOrder: 0,
           });
@@ -635,6 +665,7 @@ export function ThirdPartyAuthManager({
             notifyWhenDeleted:
               values.expirationPolicyNotifyWhenDeleted ?? false,
           },
+          contacts: parseServiceContacts(values.serviceContacts),
           identityMapping: {
             userIdField: values.userIdField || null,
             userNameField: values.userNameField || null,
@@ -1601,6 +1632,16 @@ export function ThirdPartyAuthManager({
                       valuePropName="checked"
                     >
                       <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="serviceContacts"
+                      label="Service Contacts"
+                      extra='JSON 数组，例如 [{"name":"Portal SRE","email":"sre@example.com","type":"TECHNICAL"}]'
+                    >
+                      <Input.TextArea
+                        rows={5}
+                        placeholder='如: [{"name":"Portal SRE","email":"sre@example.com","type":"TECHNICAL"}]'
+                      />
                     </Form.Item>
                   </div>
 
