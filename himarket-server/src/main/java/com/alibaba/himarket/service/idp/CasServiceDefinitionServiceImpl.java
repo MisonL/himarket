@@ -21,6 +21,8 @@ package com.alibaba.himarket.service.idp;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.config.AdminAuthConfig;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
@@ -315,16 +317,17 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         Map<String, Object> policy = new LinkedHashMap<>();
         policy.put("@class", REST_PROXY_POLICY_CLASS);
         policy.put("endpoint", proxyConfig.getPolicyEndpoint());
-        if (proxyConfig.getPolicyHeaders() != null && !proxyConfig.getPolicyHeaders().isEmpty()) {
+        Map<String, String> configuredHeaders =
+                resolveStringMap(
+                        proxyConfig.getPolicyHeaders(), proxyConfig.getPolicyHeadersJson());
+        if (!configuredHeaders.isEmpty()) {
             Map<String, String> headers = new LinkedHashMap<>();
-            proxyConfig
-                    .getPolicyHeaders()
-                    .forEach(
-                            (key, value) -> {
-                                if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
-                                    headers.put(key, value);
-                                }
-                            });
+            configuredHeaders.forEach(
+                    (key, value) -> {
+                        if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
+                            headers.put(key, value);
+                        }
+                    });
             if (!headers.isEmpty()) {
                 policy.put("headers", headers);
             }
@@ -383,9 +386,17 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 "caseInsensitive",
                 Optional.ofNullable(accessStrategyConfig.getCaseInsensitive()).orElse(false));
         appendAccessAttributes(
-                accessStrategy, "requiredAttributes", accessStrategyConfig.getRequiredAttributes());
+                accessStrategy,
+                "requiredAttributes",
+                resolveStringListMap(
+                        accessStrategyConfig.getRequiredAttributes(),
+                        accessStrategyConfig.getRequiredAttributesJson()));
         appendAccessAttributes(
-                accessStrategy, "rejectedAttributes", accessStrategyConfig.getRejectedAttributes());
+                accessStrategy,
+                "rejectedAttributes",
+                resolveStringListMap(
+                        accessStrategyConfig.getRejectedAttributes(),
+                        accessStrategyConfig.getRejectedAttributesJson()));
         Map<String, Object> delegatedAuthenticationPolicy =
                 buildDelegatedAuthenticationPolicy(
                         accessStrategyConfig.getDelegatedAuthenticationPolicy());
@@ -403,8 +414,10 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         return httpRequestConfig != null
                 && (StrUtil.isNotBlank(httpRequestConfig.getIpAddressPattern())
                         || StrUtil.isNotBlank(httpRequestConfig.getUserAgentPattern())
-                        || (httpRequestConfig.getHeaders() != null
-                                && !httpRequestConfig.getHeaders().isEmpty()));
+                        || !resolveStringMap(
+                                        httpRequestConfig.getHeaders(),
+                                        httpRequestConfig.getHeadersJson())
+                                .isEmpty());
     }
 
     private void appendHttpRequestAccessStrategy(
@@ -424,16 +437,17 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                             "java.util.ArrayList",
                             List.of(httpRequestConfig.getUserAgentPattern())));
         }
-        if (httpRequestConfig.getHeaders() != null && !httpRequestConfig.getHeaders().isEmpty()) {
+        Map<String, String> configuredHeaders =
+                resolveStringMap(
+                        httpRequestConfig.getHeaders(), httpRequestConfig.getHeadersJson());
+        if (!configuredHeaders.isEmpty()) {
             Map<String, String> headers = new LinkedHashMap<>();
-            httpRequestConfig
-                    .getHeaders()
-                    .forEach(
-                            (key, value) -> {
-                                if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
-                                    headers.put(key, value);
-                                }
-                            });
+            configuredHeaders.forEach(
+                    (key, value) -> {
+                        if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
+                            headers.put(key, value);
+                        }
+                    });
             if (!headers.isEmpty()) {
                 accessStrategy.put("requiredHeaders", headers);
             }
@@ -706,6 +720,61 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private List<Object> typedCollection(String typeName, List<String> values) {
         return List.of(typeName, values);
+    }
+
+    private Map<String, String> resolveStringMap(Map<String, String> primary, String jsonFallback) {
+        if (primary != null && !primary.isEmpty()) {
+            return primary;
+        }
+        if (StrUtil.isBlank(jsonFallback)) {
+            return Map.of();
+        }
+        JSONObject jsonObject = JSONUtil.parseObj(jsonFallback);
+        Map<String, String> resolved = new LinkedHashMap<>();
+        jsonObject.forEach(
+                (key, value) -> {
+                    if (StrUtil.isNotBlank(key)
+                            && value != null
+                            && StrUtil.isNotBlank(value.toString())) {
+                        resolved.put(key, value.toString());
+                    }
+                });
+        return resolved;
+    }
+
+    private Map<String, List<String>> resolveStringListMap(
+            Map<String, List<String>> primary, String jsonFallback) {
+        if (primary != null && !primary.isEmpty()) {
+            return primary;
+        }
+        if (StrUtil.isBlank(jsonFallback)) {
+            return Map.of();
+        }
+        JSONObject jsonObject = JSONUtil.parseObj(jsonFallback);
+        Map<String, List<String>> resolved = new LinkedHashMap<>();
+        jsonObject.forEach(
+                (key, value) -> {
+                    if (StrUtil.isBlank(key) || value == null) {
+                        return;
+                    }
+                    if (value instanceof Iterable<?> iterable) {
+                        List<String> values = new ArrayList<>();
+                        iterable.forEach(
+                                item -> {
+                                    if (item != null && StrUtil.isNotBlank(item.toString())) {
+                                        values.add(item.toString());
+                                    }
+                                });
+                        if (!values.isEmpty()) {
+                            resolved.put(key, values);
+                        }
+                        return;
+                    }
+                    if (StrUtil.isNotBlank(value.toString())) {
+                        resolved.put(key, List.of(value.toString()));
+                    }
+                });
+        return resolved;
     }
 
     private void addIfPresent(LinkedHashSet<String> attributes, String value) {

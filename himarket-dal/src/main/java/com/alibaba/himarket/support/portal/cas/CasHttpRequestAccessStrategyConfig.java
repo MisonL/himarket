@@ -30,4 +30,6 @@ public class CasHttpRequestAccessStrategyConfig {
     private String userAgentPattern;
 
     private Map<String, String> headers;
+
+    private String headersJson;
 }
