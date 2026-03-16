@@ -34,6 +34,7 @@ import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
+import com.alibaba.himarket.support.portal.cas.CasMultifactorFailureMode;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
@@ -83,6 +84,10 @@ class CasServiceDefinitionServiceImplTest {
 
         CasMultifactorPolicyConfig multifactorPolicy = new CasMultifactorPolicyConfig();
         multifactorPolicy.setProviders(List.of("mfa-duo"));
+        multifactorPolicy.setFailureMode(CasMultifactorFailureMode.CLOSED);
+        multifactorPolicy.setBypassPrincipalAttributeName("memberOf");
+        multifactorPolicy.setBypassPrincipalAttributeValue("internal");
+        multifactorPolicy.setBypassIfMissingPrincipalAttribute(true);
         casConfig.setMultifactorPolicy(multifactorPolicy);
 
         PortalSettingConfig settingConfig = new PortalSettingConfig();
@@ -125,6 +130,10 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
                 multifactor.get("@class"));
+        assertEquals("CLOSED", multifactor.get("failureMode"));
+        assertEquals("memberOf", multifactor.get("principalAttributeNameTrigger"));
+        assertEquals("internal", multifactor.get("principalAttributeValueToMatch"));
+        assertEquals(true, multifactor.get("bypassIfMissingPrincipalAttribute"));
         @SuppressWarnings("unchecked")
         Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
         assertEquals(

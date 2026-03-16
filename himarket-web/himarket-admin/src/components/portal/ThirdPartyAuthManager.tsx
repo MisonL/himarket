@@ -236,8 +236,17 @@ export function ThirdPartyAuthManager({
         multifactorProviders: formatCommaSeparated(
           casConfig.multifactorPolicy?.providers
         ),
+        multifactorFailureMode:
+          casConfig.multifactorPolicy?.failureMode || "UNDEFINED",
         multifactorBypassEnabled:
           casConfig.multifactorPolicy?.bypassEnabled ?? false,
+        multifactorBypassPrincipalAttributeName:
+          casConfig.multifactorPolicy?.bypassPrincipalAttributeName,
+        multifactorBypassPrincipalAttributeValue:
+          casConfig.multifactorPolicy?.bypassPrincipalAttributeValue,
+        multifactorBypassIfMissingPrincipalAttribute:
+          casConfig.multifactorPolicy?.bypassIfMissingPrincipalAttribute ??
+          false,
         multifactorForceExecution:
           casConfig.multifactorPolicy?.forceExecution ?? false,
         userIdField: casConfig.identityMapping?.userIdField,
@@ -346,7 +355,9 @@ export function ThirdPartyAuthManager({
             delegatedPermitUndefined: true,
             delegatedExclusive: false,
             attributeReleaseMode: "RETURN_ALLOWED",
+            multifactorFailureMode: "UNDEFINED",
             multifactorBypassEnabled: false,
+            multifactorBypassIfMissingPrincipalAttribute: false,
             multifactorForceExecution: false,
             serviceDefinitionResponseType: "REDIRECT",
             serviceDefinitionEvaluationOrder: 0,
@@ -503,7 +514,14 @@ export function ThirdPartyAuthManager({
           },
           multifactorPolicy: {
             providers: parseCommaSeparated(values.multifactorProviders),
+            failureMode: values.multifactorFailureMode || "UNDEFINED",
             bypassEnabled: values.multifactorBypassEnabled ?? false,
+            bypassPrincipalAttributeName:
+              values.multifactorBypassPrincipalAttributeName || undefined,
+            bypassPrincipalAttributeValue:
+              values.multifactorBypassPrincipalAttributeValue || undefined,
+            bypassIfMissingPrincipalAttribute:
+              values.multifactorBypassIfMissingPrincipalAttribute ?? false,
             forceExecution: values.multifactorForceExecution ?? false,
           },
           identityMapping: {
@@ -1315,8 +1333,39 @@ export function ThirdPartyAuthManager({
                       <Input placeholder="如: mfa-duo, mfa-webauthn" />
                     </Form.Item>
                     <Form.Item
+                      name="multifactorFailureMode"
+                      label="MFA Failure Mode"
+                    >
+                      <Select>
+                        <Select.Option value="UNDEFINED">UNDEFINED</Select.Option>
+                        <Select.Option value="OPEN">OPEN</Select.Option>
+                        <Select.Option value="CLOSED">CLOSED</Select.Option>
+                        <Select.Option value="PHANTOM">PHANTOM</Select.Option>
+                        <Select.Option value="NONE">NONE</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
                       name="multifactorBypassEnabled"
                       label="MFA Bypass"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="multifactorBypassPrincipalAttributeName"
+                      label="Bypass Principal Attribute"
+                    >
+                      <Input placeholder="如: memberOf" />
+                    </Form.Item>
+                    <Form.Item
+                      name="multifactorBypassPrincipalAttributeValue"
+                      label="Bypass Attribute Value"
+                    >
+                      <Input placeholder="如: internal" />
+                    </Form.Item>
+                    <Form.Item
+                      name="multifactorBypassIfMissingPrincipalAttribute"
+                      label="Bypass If Principal Attribute Missing"
                       valuePropName="checked"
                     >
                       <Switch />
