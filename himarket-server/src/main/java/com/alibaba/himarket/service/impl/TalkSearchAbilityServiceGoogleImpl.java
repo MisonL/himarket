@@ -247,13 +247,23 @@ public class TalkSearchAbilityServiceGoogleImpl
 
     private List<Map<String, Object>> getResultList(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        if (value instanceof List) {
-            try {
-                return (List<Map<String, Object>>) value;
-            } catch (ClassCastException e) {
-                log.warn("Failed to cast {} to List<Map>", key);
-                return Collections.emptyList();
+        if (value instanceof List<?> listValue) {
+            List<Map<String, Object>> results = new ArrayList<>();
+            for (Object item : listValue) {
+                if (item instanceof Map<?, ?> rawMap) {
+                    Map<String, Object> normalized = new HashMap<>();
+                    rawMap.forEach(
+                            (entryKey, entryValue) -> {
+                                if (entryKey instanceof String stringKey) {
+                                    normalized.put(stringKey, entryValue);
+                                }
+                            });
+                    if (!normalized.isEmpty()) {
+                        results.add(normalized);
+                    }
+                }
             }
+            return results;
         }
         return Collections.emptyList();
     }
@@ -268,13 +278,15 @@ public class TalkSearchAbilityServiceGoogleImpl
 
     private Map<String, Object> getMapValue(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        if (value instanceof Map) {
-            try {
-                return (Map<String, Object>) value;
-            } catch (ClassCastException e) {
-                log.warn("Failed to cast {} to Map", key);
-                return null;
-            }
+        if (value instanceof Map<?, ?> rawMap) {
+            Map<String, Object> normalized = new HashMap<>();
+            rawMap.forEach(
+                    (entryKey, entryValue) -> {
+                        if (entryKey instanceof String stringKey) {
+                            normalized.put(stringKey, entryValue);
+                        }
+                    });
+            return normalized.isEmpty() ? null : normalized;
         }
         return null;
     }

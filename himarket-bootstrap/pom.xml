@@ -70,8 +70,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <parameters>true</parameters>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <release>${maven.compiler.release}</release>
+                    <proc>full</proc>
                 </configuration>
             </plugin>
         </plugins>
