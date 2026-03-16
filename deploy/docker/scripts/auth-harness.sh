@@ -386,6 +386,10 @@ curl_mock_oidc() {
 
 start_mock_oidc() {
   require_cmd node
+  if docker ps -a --filter name='^/himarket-mock-oidc$' --format '{{.Names}}' | grep -qx 'himarket-mock-oidc'; then
+    log "remove stale compose-managed mock oidc container"
+    docker rm -f himarket-mock-oidc >/dev/null
+  fi
   if curl -fsS "http://localhost:${MOCK_OIDC_PORT}/.well-known/openid-configuration" >/dev/null 2>&1; then
     log "mock oidc already available"
     return 0
