@@ -50,6 +50,11 @@ export interface CasProxyConfig {
   callbackUrlPattern?: string;
   proxyEndpoint?: string;
   targetServicePattern?: string;
+  policyMode?: "REGEX" | "REST" | "REFUSE";
+  useServiceId?: boolean;
+  exactMatch?: boolean;
+  policyEndpoint?: string;
+  policyHeaders?: Record<string, string>;
 }
 
 export interface CasServiceDefinitionConfig {

@@ -19,29 +19,8 @@
 
 package com.alibaba.himarket.support.portal.cas;
 
-import java.util.Map;
-import lombok.Data;
-
-@Data
-public class CasProxyConfig {
-
-    private Boolean enabled = false;
-
-    private String callbackPath;
-
-    private String callbackUrlPattern;
-
-    private String proxyEndpoint;
-
-    private String targetServicePattern;
-
-    private CasProxyPolicyMode policyMode = CasProxyPolicyMode.REGEX;
-
-    private Boolean useServiceId = false;
-
-    private Boolean exactMatch = false;
-
-    private String policyEndpoint;
-
-    private Map<String, String> policyHeaders;
+public enum CasProxyPolicyMode {
+    REGEX,
+    REST,
+    REFUSE
 }

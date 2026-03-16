@@ -194,6 +194,11 @@ export function ThirdPartyAuthManager({
         proxyCallbackUrlPattern: casConfig.proxy?.callbackUrlPattern,
         proxyEndpoint: casConfig.proxy?.proxyEndpoint,
         proxyTargetServicePattern: casConfig.proxy?.targetServicePattern,
+        proxyPolicyMode: casConfig.proxy?.policyMode || "REGEX",
+        proxyUseServiceId: casConfig.proxy?.useServiceId ?? false,
+        proxyExactMatch: casConfig.proxy?.exactMatch ?? false,
+        proxyPolicyEndpoint: casConfig.proxy?.policyEndpoint,
+        proxyPolicyHeaders: formatJsonObject(casConfig.proxy?.policyHeaders),
         serviceDefinitionServiceIdPattern:
           casConfig.serviceDefinition?.serviceIdPattern,
         serviceDefinitionServiceId: casConfig.serviceDefinition?.serviceId,
@@ -462,6 +467,11 @@ export function ThirdPartyAuthManager({
             proxyEndpoint: values.proxyEndpoint || undefined,
             targetServicePattern:
               values.proxyTargetServicePattern || undefined,
+            policyMode: values.proxyPolicyMode || "REGEX",
+            useServiceId: values.proxyUseServiceId ?? false,
+            exactMatch: values.proxyExactMatch ?? false,
+            policyEndpoint: values.proxyPolicyEndpoint || undefined,
+            policyHeaders: parseStringMap(values.proxyPolicyHeaders),
           },
           serviceDefinition: {
             serviceIdPattern:
@@ -1108,6 +1118,44 @@ export function ThirdPartyAuthManager({
                       extra="可选，用于限制可申请 PT 的目标服务正则。"
                     >
                       <Input placeholder="如: ^https://api.example.com/.*$" />
+                    </Form.Item>
+                    <Form.Item name="proxyPolicyMode" label="Proxy Policy Mode">
+                      <Select>
+                        <Select.Option value="REGEX">REGEX</Select.Option>
+                        <Select.Option value="REST">REST</Select.Option>
+                        <Select.Option value="REFUSE">REFUSE</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      name="proxyUseServiceId"
+                      label="Use Service ID"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="proxyExactMatch"
+                      label="Exact Match"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="proxyPolicyEndpoint"
+                      label="Policy Endpoint"
+                      extra="REST 模式可选。"
+                    >
+                      <Input placeholder="如: https://proxy.example.com/policies" />
+                    </Form.Item>
+                    <Form.Item
+                      name="proxyPolicyHeaders"
+                      label="Policy Headers"
+                      extra='REST 模式可选，JSON 对象，例如 {"X-Proxy-Policy":"enabled"}'
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder='如: {"X-Proxy-Policy":"enabled"}'
+                      />
                     </Form.Item>
                   </div>
 

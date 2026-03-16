@@ -35,6 +35,7 @@ import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyC
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
@@ -82,6 +83,9 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private static final String REGEX_PROXY_POLICY_CLASS =
             "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy";
+
+    private static final String REST_PROXY_POLICY_CLASS =
+            "org.apereo.cas.services.RestfulRegisteredServiceProxyPolicy";
 
     private final PortalService portalService;
 
@@ -256,8 +260,13 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private Map<String, Object> buildProxyPolicy(
             CasProxyConfig proxyConfig, String frontendBaseUrl, String defaultProxyCallbackPath) {
-        if (!Boolean.TRUE.equals(proxyConfig.getEnabled())) {
+        CasProxyPolicyMode policyMode = resolveProxyPolicyMode(proxyConfig);
+        if (!Boolean.TRUE.equals(proxyConfig.getEnabled())
+                || policyMode == CasProxyPolicyMode.REFUSE) {
             return Map.of("@class", REFUSE_PROXY_POLICY_CLASS);
+        }
+        if (policyMode == CasProxyPolicyMode.REST) {
+            return buildRestProxyPolicy(proxyConfig);
         }
         Map<String, Object> policy = new LinkedHashMap<>();
         policy.put("@class", REGEX_PROXY_POLICY_CLASS);
@@ -265,8 +274,37 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 "pattern",
                 resolveProxyCallbackPattern(
                         proxyConfig, frontendBaseUrl, defaultProxyCallbackPath));
-        policy.put("useServiceId", false);
-        policy.put("exactMatch", false);
+        policy.put(
+                "useServiceId", Optional.ofNullable(proxyConfig.getUseServiceId()).orElse(false));
+        policy.put("exactMatch", Optional.ofNullable(proxyConfig.getExactMatch()).orElse(false));
+        return policy;
+    }
+
+    private CasProxyPolicyMode resolveProxyPolicyMode(CasProxyConfig proxyConfig) {
+        if (proxyConfig.getPolicyMode() == null) {
+            return CasProxyPolicyMode.REGEX;
+        }
+        return proxyConfig.getPolicyMode();
+    }
+
+    private Map<String, Object> buildRestProxyPolicy(CasProxyConfig proxyConfig) {
+        Map<String, Object> policy = new LinkedHashMap<>();
+        policy.put("@class", REST_PROXY_POLICY_CLASS);
+        policy.put("endpoint", proxyConfig.getPolicyEndpoint());
+        if (proxyConfig.getPolicyHeaders() != null && !proxyConfig.getPolicyHeaders().isEmpty()) {
+            Map<String, String> headers = new LinkedHashMap<>();
+            proxyConfig
+                    .getPolicyHeaders()
+                    .forEach(
+                            (key, value) -> {
+                                if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
+                                    headers.put(key, value);
+                                }
+                            });
+            if (!headers.isEmpty()) {
+                policy.put("headers", headers);
+            }
+        }
         return policy;
     }
 
