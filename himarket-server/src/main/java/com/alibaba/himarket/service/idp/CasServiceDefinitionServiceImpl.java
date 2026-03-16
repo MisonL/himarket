@@ -31,6 +31,7 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
@@ -56,6 +57,9 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private static final String ACCESS_STRATEGY_CLASS =
             "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy";
+
+    private static final String HTTP_REQUEST_ACCESS_STRATEGY_CLASS =
+            "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy";
 
     private static final String ATTRIBUTE_RELEASE_POLICY_CLASS =
             "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy";
@@ -278,7 +282,13 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private Map<String, Object> buildAccessStrategy(CasAccessStrategyConfig accessStrategyConfig) {
         Map<String, Object> accessStrategy = new LinkedHashMap<>();
-        accessStrategy.put("@class", ACCESS_STRATEGY_CLASS);
+        CasHttpRequestAccessStrategyConfig httpRequestConfig =
+                accessStrategyConfig != null ? accessStrategyConfig.getHttpRequest() : null;
+        accessStrategy.put(
+                "@class",
+                hasHttpRequestAccessStrategy(httpRequestConfig)
+                        ? HTTP_REQUEST_ACCESS_STRATEGY_CLASS
+                        : ACCESS_STRATEGY_CLASS);
         accessStrategy.put(
                 "enabled", Optional.ofNullable(accessStrategyConfig.getEnabled()).orElse(true));
         accessStrategy.put(
@@ -290,7 +300,52 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         if (!delegatedAuthenticationPolicy.isEmpty()) {
             accessStrategy.put("delegatedAuthenticationPolicy", delegatedAuthenticationPolicy);
         }
+        if (hasHttpRequestAccessStrategy(httpRequestConfig)) {
+            appendHttpRequestAccessStrategy(accessStrategy, httpRequestConfig);
+        }
         return accessStrategy;
+    }
+
+    private boolean hasHttpRequestAccessStrategy(
+            CasHttpRequestAccessStrategyConfig httpRequestConfig) {
+        return httpRequestConfig != null
+                && (StrUtil.isNotBlank(httpRequestConfig.getIpAddressPattern())
+                        || StrUtil.isNotBlank(httpRequestConfig.getUserAgentPattern())
+                        || (httpRequestConfig.getHeaders() != null
+                                && !httpRequestConfig.getHeaders().isEmpty()));
+    }
+
+    private void appendHttpRequestAccessStrategy(
+            Map<String, Object> accessStrategy,
+            CasHttpRequestAccessStrategyConfig httpRequestConfig) {
+        if (StrUtil.isNotBlank(httpRequestConfig.getIpAddressPattern())) {
+            accessStrategy.put(
+                    "requiredIpAddressesPatterns",
+                    typedCollection(
+                            "java.util.ArrayList",
+                            List.of(httpRequestConfig.getIpAddressPattern())));
+        }
+        if (StrUtil.isNotBlank(httpRequestConfig.getUserAgentPattern())) {
+            accessStrategy.put(
+                    "requiredUserAgentPatterns",
+                    typedCollection(
+                            "java.util.ArrayList",
+                            List.of(httpRequestConfig.getUserAgentPattern())));
+        }
+        if (httpRequestConfig.getHeaders() != null && !httpRequestConfig.getHeaders().isEmpty()) {
+            Map<String, String> headers = new LinkedHashMap<>();
+            httpRequestConfig
+                    .getHeaders()
+                    .forEach(
+                            (key, value) -> {
+                                if (StrUtil.isNotBlank(key) && StrUtil.isNotBlank(value)) {
+                                    headers.put(key, value);
+                                }
+                            });
+            if (!headers.isEmpty()) {
+                accessStrategy.put("requiredHeaders", headers);
+            }
+        }
     }
 
     private Map<String, Object> buildDelegatedAuthenticationPolicy(

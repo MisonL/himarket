@@ -65,10 +65,17 @@ export interface CasDelegatedAuthenticationPolicyConfig {
   exclusive?: boolean;
 }
 
+export interface CasHttpRequestAccessStrategyConfig {
+  ipAddressPattern?: string;
+  userAgentPattern?: string;
+  headers?: Record<string, string>;
+}
+
 export interface CasAccessStrategyConfig {
   enabled?: boolean;
   ssoEnabled?: boolean;
   delegatedAuthenticationPolicy?: CasDelegatedAuthenticationPolicyConfig;
+  httpRequest?: CasHttpRequestAccessStrategyConfig;
 }
 
 export interface CasAttributeReleasePolicyConfig {

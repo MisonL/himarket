@@ -19,16 +19,15 @@
 
 package com.alibaba.himarket.support.portal.cas;
 
+import java.util.Map;
 import lombok.Data;
 
 @Data
-public class CasAccessStrategyConfig {
+public class CasHttpRequestAccessStrategyConfig {
 
-    private Boolean enabled = true;
+    private String ipAddressPattern;
 
-    private Boolean ssoEnabled = true;
+    private String userAgentPattern;
 
-    private CasDelegatedAuthenticationPolicyConfig delegatedAuthenticationPolicy;
-
-    private CasHttpRequestAccessStrategyConfig httpRequest;
+    private Map<String, String> headers;
 }
