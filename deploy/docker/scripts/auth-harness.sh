@@ -801,6 +801,15 @@ main() {
             "notifyWhenExpired": true,
             "notifyWhenDeleted": true
           },
+          "contacts": [
+            {
+              "name": "Portal SRE",
+              "email": "sre@example.com",
+              "phone": "+86-21-12345678",
+              "department": "Platform",
+              "type": "TECHNICAL"
+            }
+          ],
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
@@ -1070,6 +1079,18 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.expirationPolicy // .expirationPolicy).notifyWhenDeleted == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].name // "") == "Portal SRE"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].email // "") == "sre@example.com"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].department // "") == "Platform"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].type // "") == "TECHNICAL"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"
@@ -1838,6 +1859,18 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.expirationPolicy // .expirationPolicy).notifyWhenDeleted == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].name // "") == "Admin SRE"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].email // "") == "admin-sre@example.com"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].department // "") == "Operations"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.contacts // [])[0].type // "") == "TECHNICAL"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"

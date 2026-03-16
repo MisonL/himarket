@@ -27,9 +27,11 @@ import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceContactConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
+import java.util.List;
 import lombok.Data;
 
 @Data
@@ -73,6 +75,8 @@ public class CasConfig {
     private CasAuthenticationPolicyConfig authenticationPolicy;
 
     private CasExpirationPolicyConfig expirationPolicy;
+
+    private List<CasServiceContactConfig> contacts;
 
     public CasLoginConfig resolveLoginConfig() {
         if (login == null) {

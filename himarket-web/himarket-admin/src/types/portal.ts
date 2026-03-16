@@ -120,6 +120,14 @@ export interface CasExpirationPolicyConfig {
   notifyWhenDeleted?: boolean;
 }
 
+export interface CasServiceContactConfig {
+  name?: string;
+  email?: string;
+  phone?: string;
+  department?: string;
+  type?: string;
+}
+
 export interface CasConfig {
   provider: string;
   name: string;
@@ -138,6 +146,7 @@ export interface CasConfig {
   multifactorPolicy?: CasMultifactorPolicyConfig;
   authenticationPolicy?: CasAuthenticationPolicyConfig;
   expirationPolicy?: CasExpirationPolicyConfig;
+  contacts?: CasServiceContactConfig[];
   identityMapping?: IdentityMapping;
 }
 
