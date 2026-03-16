@@ -1,0 +1,24 @@
+{
+  "@class": "org.apereo.cas.services.CasRegisteredService",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=cas-mfa(?:&.*)?$",
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS30"
+    ]
+  ],
+  "multifactorPolicy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy",
+    "multifactorAuthenticationProviders": [
+      "java.util.LinkedHashSet",
+      [
+        "mfa-simple"
+      ]
+    ],
+    "bypassEnabled": false,
+    "forceExecution": true
+  },
+  "name": "HiMarket Local MFA",
+  "id": 900,
+  "evaluationOrder": 0
+}

@@ -1,0 +1,21 @@
+{
+  "@class": "org.apereo.cas.services.CasRegisteredService",
+  "serviceId": "^http://localhost:(5173|5174)/.*$",
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS10",
+      "CAS20",
+      "CAS30",
+      "SAML1"
+    ]
+  ],
+  "accessStrategy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy",
+    "enabled": true,
+    "ssoEnabled": true
+  },
+  "name": "HiMarket Proxy Targets",
+  "id": 1100,
+  "evaluationOrder": 5
+}
