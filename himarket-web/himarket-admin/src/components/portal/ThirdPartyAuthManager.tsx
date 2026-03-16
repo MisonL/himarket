@@ -224,6 +224,8 @@ export function ThirdPartyAuthManager({
         attributeReleaseAllowedAttributes: formatCommaSeparated(
           casConfig.attributeRelease?.allowedAttributes
         ),
+        attributeReleaseMode:
+          casConfig.attributeRelease?.mode || "RETURN_ALLOWED",
         multifactorProviders: formatCommaSeparated(
           casConfig.multifactorPolicy?.providers
         ),
@@ -336,6 +338,7 @@ export function ThirdPartyAuthManager({
             accessStrategySsoEnabled: true,
             delegatedPermitUndefined: true,
             delegatedExclusive: false,
+            attributeReleaseMode: "RETURN_ALLOWED",
             multifactorBypassEnabled: false,
             multifactorForceExecution: false,
             serviceDefinitionResponseType: "REDIRECT",
@@ -479,6 +482,7 @@ export function ThirdPartyAuthManager({
             },
           },
           attributeRelease: {
+            mode: values.attributeReleaseMode || "RETURN_ALLOWED",
             allowedAttributes: parseCommaSeparated(
               values.attributeReleaseAllowedAttributes
             ),
@@ -1222,9 +1226,23 @@ export function ThirdPartyAuthManager({
                   <Divider className="my-2">属性与 MFA</Divider>
                   <div className="grid grid-cols-2 gap-4">
                     <Form.Item
+                      name="attributeReleaseMode"
+                      label="Attribute Release Mode"
+                    >
+                      <Select>
+                        <Select.Option value="RETURN_ALLOWED">
+                          RETURN_ALLOWED
+                        </Select.Option>
+                        <Select.Option value="RETURN_ALL">
+                          RETURN_ALL
+                        </Select.Option>
+                        <Select.Option value="DENY_ALL">DENY_ALL</Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
                       name="attributeReleaseAllowedAttributes"
                       label="Allowed Attributes"
-                      extra="逗号分隔；为空时回落到身份映射字段。"
+                      extra="仅在 RETURN_ALLOWED 下生效；为空时回落到身份映射字段。"
                     >
                       <Input placeholder="如: uid, mail, displayName" />
                     </Form.Item>

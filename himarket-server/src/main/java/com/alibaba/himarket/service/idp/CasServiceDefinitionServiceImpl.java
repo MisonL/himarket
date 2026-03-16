@@ -30,6 +30,7 @@ import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
@@ -63,6 +64,12 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private static final String ATTRIBUTE_RELEASE_POLICY_CLASS =
             "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy";
+
+    private static final String ATTRIBUTE_RELEASE_POLICY_ALL_CLASS =
+            "org.apereo.cas.services.ReturnAllAttributeReleasePolicy";
+
+    private static final String ATTRIBUTE_RELEASE_POLICY_DENY_CLASS =
+            "org.apereo.cas.services.DenyAllAttributeReleasePolicy";
 
     private static final String MULTIFACTOR_POLICY_CLASS =
             "org.apereo.cas.services.DefaultRegisteredServiceMultifactorPolicy";
@@ -375,16 +382,37 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
     private Map<String, Object> buildAttributeReleasePolicy(
             CasAttributeReleasePolicyConfig attributeReleasePolicyConfig,
             IdentityMapping identityMapping) {
+        CasAttributeReleasePolicyMode mode =
+                resolveAttributeReleaseMode(attributeReleasePolicyConfig);
         Map<String, Object> attributeReleasePolicy = new LinkedHashMap<>();
-        attributeReleasePolicy.put("@class", ATTRIBUTE_RELEASE_POLICY_CLASS);
-        attributeReleasePolicy.put(
-                "allowedAttributes",
-                typedCollection(
-                        "java.util.ArrayList",
-                        new ArrayList<>(
-                                resolveAllowedAttributes(
-                                        attributeReleasePolicyConfig, identityMapping))));
+        attributeReleasePolicy.put("@class", resolveAttributeReleasePolicyClass(mode));
+        if (mode == CasAttributeReleasePolicyMode.RETURN_ALLOWED) {
+            attributeReleasePolicy.put(
+                    "allowedAttributes",
+                    typedCollection(
+                            "java.util.ArrayList",
+                            new ArrayList<>(
+                                    resolveAllowedAttributes(
+                                            attributeReleasePolicyConfig, identityMapping))));
+        }
         return attributeReleasePolicy;
+    }
+
+    private CasAttributeReleasePolicyMode resolveAttributeReleaseMode(
+            CasAttributeReleasePolicyConfig attributeReleasePolicyConfig) {
+        if (attributeReleasePolicyConfig == null
+                || attributeReleasePolicyConfig.getMode() == null) {
+            return CasAttributeReleasePolicyMode.RETURN_ALLOWED;
+        }
+        return attributeReleasePolicyConfig.getMode();
+    }
+
+    private String resolveAttributeReleasePolicyClass(CasAttributeReleasePolicyMode mode) {
+        return switch (mode) {
+            case RETURN_ALL -> ATTRIBUTE_RELEASE_POLICY_ALL_CLASS;
+            case DENY_ALL -> ATTRIBUTE_RELEASE_POLICY_DENY_CLASS;
+            case RETURN_ALLOWED -> ATTRIBUTE_RELEASE_POLICY_CLASS;
+        };
     }
 
     private LinkedHashSet<String> resolveAllowedAttributes(
