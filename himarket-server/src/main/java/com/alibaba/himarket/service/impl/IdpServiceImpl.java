@@ -42,7 +42,6 @@ import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
-import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import java.math.BigInteger;
@@ -188,16 +187,7 @@ public class IdpServiceImpl implements IdpService {
     }
 
     private void validateCasServiceDefinition(
-            String provider, CasServiceDefinitionConfig serviceDefinitionConfig) {
-        if (serviceDefinitionConfig.getResponseType() == CasServiceResponseType.HEADER) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_PARAMETER,
-                    StrUtil.format(
-                            "CAS config {} does not support HEADER response type in current login"
-                                    + " flow",
-                            provider));
-        }
-    }
+            String provider, CasServiceDefinitionConfig serviceDefinitionConfig) {}
 
     private void validateCasProxyConfig(String provider, CasProxyConfig proxyConfig) {
         if (!Boolean.TRUE.equals(proxyConfig.getEnabled())) {
