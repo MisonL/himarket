@@ -169,6 +169,11 @@ class CasServiceDefinitionServiceImplTest {
         accessStrategy.setEnabled(false);
         accessStrategy.setSsoEnabled(false);
         accessStrategy.setUnauthorizedRedirectUrl("https://admin.example.com/forbidden");
+        accessStrategy.setRequireAllAttributes(true);
+        accessStrategy.setCaseInsensitive(true);
+        accessStrategy.setRequiredAttributes(
+                Map.of("memberOf", List.of("internal", "ops"), "region", List.of("cn")));
+        accessStrategy.setRejectedAttributes(Map.of("status", List.of("disabled")));
         CasDelegatedAuthenticationPolicyConfig delegated =
                 new CasDelegatedAuthenticationPolicyConfig();
         delegated.setAllowedProviders(List.of("GithubClient"));
@@ -208,6 +213,8 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "https://admin.example.com/forbidden",
                 accessStrategyJson.get("unauthorizedRedirectUrl"));
+        assertEquals(true, accessStrategyJson.get("requireAllAttributes"));
+        assertEquals(true, accessStrategyJson.get("caseInsensitive"));
         assertEquals(
                 "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy",
                 accessStrategyJson.get("@class"));
@@ -218,6 +225,14 @@ class CasServiceDefinitionServiceImplTest {
                 List.of("java.util.ArrayList", List.of("^curl/.*$")),
                 accessStrategyJson.get("requiredUserAgentPatterns"));
         assertEquals(Map.of("X-Portal-Scope", "admin"), accessStrategyJson.get("requiredHeaders"));
+        assertEquals(
+                Map.of(
+                        "memberOf", List.of("java.util.LinkedHashSet", List.of("internal", "ops")),
+                        "region", List.of("java.util.LinkedHashSet", List.of("cn"))),
+                accessStrategyJson.get("requiredAttributes"));
+        assertEquals(
+                Map.of("status", List.of("java.util.LinkedHashSet", List.of("disabled"))),
+                accessStrategyJson.get("rejectedAttributes"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> delegatedJson =
