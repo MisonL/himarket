@@ -1,11 +1,21 @@
 {
   "@class": "org.apereo.cas.services.CasRegisteredService",
-  "serviceId": "^(http|https)://(localhost|127\\.0\\.0\\.1)(:\\d+)?/.*",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=(cas|cas-saml1|cas1|cas2)(?:&.*)?$",
   "proxyPolicy": {
     "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
     "pattern": "^http://himarket-server:8080/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
     "useServiceId": false,
     "exactMatch": false
+  },
+  "accessStrategy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy",
+    "enabled": true,
+    "ssoEnabled": true,
+    "delegatedAuthenticationPolicy": {
+      "@class": "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy",
+      "permitUndefined": false,
+      "exclusive": false
+    }
   },
   "supportedProtocols": [
     "java.util.HashSet",

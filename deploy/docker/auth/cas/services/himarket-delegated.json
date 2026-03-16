@@ -1,0 +1,29 @@
+{
+  "@class": "org.apereo.cas.services.CasRegisteredService",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=cas-delegated(?:&.*)?$",
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS30"
+    ]
+  ],
+  "accessStrategy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy",
+    "enabled": true,
+    "ssoEnabled": true,
+    "delegatedAuthenticationPolicy": {
+      "@class": "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy",
+      "permitUndefined": false,
+      "exclusive": true,
+      "allowedProviders": [
+        "java.util.ArrayList",
+        [
+          "MockOidcClient"
+        ]
+      ]
+    }
+  },
+  "name": "HiMarket Local Delegated",
+  "id": 850,
+  "evaluationOrder": 0
+}
