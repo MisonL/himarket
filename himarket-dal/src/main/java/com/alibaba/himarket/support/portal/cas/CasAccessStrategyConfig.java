@@ -19,6 +19,8 @@
 
 package com.alibaba.himarket.support.portal.cas;
 
+import java.util.List;
+import java.util.Map;
 import lombok.Data;
 
 @Data
@@ -29,6 +31,14 @@ public class CasAccessStrategyConfig {
     private Boolean ssoEnabled = true;
 
     private String unauthorizedRedirectUrl;
+
+    private Boolean requireAllAttributes = false;
+
+    private Boolean caseInsensitive = false;
+
+    private Map<String, List<String>> requiredAttributes;
+
+    private Map<String, List<String>> rejectedAttributes;
 
     private CasDelegatedAuthenticationPolicyConfig delegatedAuthenticationPolicy;
 

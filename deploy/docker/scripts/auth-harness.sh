@@ -790,6 +790,15 @@ main() {
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
+            "requireAllAttributes": true,
+            "caseInsensitive": true,
+            "requiredAttributes": {
+              "memberOf": ["internal", "ops"],
+              "region": ["cn"]
+            },
+            "rejectedAttributes": {
+              "status": ["disabled"]
+            },
             "unauthorizedRedirectUrl": "http://localhost:5173/forbidden",
             "delegatedAuthenticationPolicy": {
               "allowedProviders": ["GithubClient"],
@@ -1008,6 +1017,21 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).requireAllAttributes == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).caseInsensitive == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredAttributes.memberOf // [])[1][]?] == ["internal", "ops"]
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredAttributes.region // [])[1][]?] == ["cn"]
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).rejectedAttributes.status // [])[1][]?] == ["disabled"]
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="GithubClient")
@@ -1719,6 +1743,12 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).requireAllAttributes == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).caseInsensitive == true
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="GithubClient")

@@ -71,6 +71,9 @@ export function ThirdPartyAuthManager({
   const formatJsonObject = (value?: Record<string, string>) =>
     value ? JSON.stringify(value, null, 2) : "";
 
+  const formatJsonArrayObject = (value?: Record<string, string[]>) =>
+    value ? JSON.stringify(value, null, 2) : "";
+
   const parseStringMap = (value?: string) => {
     if (!value || !String(value).trim()) {
       return undefined;
@@ -83,6 +86,37 @@ export function ThirdPartyAuthManager({
       (result, [key, item]) => {
         if (typeof item === "string" && key.trim()) {
           result[key] = item;
+        }
+        return result;
+      },
+      {}
+    );
+  };
+
+  const parseStringArrayMap = (value?: string, fieldLabel?: string) => {
+    if (!value || !String(value).trim()) {
+      return undefined;
+    }
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error(`${fieldLabel || "属性规则"}必须是 JSON 对象`);
+    }
+    return Object.entries(parsed).reduce<Record<string, string[]>>(
+      (result, [key, item]) => {
+        if (!key.trim()) {
+          return result;
+        }
+        if (Array.isArray(item)) {
+          const values = item
+            .map(entry => String(entry || "").trim())
+            .filter(Boolean);
+          if (values.length > 0) {
+            result[key] = values;
+          }
+          return result;
+        }
+        if (typeof item === "string" && item.trim()) {
+          result[key] = [item.trim()];
         }
         return result;
       },
@@ -211,6 +245,16 @@ export function ThirdPartyAuthManager({
         accessStrategySsoEnabled: casConfig.accessStrategy?.ssoEnabled ?? true,
         accessStrategyUnauthorizedRedirectUrl:
           casConfig.accessStrategy?.unauthorizedRedirectUrl,
+        accessStrategyRequireAllAttributes:
+          casConfig.accessStrategy?.requireAllAttributes ?? false,
+        accessStrategyCaseInsensitive:
+          casConfig.accessStrategy?.caseInsensitive ?? false,
+        accessStrategyRequiredAttributes: formatJsonArrayObject(
+          casConfig.accessStrategy?.requiredAttributes
+        ),
+        accessStrategyRejectedAttributes: formatJsonArrayObject(
+          casConfig.accessStrategy?.rejectedAttributes
+        ),
         delegatedAllowedProviders: formatCommaSeparated(
           casConfig.accessStrategy?.delegatedAuthenticationPolicy
             ?.allowedProviders
@@ -352,6 +396,8 @@ export function ThirdPartyAuthManager({
             proxyEnabled: false,
             accessStrategyEnabled: true,
             accessStrategySsoEnabled: true,
+            accessStrategyRequireAllAttributes: false,
+            accessStrategyCaseInsensitive: false,
             delegatedPermitUndefined: true,
             delegatedExclusive: false,
             attributeReleaseMode: "RETURN_ALLOWED",
@@ -500,6 +546,17 @@ export function ThirdPartyAuthManager({
             ssoEnabled: values.accessStrategySsoEnabled ?? true,
             unauthorizedRedirectUrl:
               values.accessStrategyUnauthorizedRedirectUrl || undefined,
+            requireAllAttributes:
+              values.accessStrategyRequireAllAttributes ?? false,
+            caseInsensitive: values.accessStrategyCaseInsensitive ?? false,
+            requiredAttributes: parseStringArrayMap(
+              values.accessStrategyRequiredAttributes,
+              "Required Attributes"
+            ),
+            rejectedAttributes: parseStringArrayMap(
+              values.accessStrategyRejectedAttributes,
+              "Rejected Attributes"
+            ),
             delegatedAuthenticationPolicy: {
               allowedProviders: parseCommaSeparated(
                 values.delegatedAllowedProviders
@@ -1256,6 +1313,40 @@ export function ThirdPartyAuthManager({
                       label="Unauthorized Redirect URL"
                     >
                       <Input placeholder="如: https://portal.example.com/forbidden" />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyRequireAllAttributes"
+                      label="Require All Attributes"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyCaseInsensitive"
+                      label="Access Strategy Case Insensitive"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyRequiredAttributes"
+                      label="Required Attributes"
+                      extra='JSON 对象，值可为字符串或字符串数组，例如 {"memberOf":["internal","ops"]}'
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder='如: {"memberOf":["internal","ops"]}'
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyRejectedAttributes"
+                      label="Rejected Attributes"
+                      extra='JSON 对象，值可为字符串或字符串数组，例如 {"status":["disabled"]}'
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder='如: {"status":["disabled"]}'
+                      />
                     </Form.Item>
                     <Form.Item
                       name="delegatedAllowedProviders"
