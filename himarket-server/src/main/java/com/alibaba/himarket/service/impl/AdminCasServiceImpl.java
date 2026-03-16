@@ -54,6 +54,7 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
+import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -180,6 +181,7 @@ public class AdminCasServiceImpl implements AdminCasService {
                         configs ->
                                 configs.stream()
                                         .filter(CasConfig::isEnabled)
+                                        .filter(this::isInteractiveLoginProvider)
                                         .map(
                                                 config ->
                                                         IdpResult.builder()
@@ -262,6 +264,9 @@ public class AdminCasServiceImpl implements AdminCasService {
         if (rememberMe) {
             builder.queryParam(IdpConstants.REMEMBER_ME, true);
         }
+        if (resolveResponseType(config) == CasServiceResponseType.HEADER) {
+            builder.queryParam(IdpConstants.METHOD, CasServiceResponseType.HEADER.name());
+        }
         return builder.build(true).toUriString();
     }
 
@@ -291,6 +296,10 @@ public class AdminCasServiceImpl implements AdminCasService {
         return resolveLogoutType(config) != CasServiceLogoutType.NONE;
     }
 
+    private boolean isInteractiveLoginProvider(CasConfig config) {
+        return resolveResponseType(config) != CasServiceResponseType.HEADER;
+    }
+
     private CasServiceLogoutType resolveLogoutType(CasConfig config) {
         CasServiceLogoutType logoutType = config.resolveServiceDefinition().getLogoutType();
         if (logoutType != null) {
@@ -299,6 +308,11 @@ public class AdminCasServiceImpl implements AdminCasService {
         return config.isSloEnabled()
                 ? CasServiceLogoutType.BACK_CHANNEL
                 : CasServiceLogoutType.NONE;
+    }
+
+    private CasServiceResponseType resolveResponseType(CasConfig config) {
+        return Optional.ofNullable(config.resolveServiceDefinition().getResponseType())
+                .orElse(CasServiceResponseType.REDIRECT);
     }
 
     private String buildFrontendRedirectUrl(String code) {
