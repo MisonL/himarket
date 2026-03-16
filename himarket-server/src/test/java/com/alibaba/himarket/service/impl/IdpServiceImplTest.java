@@ -30,6 +30,8 @@ import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import com.sun.net.httpserver.HttpExchange;
@@ -135,6 +137,21 @@ class IdpServiceImplTest {
         validationConfig.setProtocolVersion(CasProtocolVersion.SAML1);
         validationConfig.setResponseFormat(CasValidationResponseFormat.JSON);
         casConfig.setValidation(validationConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateCasConfigs(List.of(casConfig)));
+    }
+
+    @Test
+    void validateCasConfigsShouldRejectHeaderResponseType() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasServiceDefinitionConfig serviceDefinitionConfig = new CasServiceDefinitionConfig();
+        serviceDefinitionConfig.setResponseType(CasServiceResponseType.HEADER);
+        casConfig.setServiceDefinition(serviceDefinitionConfig);
 
         assertThrows(
                 BusinessException.class,

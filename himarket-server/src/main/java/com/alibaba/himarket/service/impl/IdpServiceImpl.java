@@ -41,6 +41,8 @@ import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
+import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import java.math.BigInteger;
@@ -155,6 +157,8 @@ public class IdpServiceImpl implements IdpService {
                     validateEndpoint(config.getLogoutEndpoint(), "CAS logout endpoint");
                     validateCasLoginConfig(config.getProvider(), config.resolveLoginConfig());
                     validateCasProxyConfig(config.getProvider(), config.resolveProxyConfig());
+                    validateCasServiceDefinition(
+                            config.getProvider(), config.resolveServiceDefinition());
                     validateCasValidationConfig(
                             config.getProvider(), config.resolveValidationConfig());
                 });
@@ -179,6 +183,18 @@ public class IdpServiceImpl implements IdpService {
                     ErrorCode.INVALID_PARAMETER,
                     StrUtil.format(
                             "CAS config {} cannot use JSON response with SAML1 validation",
+                            provider));
+        }
+    }
+
+    private void validateCasServiceDefinition(
+            String provider, CasServiceDefinitionConfig serviceDefinitionConfig) {
+        if (serviceDefinitionConfig.getResponseType() == CasServiceResponseType.HEADER) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "CAS config {} does not support HEADER response type in current login"
+                                    + " flow",
                             provider));
         }
     }
