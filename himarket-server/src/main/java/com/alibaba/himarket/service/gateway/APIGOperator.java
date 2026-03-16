@@ -836,6 +836,7 @@ public class APIGOperator extends GatewayOperator<APIGClient> {
         return Stream.concat(customDomains, subDomains).collect(Collectors.toList());
     }
 
+    @SuppressWarnings("deprecation")
     protected List<DomainResult> fetchDefaultDomains(Gateway gateway) {
         APIGClient client = getClient(gateway);
         CompletableFuture<ListEnvironmentsResponse> f =
