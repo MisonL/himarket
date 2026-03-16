@@ -1182,11 +1182,14 @@ export function ThirdPartyAuthManager({
                     <Form.Item
                       name="serviceDefinitionResponseType"
                       label="Response Type"
+                      extra="当前登录链仅支持 REDIRECT 和 POST；HEADER 已显式禁用。"
                     >
                       <Select>
                         <Select.Option value="REDIRECT">REDIRECT</Select.Option>
                         <Select.Option value="POST">POST</Select.Option>
-                        <Select.Option value="HEADER">HEADER</Select.Option>
+                        <Select.Option value="HEADER" disabled>
+                          HEADER (Unsupported)
+                        </Select.Option>
                       </Select>
                     </Form.Item>
                     <Form.Item
