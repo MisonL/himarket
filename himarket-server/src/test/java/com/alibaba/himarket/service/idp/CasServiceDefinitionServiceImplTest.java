@@ -92,9 +92,11 @@ class CasServiceDefinitionServiceImplTest {
                 new CasServiceDefinitionServiceImpl(portalService, new AdminAuthConfig());
 
         Map<String, Object> definition = service.exportPortalServiceDefinition("portal-1", "cas");
+        String serviceId = (String) definition.get("serviceId");
 
         assertEquals("org.apereo.cas.services.CasRegisteredService", definition.get("@class"));
-        assertTrue(((String) definition.get("serviceId")).contains("/developers/cas/callback"));
+        assertTrue(serviceId.contains("/developers/cas/callback"));
+        assertTrue(serviceId.contains("provider=\\Qcas\\E"));
         assertEquals("BACK_CHANNEL", definition.get("logoutType"));
         assertEquals("REDIRECT", definition.get("responseType"));
 
