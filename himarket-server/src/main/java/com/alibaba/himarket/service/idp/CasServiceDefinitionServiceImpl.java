@@ -492,6 +492,22 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         policy.put(
                 "forceExecution",
                 Optional.ofNullable(multifactorPolicyConfig.getForceExecution()).orElse(false));
+        if (multifactorPolicyConfig.getFailureMode() != null) {
+            policy.put("failureMode", multifactorPolicyConfig.getFailureMode().name());
+        }
+        if (StrUtil.isNotBlank(multifactorPolicyConfig.getBypassPrincipalAttributeName())) {
+            policy.put(
+                    "principalAttributeNameTrigger",
+                    multifactorPolicyConfig.getBypassPrincipalAttributeName());
+        }
+        if (StrUtil.isNotBlank(multifactorPolicyConfig.getBypassPrincipalAttributeValue())) {
+            policy.put(
+                    "principalAttributeValueToMatch",
+                    multifactorPolicyConfig.getBypassPrincipalAttributeValue());
+        }
+        if (Boolean.TRUE.equals(multifactorPolicyConfig.getBypassIfMissingPrincipalAttribute())) {
+            policy.put("bypassIfMissingPrincipalAttribute", true);
+        }
         policy.put(
                 "multifactorAuthenticationProviders",
                 typedCollection("java.util.LinkedHashSet", multifactorPolicyConfig.getProviders()));

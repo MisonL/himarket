@@ -19,23 +19,10 @@
 
 package com.alibaba.himarket.support.portal.cas;
 
-import java.util.List;
-import lombok.Data;
-
-@Data
-public class CasMultifactorPolicyConfig {
-
-    private List<String> providers;
-
-    private Boolean bypassEnabled = false;
-
-    private Boolean forceExecution = false;
-
-    private CasMultifactorFailureMode failureMode;
-
-    private String bypassPrincipalAttributeName;
-
-    private String bypassPrincipalAttributeValue;
-
-    private Boolean bypassIfMissingPrincipalAttribute = false;
+public enum CasMultifactorFailureMode {
+    UNDEFINED,
+    OPEN,
+    CLOSED,
+    PHANTOM,
+    NONE
 }
