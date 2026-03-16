@@ -159,6 +159,7 @@ class CasServiceDefinitionServiceImplTest {
         CasAccessStrategyConfig accessStrategy = new CasAccessStrategyConfig();
         accessStrategy.setEnabled(false);
         accessStrategy.setSsoEnabled(false);
+        accessStrategy.setUnauthorizedRedirectUrl("https://admin.example.com/forbidden");
         CasDelegatedAuthenticationPolicyConfig delegated =
                 new CasDelegatedAuthenticationPolicyConfig();
         delegated.setAllowedProviders(List.of("GithubClient"));
@@ -195,6 +196,9 @@ class CasServiceDefinitionServiceImplTest {
                 (Map<String, Object>) definition.get("accessStrategy");
         assertEquals(false, accessStrategyJson.get("enabled"));
         assertEquals(false, accessStrategyJson.get("ssoEnabled"));
+        assertEquals(
+                "https://admin.example.com/forbidden",
+                accessStrategyJson.get("unauthorizedRedirectUrl"));
         assertEquals(
                 "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy",
                 accessStrategyJson.get("@class"));

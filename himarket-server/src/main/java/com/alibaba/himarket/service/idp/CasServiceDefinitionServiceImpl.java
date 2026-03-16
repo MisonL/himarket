@@ -339,6 +339,10 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         accessStrategy.put(
                 "ssoEnabled",
                 Optional.ofNullable(accessStrategyConfig.getSsoEnabled()).orElse(true));
+        if (StrUtil.isNotBlank(accessStrategyConfig.getUnauthorizedRedirectUrl())) {
+            accessStrategy.put(
+                    "unauthorizedRedirectUrl", accessStrategyConfig.getUnauthorizedRedirectUrl());
+        }
         Map<String, Object> delegatedAuthenticationPolicy =
                 buildDelegatedAuthenticationPolicy(
                         accessStrategyConfig.getDelegatedAuthenticationPolicy());
