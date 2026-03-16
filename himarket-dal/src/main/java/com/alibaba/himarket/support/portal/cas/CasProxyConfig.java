@@ -44,4 +44,6 @@ public class CasProxyConfig {
     private String policyEndpoint;
 
     private Map<String, String> policyHeaders;
+
+    private String policyHeadersJson;
 }

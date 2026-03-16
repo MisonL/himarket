@@ -452,6 +452,56 @@ class CasServiceDefinitionServiceImplTest {
     }
 
     @Test
+    void exportAdminServiceDefinitionShouldSupportJsonFallbackForNestedMaps() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setEnabled(true);
+
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        proxyConfig.setPolicyMode(CasProxyPolicyMode.REST);
+        proxyConfig.setPolicyEndpoint("https://proxy.example.com/policies");
+        proxyConfig.setPolicyHeadersJson("{\"X-Proxy-Policy\":\"enabled\"}");
+        casConfig.setProxy(proxyConfig);
+
+        CasAccessStrategyConfig accessStrategy = new CasAccessStrategyConfig();
+        accessStrategy.setRequiredAttributesJson(
+                "{\"memberOf\":[\"internal\",\"ops\"],\"region\":[\"cn\"]}");
+        accessStrategy.setRejectedAttributesJson("{\"status\":[\"disabled\"]}");
+        CasHttpRequestAccessStrategyConfig httpRequest = new CasHttpRequestAccessStrategyConfig();
+        httpRequest.setHeadersJson("{\"X-Portal-Scope\":\"admin\"}");
+        accessStrategy.setHttpRequest(httpRequest);
+        casConfig.setAccessStrategy(accessStrategy);
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        CasServiceDefinitionServiceImpl service =
+                new CasServiceDefinitionServiceImpl(portalService, adminAuthConfig);
+
+        Map<String, Object> definition = service.exportAdminServiceDefinition("cas");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> accessStrategyJson =
+                (Map<String, Object>) definition.get("accessStrategy");
+        assertEquals(
+                Map.of(
+                        "memberOf", List.of("java.util.LinkedHashSet", List.of("internal", "ops")),
+                        "region", List.of("java.util.LinkedHashSet", List.of("cn"))),
+                accessStrategyJson.get("requiredAttributes"));
+        assertEquals(
+                Map.of("status", List.of("java.util.LinkedHashSet", List.of("disabled"))),
+                accessStrategyJson.get("rejectedAttributes"));
+        assertEquals(Map.of("X-Portal-Scope", "admin"), accessStrategyJson.get("requiredHeaders"));
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
+        assertEquals(Map.of("X-Proxy-Policy", "enabled"), proxyPolicy.get("headers"));
+    }
+
+    @Test
     void exportPortalServiceDefinitionShouldSupportRestProxyPolicy() {
         CasConfig casConfig = new CasConfig();
         casConfig.setProvider("cas");

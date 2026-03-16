@@ -40,6 +40,10 @@ public class CasAccessStrategyConfig {
 
     private Map<String, List<String>> rejectedAttributes;
 
+    private String requiredAttributesJson;
+
+    private String rejectedAttributesJson;
+
     private String startingDateTime;
 
     private String endingDateTime;
