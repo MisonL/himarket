@@ -1345,14 +1345,12 @@ export function ThirdPartyAuthManager({
                     <Form.Item
                       name="serviceDefinitionResponseType"
                       label="Response Type"
-                      extra="当前登录链仅支持 REDIRECT 和 POST；HEADER 已显式禁用。"
+                      extra="HEADER 适用于 CAS-aware API client；当前浏览器登录页不会把它作为交互式登录按钮展示。"
                     >
                       <Select>
                         <Select.Option value="REDIRECT">REDIRECT</Select.Option>
                         <Select.Option value="POST">POST</Select.Option>
-                        <Select.Option value="HEADER" disabled>
-                          HEADER (Unsupported)
-                        </Select.Option>
+                        <Select.Option value="HEADER">HEADER</Select.Option>
                       </Select>
                     </Form.Item>
                     <Form.Item
