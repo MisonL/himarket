@@ -20,6 +20,7 @@
 package com.alibaba.himarket.core.utils;
 
 import cn.hutool.core.map.MapUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.DigestUtil;
@@ -28,6 +29,7 @@ import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSignerUtil;
 import com.alibaba.himarket.core.constant.CommonConstants;
+import com.alibaba.himarket.core.constant.JwtConstants;
 import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import com.alibaba.himarket.support.common.User;
 import com.alibaba.himarket.support.enums.UserType;
@@ -95,6 +97,7 @@ public class TokenUtil {
                 MapUtil.<String, String>builder()
                         .put(CommonConstants.USER_TYPE, userType.name())
                         .put(CommonConstants.USER_ID, userId)
+                        .put(JwtConstants.PAYLOAD_JTI, IdUtil.fastSimpleUUID())
                         .build();
 
         return JWT.create()
