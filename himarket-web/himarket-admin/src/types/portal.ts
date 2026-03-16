@@ -93,6 +93,10 @@ export interface CasMultifactorPolicyConfig {
   providers?: string[];
   bypassEnabled?: boolean;
   forceExecution?: boolean;
+  failureMode?: "UNDEFINED" | "OPEN" | "CLOSED" | "PHANTOM" | "NONE";
+  bypassPrincipalAttributeName?: string;
+  bypassPrincipalAttributeValue?: string;
+  bypassIfMissingPrincipalAttribute?: boolean;
 }
 
 export interface CasConfig {

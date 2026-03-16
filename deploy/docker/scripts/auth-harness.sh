@@ -781,6 +781,10 @@ main() {
           "multifactorPolicy": {
             "providers": ["mfa-duo"],
             "bypassEnabled": true,
+            "failureMode": "CLOSED",
+            "bypassPrincipalAttributeName": "memberOf",
+            "bypassPrincipalAttributeValue": "internal",
+            "bypassIfMissingPrincipalAttribute": true,
             "forceExecution": true
           },
           "accessStrategy": {
@@ -989,6 +993,18 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).bypassEnabled == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).failureMode == "CLOSED"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).principalAttributeNameTrigger == "memberOf"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).principalAttributeValueToMatch == "internal"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).bypassIfMissingPrincipalAttribute == true
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
@@ -1697,6 +1713,9 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).bypassEnabled == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.multifactorPolicy // .multifactorPolicy).failureMode == "OPEN"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
