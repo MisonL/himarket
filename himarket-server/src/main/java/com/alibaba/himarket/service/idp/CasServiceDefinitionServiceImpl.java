@@ -34,6 +34,7 @@ import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyCriteriaMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasExpirationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
@@ -82,6 +83,9 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private static final String AUTHENTICATION_POLICY_CLASS =
             "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy";
+
+    private static final String EXPIRATION_POLICY_CLASS =
+            "org.apereo.cas.services.DefaultRegisteredServiceExpirationPolicy";
 
     private static final String REFUSE_PROXY_POLICY_CLASS =
             "org.apereo.cas.services.RefuseRegisteredServiceProxyPolicy";
@@ -206,6 +210,11 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 buildAuthenticationPolicy(casConfig.resolveAuthenticationPolicy());
         if (!authenticationPolicy.isEmpty()) {
             json.put("authenticationPolicy", authenticationPolicy);
+        }
+        Map<String, Object> expirationPolicy =
+                buildExpirationPolicy(casConfig.resolveExpirationPolicy());
+        if (!expirationPolicy.isEmpty()) {
+            json.put("expirationPolicy", expirationPolicy);
         }
         if (StrUtil.isNotBlank(serviceDefinition.getLogoutUrl())) {
             json.put("logoutUrl", serviceDefinition.getLogoutUrl());
@@ -623,6 +632,32 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
             case ALLOWED ->
                     "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria";
         };
+    }
+
+    private Map<String, Object> buildExpirationPolicy(
+            CasExpirationPolicyConfig expirationPolicyConfig) {
+        if (expirationPolicyConfig == null
+                || (StrUtil.isBlank(expirationPolicyConfig.getExpirationDate())
+                        && !Boolean.TRUE.equals(expirationPolicyConfig.getDeleteWhenExpired())
+                        && !Boolean.TRUE.equals(expirationPolicyConfig.getNotifyWhenExpired())
+                        && !Boolean.TRUE.equals(expirationPolicyConfig.getNotifyWhenDeleted()))) {
+            return Map.of();
+        }
+        Map<String, Object> policy = new LinkedHashMap<>();
+        policy.put("@class", EXPIRATION_POLICY_CLASS);
+        if (StrUtil.isNotBlank(expirationPolicyConfig.getExpirationDate())) {
+            policy.put("expirationDate", expirationPolicyConfig.getExpirationDate());
+        }
+        policy.put(
+                "deleteWhenExpired",
+                Optional.ofNullable(expirationPolicyConfig.getDeleteWhenExpired()).orElse(false));
+        policy.put(
+                "notifyWhenExpired",
+                Optional.ofNullable(expirationPolicyConfig.getNotifyWhenExpired()).orElse(false));
+        policy.put(
+                "notifyWhenDeleted",
+                Optional.ofNullable(expirationPolicyConfig.getNotifyWhenDeleted()).orElse(false));
+        return policy;
     }
 
     private List<Object> typedCollection(String typeName, List<String> values) {
