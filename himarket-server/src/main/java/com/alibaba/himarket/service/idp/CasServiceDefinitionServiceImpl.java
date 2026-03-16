@@ -343,6 +343,16 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
             accessStrategy.put(
                     "unauthorizedRedirectUrl", accessStrategyConfig.getUnauthorizedRedirectUrl());
         }
+        accessStrategy.put(
+                "requireAllAttributes",
+                Optional.ofNullable(accessStrategyConfig.getRequireAllAttributes()).orElse(false));
+        accessStrategy.put(
+                "caseInsensitive",
+                Optional.ofNullable(accessStrategyConfig.getCaseInsensitive()).orElse(false));
+        appendAccessAttributes(
+                accessStrategy, "requiredAttributes", accessStrategyConfig.getRequiredAttributes());
+        appendAccessAttributes(
+                accessStrategy, "rejectedAttributes", accessStrategyConfig.getRejectedAttributes());
         Map<String, Object> delegatedAuthenticationPolicy =
                 buildDelegatedAuthenticationPolicy(
                         accessStrategyConfig.getDelegatedAuthenticationPolicy());
@@ -394,6 +404,32 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
             if (!headers.isEmpty()) {
                 accessStrategy.put("requiredHeaders", headers);
             }
+        }
+    }
+
+    private void appendAccessAttributes(
+            Map<String, Object> accessStrategy,
+            String fieldName,
+            Map<String, List<String>> attributes) {
+        if (attributes == null || attributes.isEmpty()) {
+            return;
+        }
+        Map<String, Object> exportedAttributes = new LinkedHashMap<>();
+        attributes.forEach(
+                (key, values) -> {
+                    if (StrUtil.isBlank(key) || CollUtil.isEmpty(values)) {
+                        return;
+                    }
+                    List<String> filteredValues =
+                            values.stream().filter(StrUtil::isNotBlank).toList();
+                    if (filteredValues.isEmpty()) {
+                        return;
+                    }
+                    exportedAttributes.put(
+                            key, typedCollection("java.util.LinkedHashSet", filteredValues));
+                });
+        if (!exportedAttributes.isEmpty()) {
+            accessStrategy.put(fieldName, exportedAttributes);
         }
     }
 

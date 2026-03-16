@@ -82,6 +82,10 @@ export interface CasAccessStrategyConfig {
   enabled?: boolean;
   ssoEnabled?: boolean;
   unauthorizedRedirectUrl?: string;
+  requireAllAttributes?: boolean;
+  caseInsensitive?: boolean;
+  requiredAttributes?: Record<string, string[]>;
+  rejectedAttributes?: Record<string, string[]>;
   delegatedAuthenticationPolicy?: CasDelegatedAuthenticationPolicyConfig;
   httpRequest?: CasHttpRequestAccessStrategyConfig;
 }
