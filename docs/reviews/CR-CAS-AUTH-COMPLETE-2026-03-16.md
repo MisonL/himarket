@@ -29,18 +29,32 @@
    - Fix: removed `version` from `deploy/docker/docker-compose.yml`.
 3. Spring Data Redis emitted repository assignment noise on every backend boot.
    - Fix: disabled Redis repository auto-detection in `himarket-bootstrap/src/main/resources/application.yml`.
+4. Local backend image rebuild paid unnecessary delay for a debug tool path.
+   - Root cause: `himarket-bootstrap/Dockerfile` always downloaded Arthas during local image builds and sent the full bootstrap context.
+   - Fix: added `himarket-bootstrap/.dockerignore` and made Arthas installation conditional; local compose now builds with `INSTALL_ARTHAS=false`.
+5. JWT revocation collided with subsequent admin CAS MFA logins on a clean database.
+   - Root cause: tokens were deterministic for the same user within the same second because JWT payloads had no `jti`; revoking an earlier token also revoked an identical later token.
+   - Fix: added `jti` to `TokenUtil` and locked it with `TokenUtilTest`.
+6. Local runtime and deploy docs targeted MySQL, but the app still used the MariaDB JDBC driver.
+   - Root cause: datasource driver/URL and DAL dependency used MariaDB while the builtin environment and docs consistently shipped MySQL, producing driver-specific warnings and extra local setup complexity.
+   - Fix: switched DAL/runtime to MySQL Connector/J, updated JDBC URL/driver, and removed the now-unneeded MySQL grant workaround.
+7. Startup logs emitted framework-default noise unrelated to business behavior.
+   - Fix: disabled `spring.jpa.open-in-view`, disabled Thymeleaf template location checks for this API service, updated MySQL connector coordinates to `com.mysql:mysql-connector-j`, and excluded `commons-logging` from `aliyun-java-sdk-core`.
 
 ### Residual Risks
-1. There are still compile-time warnings from existing unrelated code paths (`APIGOperator`, `TalkSearchAbilityServiceGoogleImpl`, annotation-processing/module-path warnings). They are not introduced by this branch and were not changed in this review slice.
-2. Local Docker image rebuild remains slow because the backend Dockerfile installs Arthas during image build. This is a productivity issue, not a functional correctness issue.
+1. Harness still intentionally emits two `INVALID_PARAMETER` warnings when it verifies rejected CAS proxy target services. These are expected negative-path signals, not regressions.
+2. The open-source builtin path is now explicitly aligned to MySQL. If a downstream deployment depends on MariaDB-specific JDBC behavior, that environment needs a separate compatibility validation before adopting this branch.
 
 ## Verification
 - `mvn -pl himarket-server -am -Dtest=CasServiceDefinitionServiceImplTest -Dsurefire.failIfNoSpecifiedTests=false test`
 - `mvn -pl himarket-bootstrap -am package -DskipTests`
+- `mvn -pl himarket-server -am -Dtest=TokenUtilTest -Dsurefire.failIfNoSpecifiedTests=false test`
 - `docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build himarket-server` in `deploy/docker`
 - `docker logs --since 2m himarket-server`
 - `SKIP_BUILD=1 SKIP_DOCKER_UP=1 CAS_READY_TIMEOUT=420 ./deploy/docker/scripts/auth-harness.sh`
+- `SKIP_BUILD=1 CAS_READY_TIMEOUT=420 ./deploy/docker/scripts/auth-harness.sh`
 - direct admin export check for CAS service definition confirmed restored nested map fields
+- direct startup-log check confirmed removal of `commons-logging`, `user_variables_by_thread`, `HHH000511`, `HHH90000025`, `open-in-view`, and Thymeleaf template warnings
 
 ## CONTRIBUTING Alignment
 - commit messages kept in conventional format
