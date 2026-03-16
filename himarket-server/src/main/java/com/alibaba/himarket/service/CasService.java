@@ -30,24 +30,32 @@ import java.util.List;
 
 public interface CasService {
 
+    /** 构造 developer CAS 授权跳转结果。 */
     IdpAuthorizeResult buildAuthorizationResult(
             String provider,
             String apiPrefix,
             CasAuthorizeOptions options,
             HttpServletRequest request);
 
+    /** 处理 developer CAS 登录回调并生成前端回跳地址。 */
     String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response);
 
+    /** 使用一次性登录码换取 developer JWT。 */
     AuthResult exchangeCode(String code);
 
+    /** 处理 developer CAS 单点登出请求并撤销本地会话。 */
     int handleLogoutRequest(String logoutRequest);
 
+    /** 接收 developer CAS proxy callback 中的 PGT。 */
     void handleProxyCallback(String pgtIou, String pgtId);
 
+    /** 用当前 developer 登录态申请 CAS proxy ticket。 */
     CasProxyTicketResult issueProxyTicket(String provider, String targetService);
 
+    /** 返回当前 portal 可用的交互式 CAS provider 列表。 */
     List<IdpResult> getAvailableProviders();
 
+    /** 构造 developer 退出登录后的 CAS 重定向地址。 */
     String buildLogoutRedirectUrl(String provider);
 }
