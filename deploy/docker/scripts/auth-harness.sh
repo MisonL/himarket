@@ -1828,6 +1828,9 @@ main() {
     (.data.proxyPolicy // .proxyPolicy).endpoint == "https://proxy.example.com/policies"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
+    (((.data.proxyPolicy // .proxyPolicy).headers // {})["X-Proxy-Policy"] // "") == "enabled"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
     (.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.DenyAllAttributeReleasePolicy"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
@@ -1886,6 +1889,15 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).caseInsensitive == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredAttributes.memberOf // [])[1][]?] == ["internal", "ops"]
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredAttributes.region // [])[1][]?] == ["cn"]
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).rejectedAttributes.status // [])[1][]?] == ["disabled"]
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="GithubClient")
@@ -1972,6 +1984,9 @@ main() {
   ' >/dev/null
   echo "${admin_cas_delegated_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy)["@class"] == "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy"
+  ' >/dev/null
+  echo "${admin_cas_delegated_service_definition}" | jq -e '
+    (((.data.accessStrategy // .accessStrategy).requiredHeaders // {})["X-Portal-Scope"] // "") == "admin"
   ' >/dev/null
   echo "${admin_cas_delegated_service_definition}" | jq -e '
     [((.data.accessStrategy // .accessStrategy).requiredIpAddressesPatterns // [])[1][]?]
