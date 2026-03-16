@@ -772,6 +772,7 @@ main() {
             "logoutUrl": "http://localhost:5173/login"
           },
           "attributeRelease": {
+            "mode": "RETURN_ALL",
             "allowedAttributes": ["user", "mail", "displayName"]
           },
           "multifactorPolicy": {
@@ -964,7 +965,7 @@ main() {
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
-    ((.data.attributeReleasePolicy // .attributeReleasePolicy).allowedAttributes // [])[1][]? | select(.=="displayName")
+    (.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.ReturnAllAttributeReleasePolicy"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     ((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-duo")
@@ -1663,7 +1664,7 @@ main() {
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5174/login"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
-    ((.data.attributeReleasePolicy // .attributeReleasePolicy).allowedAttributes // [])[1][]? | select(.=="displayName")
+    (.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.DenyAllAttributeReleasePolicy"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     ((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-duo")

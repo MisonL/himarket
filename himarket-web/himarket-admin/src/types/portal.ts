@@ -79,6 +79,7 @@ export interface CasAccessStrategyConfig {
 }
 
 export interface CasAttributeReleasePolicyConfig {
+  mode?: "RETURN_ALLOWED" | "RETURN_ALL" | "DENY_ALL";
   allowedAttributes?: string[];
 }
 

@@ -31,6 +31,7 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
@@ -112,6 +113,9 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy",
                 attributePolicy.get("@class"));
+        assertEquals(
+                List.of("java.util.ArrayList", List.of("user", "uid", "mail", "displayName")),
+                attributePolicy.get("allowedAttributes"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> multifactor = (Map<String, Object>) definition.get("multifactorPolicy");
@@ -161,6 +165,9 @@ class CasServiceDefinitionServiceImplTest {
         httpRequest.setHeaders(Map.of("X-Portal-Scope", "admin"));
         accessStrategy.setHttpRequest(httpRequest);
         casConfig.setAccessStrategy(accessStrategy);
+        CasAttributeReleasePolicyConfig attributeRelease = new CasAttributeReleasePolicyConfig();
+        attributeRelease.setMode(CasAttributeReleasePolicyMode.DENY_ALL);
+        casConfig.setAttributeRelease(attributeRelease);
 
         AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
         adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com");
@@ -205,5 +212,43 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "org.apereo.cas.services.RefuseRegisteredServiceProxyPolicy",
                 proxyPolicy.get("@class"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> attributeReleaseJson =
+                (Map<String, Object>) definition.get("attributeReleasePolicy");
+        assertEquals(
+                "org.apereo.cas.services.DenyAllAttributeReleasePolicy",
+                attributeReleaseJson.get("@class"));
+    }
+
+    @Test
+    void exportPortalServiceDefinitionShouldSupportReturnAllAttributes() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setEnabled(true);
+        CasAttributeReleasePolicyConfig attributeRelease = new CasAttributeReleasePolicyConfig();
+        attributeRelease.setMode(CasAttributeReleasePolicyMode.RETURN_ALL);
+        casConfig.setAttributeRelease(attributeRelease);
+
+        PortalSettingConfig settingConfig = new PortalSettingConfig();
+        settingConfig.setFrontendRedirectUrl("https://portal.example.com");
+        settingConfig.setCasConfigs(List.of(casConfig));
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalId("portal-1");
+        portalResult.setPortalSettingConfig(settingConfig);
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceDefinitionServiceImpl service =
+                new CasServiceDefinitionServiceImpl(portalService, new AdminAuthConfig());
+
+        Map<String, Object> definition = service.exportPortalServiceDefinition("portal-1", "cas");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> attributePolicy =
+                (Map<String, Object>) definition.get("attributeReleasePolicy");
+        assertEquals(
+                "org.apereo.cas.services.ReturnAllAttributeReleasePolicy",
+                attributePolicy.get("@class"));
+        assertEquals(false, attributePolicy.containsKey("allowedAttributes"));
     }
 }
