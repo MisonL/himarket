@@ -31,6 +31,8 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
+import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyCriteriaMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
@@ -77,6 +79,9 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
 
     private static final String DELEGATED_AUTH_POLICY_CLASS =
             "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy";
+
+    private static final String AUTHENTICATION_POLICY_CLASS =
+            "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy";
 
     private static final String REFUSE_PROXY_POLICY_CLASS =
             "org.apereo.cas.services.RefuseRegisteredServiceProxyPolicy";
@@ -196,6 +201,11 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 buildMultifactorPolicy(casConfig.resolveMultifactorPolicy());
         if (!multifactorPolicy.isEmpty()) {
             json.put("multifactorPolicy", multifactorPolicy);
+        }
+        Map<String, Object> authenticationPolicy =
+                buildAuthenticationPolicy(casConfig.resolveAuthenticationPolicy());
+        if (!authenticationPolicy.isEmpty()) {
+            json.put("authenticationPolicy", authenticationPolicy);
         }
         if (StrUtil.isNotBlank(serviceDefinition.getLogoutUrl())) {
             json.put("logoutUrl", serviceDefinition.getLogoutUrl());
@@ -548,6 +558,62 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 "multifactorAuthenticationProviders",
                 typedCollection("java.util.LinkedHashSet", multifactorPolicyConfig.getProviders()));
         return policy;
+    }
+
+    private Map<String, Object> buildAuthenticationPolicy(
+            CasAuthenticationPolicyConfig authenticationPolicyConfig) {
+        if (authenticationPolicyConfig == null
+                || (CollUtil.isEmpty(authenticationPolicyConfig.getRequiredAuthenticationHandlers())
+                        && CollUtil.isEmpty(
+                                authenticationPolicyConfig.getExcludedAuthenticationHandlers()))) {
+            return Map.of();
+        }
+        Map<String, Object> policy = new LinkedHashMap<>();
+        policy.put("@class", AUTHENTICATION_POLICY_CLASS);
+        CasAuthenticationPolicyCriteriaMode mode =
+                Optional.ofNullable(authenticationPolicyConfig.getCriteriaMode())
+                        .orElse(CasAuthenticationPolicyCriteriaMode.ALLOWED);
+        policy.put("criteria", buildAuthenticationPolicyCriteria(mode, authenticationPolicyConfig));
+        return policy;
+    }
+
+    private Map<String, Object> buildAuthenticationPolicyCriteria(
+            CasAuthenticationPolicyCriteriaMode mode,
+            CasAuthenticationPolicyConfig authenticationPolicyConfig) {
+        Map<String, Object> criteria = new LinkedHashMap<>();
+        criteria.put("@class", resolveAuthenticationCriteriaClass(mode));
+        List<String> handlers =
+                switch (mode) {
+                    case EXCLUDED -> authenticationPolicyConfig.getExcludedAuthenticationHandlers();
+                    case NOT_PREVENTED, ALLOWED, ANY, ALL ->
+                            authenticationPolicyConfig.getRequiredAuthenticationHandlers();
+                };
+        if (CollUtil.isNotEmpty(handlers)) {
+            criteria.put("handlers", typedCollection("java.util.ArrayList", handlers));
+        }
+        if (mode == CasAuthenticationPolicyCriteriaMode.ALLOWED
+                || mode == CasAuthenticationPolicyCriteriaMode.ANY
+                || mode == CasAuthenticationPolicyCriteriaMode.ALL) {
+            criteria.put(
+                    "tryAll",
+                    Optional.ofNullable(authenticationPolicyConfig.getTryAll()).orElse(false));
+        }
+        return criteria;
+    }
+
+    private String resolveAuthenticationCriteriaClass(CasAuthenticationPolicyCriteriaMode mode) {
+        return switch (mode) {
+            case EXCLUDED ->
+                    "org.apereo.cas.services.ExcludedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria";
+            case ANY ->
+                    "org.apereo.cas.services.AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria";
+            case ALL ->
+                    "org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria";
+            case NOT_PREVENTED ->
+                    "org.apereo.cas.services.NotPreventedAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria";
+            case ALLOWED ->
+                    "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria";
+        };
     }
 
     private List<Object> typedCollection(String typeName, List<String> values) {
