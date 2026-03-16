@@ -22,6 +22,7 @@ package com.alibaba.himarket.support.portal;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasExpirationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
@@ -70,6 +71,8 @@ public class CasConfig {
     private CasMultifactorPolicyConfig multifactorPolicy;
 
     private CasAuthenticationPolicyConfig authenticationPolicy;
+
+    private CasExpirationPolicyConfig expirationPolicy;
 
     public CasLoginConfig resolveLoginConfig() {
         if (login == null) {
@@ -131,6 +134,13 @@ public class CasConfig {
             authenticationPolicy = new CasAuthenticationPolicyConfig();
         }
         return authenticationPolicy;
+    }
+
+    public CasExpirationPolicyConfig resolveExpirationPolicy() {
+        if (expirationPolicy == null) {
+            expirationPolicy = new CasExpirationPolicyConfig();
+        }
+        return expirationPolicy;
     }
 
     private CasProtocolVersion resolveLegacyProtocolVersion() {

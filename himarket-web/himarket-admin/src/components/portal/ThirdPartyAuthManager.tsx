@@ -307,6 +307,14 @@ export function ThirdPartyAuthManager({
         ),
         authenticationPolicyTryAll:
           casConfig.authenticationPolicy?.tryAll ?? false,
+        expirationPolicyExpirationDate:
+          casConfig.expirationPolicy?.expirationDate,
+        expirationPolicyDeleteWhenExpired:
+          casConfig.expirationPolicy?.deleteWhenExpired ?? false,
+        expirationPolicyNotifyWhenExpired:
+          casConfig.expirationPolicy?.notifyWhenExpired ?? false,
+        expirationPolicyNotifyWhenDeleted:
+          casConfig.expirationPolicy?.notifyWhenDeleted ?? false,
         userIdField: casConfig.identityMapping?.userIdField,
         userNameField: casConfig.identityMapping?.userNameField,
         emailField: casConfig.identityMapping?.emailField,
@@ -424,6 +432,9 @@ export function ThirdPartyAuthManager({
             multifactorForceExecution: false,
             authenticationPolicyCriteriaMode: "ALLOWED",
             authenticationPolicyTryAll: false,
+            expirationPolicyDeleteWhenExpired: false,
+            expirationPolicyNotifyWhenExpired: false,
+            expirationPolicyNotifyWhenDeleted: false,
             serviceDefinitionResponseType: "REDIRECT",
             serviceDefinitionEvaluationOrder: 0,
           });
@@ -621,6 +632,15 @@ export function ThirdPartyAuthManager({
               values.authenticationPolicyExcludedHandlers
             ),
             tryAll: values.authenticationPolicyTryAll ?? false,
+          },
+          expirationPolicy: {
+            expirationDate: values.expirationPolicyExpirationDate || undefined,
+            deleteWhenExpired:
+              values.expirationPolicyDeleteWhenExpired ?? false,
+            notifyWhenExpired:
+              values.expirationPolicyNotifyWhenExpired ?? false,
+            notifyWhenDeleted:
+              values.expirationPolicyNotifyWhenDeleted ?? false,
           },
           identityMapping: {
             userIdField: values.userIdField || null,
@@ -1551,6 +1571,33 @@ export function ThirdPartyAuthManager({
                     <Form.Item
                       name="authenticationPolicyTryAll"
                       label="Authentication Policy Try All"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="expirationPolicyExpirationDate"
+                      label="Expiration Date"
+                    >
+                      <Input placeholder="如: 2030-12-31T23:59:59Z" />
+                    </Form.Item>
+                    <Form.Item
+                      name="expirationPolicyDeleteWhenExpired"
+                      label="Delete When Expired"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="expirationPolicyNotifyWhenExpired"
+                      label="Notify When Expired"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="expirationPolicyNotifyWhenDeleted"
+                      label="Notify When Deleted"
                       valuePropName="checked"
                     >
                       <Switch />

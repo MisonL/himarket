@@ -113,6 +113,13 @@ export interface CasAuthenticationPolicyConfig {
   tryAll?: boolean;
 }
 
+export interface CasExpirationPolicyConfig {
+  expirationDate?: string;
+  deleteWhenExpired?: boolean;
+  notifyWhenExpired?: boolean;
+  notifyWhenDeleted?: boolean;
+}
+
 export interface CasConfig {
   provider: string;
   name: string;
@@ -130,6 +137,7 @@ export interface CasConfig {
   attributeRelease?: CasAttributeReleasePolicyConfig;
   multifactorPolicy?: CasMultifactorPolicyConfig;
   authenticationPolicy?: CasAuthenticationPolicyConfig;
+  expirationPolicy?: CasExpirationPolicyConfig;
   identityMapping?: IdentityMapping;
 }
 

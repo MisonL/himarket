@@ -795,6 +795,12 @@ main() {
             ],
             "tryAll": true
           },
+          "expirationPolicy": {
+            "expirationDate": "2030-12-31T23:59:59Z",
+            "deleteWhenExpired": true,
+            "notifyWhenExpired": true,
+            "notifyWhenDeleted": true
+          },
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
@@ -1040,6 +1046,18 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).expirationDate == "2030-12-31T23:59:59Z"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).deleteWhenExpired == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).notifyWhenExpired == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).notifyWhenDeleted == true
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"
@@ -1781,6 +1799,18 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["BlockedHandler"]
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).expirationDate == "2030-12-31T23:59:59Z"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).deleteWhenExpired == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).notifyWhenExpired == true
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.expirationPolicy // .expirationPolicy).notifyWhenDeleted == true
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"

@@ -35,6 +35,7 @@ import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyCriteriaMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasExpirationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorFailureMode;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
@@ -97,6 +98,12 @@ class CasServiceDefinitionServiceImplTest {
                 List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"));
         authenticationPolicy.setTryAll(true);
         casConfig.setAuthenticationPolicy(authenticationPolicy);
+        CasExpirationPolicyConfig expirationPolicy = new CasExpirationPolicyConfig();
+        expirationPolicy.setExpirationDate("2030-12-31T23:59:59Z");
+        expirationPolicy.setDeleteWhenExpired(true);
+        expirationPolicy.setNotifyWhenExpired(true);
+        expirationPolicy.setNotifyWhenDeleted(true);
+        casConfig.setExpirationPolicy(expirationPolicy);
 
         PortalSettingConfig settingConfig = new PortalSettingConfig();
         settingConfig.setFrontendRedirectUrl("https://portal.example.com");
@@ -160,6 +167,16 @@ class CasServiceDefinitionServiceImplTest {
                         List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler")),
                 authenticationCriteria.get("handlers"));
         assertEquals(true, authenticationCriteria.get("tryAll"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> expirationPolicyJson =
+                (Map<String, Object>) definition.get("expirationPolicy");
+        assertEquals(
+                "org.apereo.cas.services.DefaultRegisteredServiceExpirationPolicy",
+                expirationPolicyJson.get("@class"));
+        assertEquals("2030-12-31T23:59:59Z", expirationPolicyJson.get("expirationDate"));
+        assertEquals(true, expirationPolicyJson.get("deleteWhenExpired"));
+        assertEquals(true, expirationPolicyJson.get("notifyWhenExpired"));
+        assertEquals(true, expirationPolicyJson.get("notifyWhenDeleted"));
         @SuppressWarnings("unchecked")
         Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
         assertEquals(
@@ -331,6 +348,45 @@ class CasServiceDefinitionServiceImplTest {
                 "org.apereo.cas.services.ReturnAllAttributeReleasePolicy",
                 attributePolicy.get("@class"));
         assertEquals(false, attributePolicy.containsKey("allowedAttributes"));
+    }
+
+    @Test
+    void exportPortalServiceDefinitionShouldSupportNotPreventedAuthenticationPolicy() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setEnabled(true);
+        CasAuthenticationPolicyConfig authenticationPolicy = new CasAuthenticationPolicyConfig();
+        authenticationPolicy.setCriteriaMode(CasAuthenticationPolicyCriteriaMode.NOT_PREVENTED);
+        authenticationPolicy.setRequiredAuthenticationHandlers(List.of("PreventedHandler"));
+        casConfig.setAuthenticationPolicy(authenticationPolicy);
+
+        PortalSettingConfig settingConfig = new PortalSettingConfig();
+        settingConfig.setFrontendRedirectUrl("https://portal.example.com");
+        settingConfig.setCasConfigs(List.of(casConfig));
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalId("portal-1");
+        portalResult.setPortalSettingConfig(settingConfig);
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceDefinitionServiceImpl service =
+                new CasServiceDefinitionServiceImpl(portalService, new AdminAuthConfig());
+
+        Map<String, Object> definition = service.exportPortalServiceDefinition("portal-1", "cas");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationPolicyJson =
+                (Map<String, Object>) definition.get("authenticationPolicy");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationCriteria =
+                (Map<String, Object>) authenticationPolicyJson.get("criteria");
+        assertEquals(
+                "org.apereo.cas.services.NotPreventedAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria",
+                authenticationCriteria.get("@class"));
+        assertEquals(
+                List.of("java.util.ArrayList", List.of("PreventedHandler")),
+                authenticationCriteria.get("handlers"));
+        assertEquals(false, authenticationCriteria.containsKey("tryAll"));
     }
 
     @Test
