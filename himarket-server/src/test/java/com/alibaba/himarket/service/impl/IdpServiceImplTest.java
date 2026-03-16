@@ -144,7 +144,7 @@ class IdpServiceImplTest {
     }
 
     @Test
-    void validateCasConfigsShouldRejectHeaderResponseType() {
+    void validateCasConfigsShouldAcceptHeaderResponseType() {
         CasConfig casConfig = new CasConfig();
         casConfig.setProvider("cas");
         casConfig.setName("CAS");
@@ -153,9 +153,7 @@ class IdpServiceImplTest {
         serviceDefinitionConfig.setResponseType(CasServiceResponseType.HEADER);
         casConfig.setServiceDefinition(serviceDefinitionConfig);
 
-        assertThrows(
-                BusinessException.class,
-                () -> new IdpServiceImpl().validateCasConfigs(List.of(casConfig)));
+        new IdpServiceImpl().validateCasConfigs(List.of(casConfig));
     }
 
     @Test
