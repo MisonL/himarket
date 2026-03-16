@@ -1,26 +1,34 @@
+import { Suspense, lazy, type ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import LayoutWrapper from "@/components/LayoutWrapper";
-import Portals from "@/pages/Portals";
-import ApiProducts from "@/pages/ApiProducts";
-import ProductCategories from "@/pages/ProductCategories";
-import ProductCategoryDetail from "@/pages/ProductCategoryDetail";
-import GatewayConsoles from "@/pages/GatewayConsoles";
-import NacosConsoles from "@/pages/NacosConsoles";
-import PortalDetail from "@/pages/PortalDetail";
-import ApiProductDetail from "@/pages/ApiProductDetail";
-import Login from "@/pages/Login";
-import ModelDashboard from "@/pages/ModelDashboard";
-import McpMonitor from "@/pages/McpMonitor";
-import CasCallback from "@/pages/CasCallback";
+
+const Portals = lazy(() => import("@/pages/Portals"));
+const ApiProducts = lazy(() => import("@/pages/ApiProducts"));
+const ProductCategories = lazy(() => import("@/pages/ProductCategories"));
+const ProductCategoryDetail = lazy(
+  () => import("@/pages/ProductCategoryDetail")
+);
+const GatewayConsoles = lazy(() => import("@/pages/GatewayConsoles"));
+const NacosConsoles = lazy(() => import("@/pages/NacosConsoles"));
+const PortalDetail = lazy(() => import("@/pages/PortalDetail"));
+const ApiProductDetail = lazy(() => import("@/pages/ApiProductDetail"));
+const Login = lazy(() => import("@/pages/Login"));
+const ModelDashboard = lazy(() => import("@/pages/ModelDashboard"));
+const McpMonitor = lazy(() => import("@/pages/McpMonitor"));
+const CasCallback = lazy(() => import("@/pages/CasCallback"));
+
+function withSuspense(node: ReactNode) {
+  return <Suspense fallback={null}>{node}</Suspense>;
+}
 
 export const router = createBrowserRouter([
   {
     path: "/login",
-    element: <Login />,
+    element: withSuspense(<Login />),
   },
   {
     path: "/cas/callback",
-    element: <CasCallback />,
+    element: withSuspense(<CasCallback />),
   },
   {
     path: "/",
@@ -32,27 +40,27 @@ export const router = createBrowserRouter([
       },
       {
         path: "portals",
-        element: <Portals />,
+        element: withSuspense(<Portals />),
       },
       {
         path: "portals/detail",
-        element: <PortalDetail />,
+        element: withSuspense(<PortalDetail />),
       },
       {
         path: "api-products",
-        element: <ApiProducts />,
+        element: withSuspense(<ApiProducts />),
       },
       {
         path: "api-products/detail",
-        element: <ApiProductDetail />,
+        element: withSuspense(<ApiProductDetail />),
       },
       {
         path: "product-categories",
-        element: <ProductCategories />,
+        element: withSuspense(<ProductCategories />),
       },
       {
         path: "product-categories/:categoryId",
-        element: <ProductCategoryDetail />,
+        element: withSuspense(<ProductCategoryDetail />),
       },
       {
         path: "consoles",
@@ -60,11 +68,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "consoles/gateway",
-        element: <GatewayConsoles />,
+        element: withSuspense(<GatewayConsoles />),
       },
       {
         path: "consoles/nacos",
-        element: <NacosConsoles />,
+        element: withSuspense(<NacosConsoles />),
       },
       {
         path: "observability",
@@ -72,11 +80,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "observability/model-dashboard",
-        element: <ModelDashboard />,
+        element: withSuspense(<ModelDashboard />),
       },
       {
         path: "observability/mcp-monitor",
-        element: <McpMonitor />,
+        element: withSuspense(<McpMonitor />),
       },
       {
         path: "*",
