@@ -763,7 +763,10 @@ main() {
             "enabled": true,
             "callbackPath": "http://himarket-server:8080/developers/cas/proxy-callback",
             "targetServicePattern": "^http://localhost:5173/.*$",
-            "proxyEndpoint": "http://cas:8080/cas/proxy"
+            "proxyEndpoint": "http://cas:8080/cas/proxy",
+            "policyMode": "REGEX",
+            "useServiceId": true,
+            "exactMatch": true
           },
           "serviceDefinition": {
             "evaluationOrder": 7,
@@ -963,6 +966,15 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.proxyPolicy // .proxyPolicy)["@class"] == "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.proxyPolicy // .proxyPolicy).useServiceId == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.proxyPolicy // .proxyPolicy).exactMatch == true
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.ReturnAllAttributeReleasePolicy"
@@ -1649,9 +1661,6 @@ main() {
     (.data.serviceId // .serviceId) | contains("/admins/cas/callback")
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
-    ((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/admins/cas/proxy-callback")
-  ' >/dev/null
-  echo "${admin_cas_service_definition}" | jq -e '
     (.data.evaluationOrder // .evaluationOrder) == 9
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
@@ -1662,6 +1671,12 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5174/login"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.proxyPolicy // .proxyPolicy)["@class"] == "org.apereo.cas.services.RestfulRegisteredServiceProxyPolicy"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.proxyPolicy // .proxyPolicy).endpoint == "https://proxy.example.com/policies"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.DenyAllAttributeReleasePolicy"
