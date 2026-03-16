@@ -43,6 +43,8 @@ import com.alibaba.himarket.service.idp.session.MemoryAuthSessionStore;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -161,6 +163,43 @@ class AdminCasServiceImplTest {
         assertEquals(false, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
         assertEquals(1, service.handleLogoutRequest(logoutRequest("ST-ADMIN-1")));
         assertEquals(true, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
+    }
+
+    @Test
+    void buildLogoutRedirectUrlShouldHonorLogoutTypeNone() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        casConfig.setSloEnabled(true);
+        CasServiceDefinitionConfig serviceDefinition = new CasServiceDefinitionConfig();
+        serviceDefinition.setLogoutType(CasServiceLogoutType.NONE);
+        casConfig.setServiceDefinition(serviceDefinition);
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com/");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        AdminCasServiceImpl service =
+                new AdminCasServiceImpl(
+                        adminAuthConfig,
+                        new AuthSessionConfig(),
+                        administratorRepository,
+                        contextHolder,
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
+                                adminAuthConfig),
+                        new IdpStateCodec());
+
+        assertEquals("https://admin.example.com/login", service.buildLogoutRedirectUrl("cas"));
+        assertEquals(false, service.getAvailableProviders().get(0).getSloEnabled());
     }
 
     @Test

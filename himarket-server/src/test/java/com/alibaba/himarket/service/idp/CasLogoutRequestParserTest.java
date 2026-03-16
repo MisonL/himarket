@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.alibaba.himarket.core.exception.BusinessException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 class CasLogoutRequestParserTest {
@@ -37,6 +39,17 @@ class CasLogoutRequestParserTest {
                         + "</samlp:LogoutRequest>";
 
         assertEquals("ST-1", parser.parseSessionIndex(xml));
+    }
+
+    @Test
+    void parseSessionIndexShouldDecodeFrontChannelPayload() {
+        String xml =
+                "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\">"
+                        + "<samlp:SessionIndex>ST-FRONT-1</samlp:SessionIndex>"
+                        + "</samlp:LogoutRequest>";
+        String encoded = Base64.getEncoder().encodeToString(xml.getBytes(StandardCharsets.UTF_8));
+
+        assertEquals("ST-FRONT-1", parser.parseSessionIndex(encoded));
     }
 
     @Test
