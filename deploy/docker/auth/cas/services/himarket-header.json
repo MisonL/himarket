@@ -1,0 +1,19 @@
+{
+  "@class": "org.apereo.cas.services.CasRegisteredService",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=cas-header(?:&.*)?$",
+  "supportedProtocols": [
+    "java.util.HashSet",
+    [
+      "CAS30"
+    ]
+  ],
+  "responseType": "HEADER",
+  "accessStrategy": {
+    "@class": "org.apereo.cas.services.DefaultRegisteredServiceAccessStrategy",
+    "enabled": true,
+    "ssoEnabled": true
+  },
+  "name": "HiMarket Header",
+  "id": 1007,
+  "evaluationOrder": 2
+}
