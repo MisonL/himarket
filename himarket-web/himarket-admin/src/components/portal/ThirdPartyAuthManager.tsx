@@ -246,6 +246,10 @@ export function ThirdPartyAuthManager({
         accessStrategySsoEnabled: casConfig.accessStrategy?.ssoEnabled ?? true,
         accessStrategyUnauthorizedRedirectUrl:
           casConfig.accessStrategy?.unauthorizedRedirectUrl,
+        accessStrategyStartingDateTime:
+          casConfig.accessStrategy?.startingDateTime,
+        accessStrategyEndingDateTime: casConfig.accessStrategy?.endingDateTime,
+        accessStrategyZoneId: casConfig.accessStrategy?.zoneId,
         accessStrategyRequireAllAttributes:
           casConfig.accessStrategy?.requireAllAttributes ?? false,
         accessStrategyCaseInsensitive:
@@ -407,6 +411,9 @@ export function ThirdPartyAuthManager({
             proxyEnabled: false,
             accessStrategyEnabled: true,
             accessStrategySsoEnabled: true,
+            accessStrategyStartingDateTime: undefined,
+            accessStrategyEndingDateTime: undefined,
+            accessStrategyZoneId: undefined,
             accessStrategyRequireAllAttributes: false,
             accessStrategyCaseInsensitive: false,
             delegatedPermitUndefined: true,
@@ -559,6 +566,10 @@ export function ThirdPartyAuthManager({
             ssoEnabled: values.accessStrategySsoEnabled ?? true,
             unauthorizedRedirectUrl:
               values.accessStrategyUnauthorizedRedirectUrl || undefined,
+            startingDateTime:
+              values.accessStrategyStartingDateTime || undefined,
+            endingDateTime: values.accessStrategyEndingDateTime || undefined,
+            zoneId: values.accessStrategyZoneId || undefined,
             requireAllAttributes:
               values.accessStrategyRequireAllAttributes ?? false,
             caseInsensitive: values.accessStrategyCaseInsensitive ?? false,
@@ -1337,6 +1348,24 @@ export function ThirdPartyAuthManager({
                       label="Unauthorized Redirect URL"
                     >
                       <Input placeholder="如: https://portal.example.com/forbidden" />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyStartingDateTime"
+                      label="Access Start DateTime"
+                    >
+                      <Input placeholder="如: 2026-01-01T09:00:00" />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyEndingDateTime"
+                      label="Access End DateTime"
+                    >
+                      <Input placeholder="如: 2026-12-31T18:00:00" />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyZoneId"
+                      label="Access Strategy ZoneId"
+                    >
+                      <Input placeholder="如: Asia/Shanghai" />
                     </Form.Item>
                     <Form.Item
                       name="accessStrategyRequireAllAttributes"

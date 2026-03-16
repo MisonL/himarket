@@ -195,6 +195,9 @@ class CasServiceDefinitionServiceImplTest {
         accessStrategy.setEnabled(false);
         accessStrategy.setSsoEnabled(false);
         accessStrategy.setUnauthorizedRedirectUrl("https://admin.example.com/forbidden");
+        accessStrategy.setStartingDateTime("2026-01-01T09:00:00");
+        accessStrategy.setEndingDateTime("2026-12-31T18:00:00");
+        accessStrategy.setZoneId("Asia/Shanghai");
         accessStrategy.setRequireAllAttributes(true);
         accessStrategy.setCaseInsensitive(true);
         accessStrategy.setRequiredAttributes(
@@ -243,6 +246,9 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "https://admin.example.com/forbidden",
                 accessStrategyJson.get("unauthorizedRedirectUrl"));
+        assertEquals("2026-01-01T09:00:00", accessStrategyJson.get("startingDateTime"));
+        assertEquals("2026-12-31T18:00:00", accessStrategyJson.get("endingDateTime"));
+        assertEquals("Asia/Shanghai", accessStrategyJson.get("zoneId"));
         assertEquals(true, accessStrategyJson.get("requireAllAttributes"));
         assertEquals(true, accessStrategyJson.get("caseInsensitive"));
         assertEquals(
