@@ -32,6 +32,8 @@ import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyMode;
+import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasAuthenticationPolicyCriteriaMode;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorFailureMode;
@@ -89,6 +91,12 @@ class CasServiceDefinitionServiceImplTest {
         multifactorPolicy.setBypassPrincipalAttributeValue("internal");
         multifactorPolicy.setBypassIfMissingPrincipalAttribute(true);
         casConfig.setMultifactorPolicy(multifactorPolicy);
+        CasAuthenticationPolicyConfig authenticationPolicy = new CasAuthenticationPolicyConfig();
+        authenticationPolicy.setCriteriaMode(CasAuthenticationPolicyCriteriaMode.ALLOWED);
+        authenticationPolicy.setRequiredAuthenticationHandlers(
+                List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"));
+        authenticationPolicy.setTryAll(true);
+        casConfig.setAuthenticationPolicy(authenticationPolicy);
 
         PortalSettingConfig settingConfig = new PortalSettingConfig();
         settingConfig.setFrontendRedirectUrl("https://portal.example.com");
@@ -134,6 +142,24 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals("memberOf", multifactor.get("principalAttributeNameTrigger"));
         assertEquals("internal", multifactor.get("principalAttributeValueToMatch"));
         assertEquals(true, multifactor.get("bypassIfMissingPrincipalAttribute"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationPolicyJson =
+                (Map<String, Object>) definition.get("authenticationPolicy");
+        assertEquals(
+                "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy",
+                authenticationPolicyJson.get("@class"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationCriteria =
+                (Map<String, Object>) authenticationPolicyJson.get("criteria");
+        assertEquals(
+                "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria",
+                authenticationCriteria.get("@class"));
+        assertEquals(
+                List.of(
+                        "java.util.ArrayList",
+                        List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler")),
+                authenticationCriteria.get("handlers"));
+        assertEquals(true, authenticationCriteria.get("tryAll"));
         @SuppressWarnings("unchecked")
         Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
         assertEquals(
@@ -188,6 +214,10 @@ class CasServiceDefinitionServiceImplTest {
         CasAttributeReleasePolicyConfig attributeRelease = new CasAttributeReleasePolicyConfig();
         attributeRelease.setMode(CasAttributeReleasePolicyMode.DENY_ALL);
         casConfig.setAttributeRelease(attributeRelease);
+        CasAuthenticationPolicyConfig authenticationPolicy = new CasAuthenticationPolicyConfig();
+        authenticationPolicy.setCriteriaMode(CasAuthenticationPolicyCriteriaMode.EXCLUDED);
+        authenticationPolicy.setExcludedAuthenticationHandlers(List.of("BlockedHandler"));
+        casConfig.setAuthenticationPolicy(authenticationPolicy);
 
         AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
         adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com");
@@ -240,6 +270,18 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy",
                 delegatedJson.get("@class"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationPolicyJson =
+                (Map<String, Object>) definition.get("authenticationPolicy");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationCriteria =
+                (Map<String, Object>) authenticationPolicyJson.get("criteria");
+        assertEquals(
+                "org.apereo.cas.services.ExcludedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria",
+                authenticationCriteria.get("@class"));
+        assertEquals(
+                List.of("java.util.ArrayList", List.of("BlockedHandler")),
+                authenticationCriteria.get("handlers"));
         @SuppressWarnings("unchecked")
         Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
         assertEquals(
