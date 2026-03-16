@@ -39,6 +39,7 @@ import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfi
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
+import com.alibaba.himarket.support.portal.cas.CasServiceContactConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
@@ -215,6 +216,10 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 buildExpirationPolicy(casConfig.resolveExpirationPolicy());
         if (!expirationPolicy.isEmpty()) {
             json.put("expirationPolicy", expirationPolicy);
+        }
+        List<Object> contacts = buildContacts(casConfig.getContacts());
+        if (!contacts.isEmpty()) {
+            json.put("contacts", contacts);
         }
         if (StrUtil.isNotBlank(serviceDefinition.getLogoutUrl())) {
             json.put("logoutUrl", serviceDefinition.getLogoutUrl());
@@ -658,6 +663,45 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 "notifyWhenDeleted",
                 Optional.ofNullable(expirationPolicyConfig.getNotifyWhenDeleted()).orElse(false));
         return policy;
+    }
+
+    private List<Object> buildContacts(List<CasServiceContactConfig> contacts) {
+        if (CollUtil.isEmpty(contacts)) {
+            return List.of();
+        }
+        List<Object> exportedContacts = new ArrayList<>();
+        contacts.forEach(
+                contact -> {
+                    if (contact == null
+                            || (StrUtil.isAllBlank(
+                                    contact.getName(),
+                                    contact.getEmail(),
+                                    contact.getPhone(),
+                                    contact.getDepartment(),
+                                    contact.getType()))) {
+                        return;
+                    }
+                    Map<String, Object> exportedContact = new LinkedHashMap<>();
+                    exportedContact.put(
+                            "@class", "org.apereo.cas.services.DefaultRegisteredServiceContact");
+                    if (StrUtil.isNotBlank(contact.getName())) {
+                        exportedContact.put("name", contact.getName());
+                    }
+                    if (StrUtil.isNotBlank(contact.getEmail())) {
+                        exportedContact.put("email", contact.getEmail());
+                    }
+                    if (StrUtil.isNotBlank(contact.getPhone())) {
+                        exportedContact.put("phone", contact.getPhone());
+                    }
+                    if (StrUtil.isNotBlank(contact.getDepartment())) {
+                        exportedContact.put("department", contact.getDepartment());
+                    }
+                    if (StrUtil.isNotBlank(contact.getType())) {
+                        exportedContact.put("type", contact.getType());
+                    }
+                    exportedContacts.add(exportedContact);
+                });
+        return exportedContacts;
     }
 
     private List<Object> typedCollection(String typeName, List<String> values) {
