@@ -390,6 +390,49 @@ class CasServiceDefinitionServiceImplTest {
     }
 
     @Test
+    void exportPortalServiceDefinitionShouldSupportAllAuthenticationPolicy() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setEnabled(true);
+        CasAuthenticationPolicyConfig authenticationPolicy = new CasAuthenticationPolicyConfig();
+        authenticationPolicy.setCriteriaMode(CasAuthenticationPolicyCriteriaMode.ALL);
+        authenticationPolicy.setRequiredAuthenticationHandlers(
+                List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"));
+        authenticationPolicy.setTryAll(true);
+        casConfig.setAuthenticationPolicy(authenticationPolicy);
+
+        PortalSettingConfig settingConfig = new PortalSettingConfig();
+        settingConfig.setFrontendRedirectUrl("https://portal.example.com");
+        settingConfig.setCasConfigs(List.of(casConfig));
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalId("portal-1");
+        portalResult.setPortalSettingConfig(settingConfig);
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceDefinitionServiceImpl service =
+                new CasServiceDefinitionServiceImpl(portalService, new AdminAuthConfig());
+
+        Map<String, Object> definition = service.exportPortalServiceDefinition("portal-1", "cas");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationPolicyJson =
+                (Map<String, Object>) definition.get("authenticationPolicy");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> authenticationCriteria =
+                (Map<String, Object>) authenticationPolicyJson.get("criteria");
+        assertEquals(
+                "org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria",
+                authenticationCriteria.get("@class"));
+        assertEquals(
+                List.of(
+                        "java.util.ArrayList",
+                        List.of("AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler")),
+                authenticationCriteria.get("handlers"));
+        assertEquals(true, authenticationCriteria.get("tryAll"));
+    }
+
+    @Test
     void exportPortalServiceDefinitionShouldSupportRestProxyPolicy() {
         CasConfig casConfig = new CasConfig();
         casConfig.setProvider("cas");

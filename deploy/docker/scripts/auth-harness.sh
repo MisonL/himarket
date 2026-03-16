@@ -836,6 +836,10 @@ main() {
             "protocolVersion": "SAML1",
             "responseFormat": "XML"
           },
+          "authenticationPolicy": {
+            "criteriaMode": "NOT_PREVENTED",
+            "requiredAuthenticationHandlers": ["PreventedHandler"]
+          },
           "serviceDefinition": {
             "evaluationOrder": 11,
             "responseType": "POST",
@@ -870,6 +874,14 @@ main() {
           "validation": {
             "protocolVersion": "CAS2",
             "responseFormat": "XML"
+          },
+          "authenticationPolicy": {
+            "criteriaMode": "ALL",
+            "requiredAuthenticationHandlers": [
+              "AcceptUsersAuthenticationHandler",
+              "LdapAuthenticationHandler"
+            ],
+            "tryAll": true
           },
           "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
         },
@@ -1111,6 +1123,12 @@ main() {
   echo "${portal_cas_saml1_service_definition}" | jq -e '
     (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="SAML1")
   ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.NotPreventedAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${portal_cas_saml1_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["PreventedHandler"]
+  ' >/dev/null
 
   log "preview portal cas1 service definition"
   local portal_cas1_service_definition
@@ -1124,6 +1142,15 @@ main() {
   portal_cas2_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas2/service-definition")"
   echo "${portal_cas2_service_definition}" | jq -e '
     (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS20")
+  ' >/dev/null
+  echo "${portal_cas2_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${portal_cas2_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"]
+  ' >/dev/null
+  echo "${portal_cas2_service_definition}" | jq -e '
+    (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
   ' >/dev/null
 
   log "preview portal cas mfa service definition"
@@ -1868,6 +1895,15 @@ main() {
   admin_cas2_service_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas2/service-definition")"
   echo "${admin_cas2_service_definition}" | jq -e '
     (.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS20")
+  ' >/dev/null
+  echo "${admin_cas2_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${admin_cas2_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"]
+  ' >/dev/null
+  echo "${admin_cas2_service_definition}" | jq -e '
+    (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
   ' >/dev/null
 
   log "preview admin cas mfa service definition"
