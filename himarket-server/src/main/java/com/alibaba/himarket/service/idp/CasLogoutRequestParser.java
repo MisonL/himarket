@@ -23,6 +23,8 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
 import org.slf4j.Logger;
@@ -43,12 +45,25 @@ public class CasLogoutRequestParser {
         if (StrUtil.isBlank(logoutRequest)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing logoutRequest");
         }
-        Document document = parseXml(logoutRequest);
+        Document document = parseXml(resolveLogoutRequestXml(logoutRequest));
         Element sessionIndex = findFirstElement(document, "SessionIndex");
         if (sessionIndex == null || StrUtil.isBlank(sessionIndex.getTextContent())) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing CAS SessionIndex");
         }
         return StrUtil.trim(sessionIndex.getTextContent());
+    }
+
+    private String resolveLogoutRequestXml(String logoutRequest) {
+        String payload = StrUtil.trim(logoutRequest);
+        if (StrUtil.startWith(payload, "<")) {
+            return payload;
+        }
+        try {
+            return new String(Base64.getDecoder().decode(payload), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to decode CAS front-channel logoutRequest", e);
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid CAS logoutRequest");
+        }
     }
 
     private Document parseXml(String xml) {

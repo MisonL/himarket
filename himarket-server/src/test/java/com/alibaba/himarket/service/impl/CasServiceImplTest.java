@@ -50,6 +50,8 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -287,6 +289,47 @@ class CasServiceImplTest {
         assertEquals(false, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
         assertEquals(1, casService.handleLogoutRequest(logoutRequest("ST-1")));
         assertEquals(true, authSessionStore.isTokenRevoked(authResult.getAccessToken()));
+    }
+
+    @Test
+    void buildLogoutRedirectUrlShouldHonorLogoutTypeNone() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        casConfig.setSloEnabled(true);
+        CasServiceDefinitionConfig serviceDefinition = new CasServiceDefinitionConfig();
+        serviceDefinition.setLogoutType(CasServiceLogoutType.NONE);
+        casConfig.setServiceDefinition(serviceDefinition);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        assertEquals("https://portal.example.com/login", casService.buildLogoutRedirectUrl("cas"));
+        assertEquals(false, casService.getAvailableProviders().get(0).getSloEnabled());
     }
 
     @Test

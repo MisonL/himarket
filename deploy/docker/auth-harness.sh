@@ -505,6 +505,24 @@ build_logout_request() {
   printf '%s' "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\"><samlp:SessionIndex>${session_index}</samlp:SessionIndex></samlp:LogoutRequest>"
 }
 
+trigger_front_channel_logout() {
+  local name="$1"
+  local service_url="$2"
+  local session_index="$3"
+  local logout_request
+  logout_request="$(base64_encode "$(build_logout_request "${session_index}")")"
+  local response
+  response="$(curl -fsS -G \
+    --data-urlencode "logoutRequest=${logout_request}" \
+    --data-urlencode "callback=logoutCallback" \
+    "${service_url}")"
+  if [[ "${response}" != 'logoutCallback({"status":"ok"});' ]]; then
+    err "${name} front-channel logout response mismatch"
+    printf '%s\n' "${response}" >&2
+    exit 1
+  fi
+}
+
 exchange_code_for_token() {
   local name="$1"
   local url="$2"
@@ -1177,10 +1195,8 @@ main() {
     exit 1
   }
 
-  log "developer cas back-channel logout"
-  local developer_logout_request
-  developer_logout_request="$(build_logout_request "${developer_ticket}")"
-  curl -fsS -X POST "${service_url}" --data-urlencode "logoutRequest=${developer_logout_request}" >/dev/null
+  log "developer cas front-channel logout"
+  trigger_front_channel_logout "developer cas" "${service_url}" "${developer_ticket}"
   expect_auth_rejected "developer cas revoked token" "http://localhost:8081/developers/profile" "${developer_cas_token}"
 
   log "developer cas saml1 authorize"
@@ -1259,10 +1275,8 @@ main() {
   developer_saml_token="$(exchange_code_for_token "developer cas saml1" "http://localhost:8081/developers/cas/exchange" "${developer_saml_code}")"
   curl -fsS -H "Authorization: Bearer ${developer_saml_token}" "http://localhost:8081/developers/profile" >/dev/null
 
-  log "developer cas saml1 back-channel logout"
-  local developer_saml_logout_request
-  developer_saml_logout_request="$(build_logout_request "${developer_saml_ticket}")"
-  curl -fsS -X POST "${developer_saml_service_url}" --data-urlencode "logoutRequest=${developer_saml_logout_request}" >/dev/null
+  log "developer cas saml1 front-channel logout"
+  trigger_front_channel_logout "developer cas saml1" "${developer_saml_service_url}" "${developer_saml_ticket}"
   expect_auth_rejected "developer cas saml1 revoked token" "http://localhost:8081/developers/profile" "${developer_saml_token}"
 
   log "developer cas1 authorize"
@@ -1800,10 +1814,8 @@ main() {
     exit 1
   }
 
-  log "admin cas back-channel logout"
-  local admin_logout_request
-  admin_logout_request="$(build_logout_request "${admin_ticket}")"
-  curl -fsS -X POST "${admin_service_url}" --data-urlencode "logoutRequest=${admin_logout_request}" >/dev/null
+  log "admin cas front-channel logout"
+  trigger_front_channel_logout "admin cas" "${admin_service_url}" "${admin_ticket}"
   expect_auth_rejected "admin cas revoked token" "http://localhost:8081/admins" "${admin_cas_token}"
 
   log "admin cas saml1 authorize"
@@ -1882,10 +1894,8 @@ main() {
   admin_saml_token="$(exchange_code_for_token "admin cas saml1" "http://localhost:8081/admins/cas/exchange" "${admin_saml_code}")"
   curl -fsS -H "Authorization: Bearer ${admin_saml_token}" "http://localhost:8081/admins" >/dev/null
 
-  log "admin cas saml1 back-channel logout"
-  local admin_saml_logout_request
-  admin_saml_logout_request="$(build_logout_request "${admin_saml_ticket}")"
-  curl -fsS -X POST "${admin_saml_service_url}" --data-urlencode "logoutRequest=${admin_saml_logout_request}" >/dev/null
+  log "admin cas saml1 front-channel logout"
+  trigger_front_channel_logout "admin cas saml1" "${admin_saml_service_url}" "${admin_saml_ticket}"
   expect_auth_rejected "admin cas saml1 revoked token" "http://localhost:8081/admins" "${admin_saml_token}"
 
   log "admin cas1 authorize"
