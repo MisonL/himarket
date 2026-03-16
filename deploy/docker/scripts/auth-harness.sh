@@ -786,6 +786,7 @@ main() {
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
+            "unauthorizedRedirectUrl": "http://localhost:5173/forbidden",
             "delegatedAuthenticationPolicy": {
               "allowedProviders": ["GithubClient"],
               "permitUndefined": false,
@@ -879,6 +880,7 @@ main() {
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
+            "unauthorizedRedirectUrl": "http://localhost:5173/delegated-forbidden",
             "delegatedAuthenticationPolicy": {
               "allowedProviders": ["MockOidcClient"],
               "permitUndefined": false,
@@ -968,6 +970,9 @@ main() {
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).unauthorizedRedirectUrl // "") == "http://localhost:5173/forbidden"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
     (.data.proxyPolicy // .proxyPolicy)["@class"] == "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
@@ -1052,6 +1057,9 @@ main() {
   ' >/dev/null
   echo "${portal_cas_delegated_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="MockOidcClient")
+  ' >/dev/null
+  echo "${portal_cas_delegated_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).unauthorizedRedirectUrl // "") == "http://localhost:5173/delegated-forbidden"
   ' >/dev/null
   echo "${portal_cas_delegated_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy)["@class"] == "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy"
@@ -1671,6 +1679,9 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.logoutUrl // .logoutUrl) == "http://localhost:5174/login"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.accessStrategy // .accessStrategy).unauthorizedRedirectUrl // "") == "http://localhost:5174/forbidden"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.proxyPolicy // .proxyPolicy)["@class"] == "org.apereo.cas.services.RestfulRegisteredServiceProxyPolicy"

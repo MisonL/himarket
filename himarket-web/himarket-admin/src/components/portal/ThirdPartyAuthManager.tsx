@@ -209,6 +209,8 @@ export function ThirdPartyAuthManager({
         serviceDefinitionLogoutUrl: casConfig.serviceDefinition?.logoutUrl,
         accessStrategyEnabled: casConfig.accessStrategy?.enabled ?? true,
         accessStrategySsoEnabled: casConfig.accessStrategy?.ssoEnabled ?? true,
+        accessStrategyUnauthorizedRedirectUrl:
+          casConfig.accessStrategy?.unauthorizedRedirectUrl,
         delegatedAllowedProviders: formatCommaSeparated(
           casConfig.accessStrategy?.delegatedAuthenticationPolicy
             ?.allowedProviders
@@ -485,6 +487,8 @@ export function ThirdPartyAuthManager({
           accessStrategy: {
             enabled: values.accessStrategyEnabled ?? true,
             ssoEnabled: values.accessStrategySsoEnabled ?? true,
+            unauthorizedRedirectUrl:
+              values.accessStrategyUnauthorizedRedirectUrl || undefined,
             delegatedAuthenticationPolicy: {
               allowedProviders: parseCommaSeparated(
                 values.delegatedAllowedProviders
@@ -1228,6 +1232,12 @@ export function ThirdPartyAuthManager({
                       valuePropName="checked"
                     >
                       <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="accessStrategyUnauthorizedRedirectUrl"
+                      label="Unauthorized Redirect URL"
+                    >
+                      <Input placeholder="如: https://portal.example.com/forbidden" />
                     </Form.Item>
                     <Form.Item
                       name="delegatedAllowedProviders"
