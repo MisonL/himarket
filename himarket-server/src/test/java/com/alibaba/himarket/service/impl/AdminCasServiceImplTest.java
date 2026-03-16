@@ -45,6 +45,7 @@ import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
+import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
@@ -252,6 +253,52 @@ class AdminCasServiceImplTest {
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.GATEWAY));
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.WARN));
         assertEquals("true", splitQueryValue(uri.getQuery(), IdpConstants.REMEMBER_ME));
+    }
+
+    @Test
+    void buildAuthorizationResultShouldRequestHeaderMethodAndHideHeaderProvider() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas-header");
+        casConfig.setName("CAS Header");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasServiceDefinitionConfig serviceDefinition = new CasServiceDefinitionConfig();
+        serviceDefinition.setResponseType(CasServiceResponseType.HEADER);
+        casConfig.setServiceDefinition(serviceDefinition);
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com/");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        AdminCasServiceImpl service =
+                new AdminCasServiceImpl(
+                        adminAuthConfig,
+                        new AuthSessionConfig(),
+                        administratorRepository,
+                        contextHolder,
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
+                                adminAuthConfig),
+                        new IdpStateCodec());
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setScheme("http");
+        request.setServerName("ignored.local");
+        request.setServerPort(80);
+
+        URI uri =
+                URI.create(
+                        service.buildAuthorizationResult("cas-header", "/api/v1", null, request)
+                                .getRedirectUrl());
+
+        assertEquals("HEADER", splitQueryValue(uri.getQuery(), IdpConstants.METHOD));
+        assertEquals(0, service.getAvailableProviders().size());
     }
 
     @Test
