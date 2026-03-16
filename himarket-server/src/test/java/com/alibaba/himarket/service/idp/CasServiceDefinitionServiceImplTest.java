@@ -37,6 +37,7 @@ import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfi
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasServiceDefinitionConfig;
 import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import com.alibaba.himarket.support.portal.cas.CasServiceResponseType;
@@ -76,6 +77,8 @@ class CasServiceDefinitionServiceImplTest {
         casConfig.setAttributeRelease(attributeRelease);
         CasProxyConfig proxyConfig = new CasProxyConfig();
         proxyConfig.setEnabled(true);
+        proxyConfig.setUseServiceId(true);
+        proxyConfig.setExactMatch(true);
         casConfig.setProxy(proxyConfig);
 
         CasMultifactorPolicyConfig multifactorPolicy = new CasMultifactorPolicyConfig();
@@ -127,6 +130,8 @@ class CasServiceDefinitionServiceImplTest {
         assertEquals(
                 "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
                 proxyPolicy.get("@class"));
+        assertEquals(true, proxyPolicy.get("useServiceId"));
+        assertEquals(true, proxyPolicy.get("exactMatch"));
         assertTrue(
                 ((String) proxyPolicy.get("pattern")).contains("/developers/cas/proxy-callback"));
     }
@@ -250,5 +255,40 @@ class CasServiceDefinitionServiceImplTest {
                 "org.apereo.cas.services.ReturnAllAttributeReleasePolicy",
                 attributePolicy.get("@class"));
         assertEquals(false, attributePolicy.containsKey("allowedAttributes"));
+    }
+
+    @Test
+    void exportPortalServiceDefinitionShouldSupportRestProxyPolicy() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setEnabled(true);
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        proxyConfig.setPolicyMode(CasProxyPolicyMode.REST);
+        proxyConfig.setPolicyEndpoint("https://proxy.example.com/policies");
+        proxyConfig.setPolicyHeaders(Map.of("X-Proxy-Policy", "enabled"));
+        casConfig.setProxy(proxyConfig);
+
+        PortalSettingConfig settingConfig = new PortalSettingConfig();
+        settingConfig.setFrontendRedirectUrl("https://portal.example.com");
+        settingConfig.setCasConfigs(List.of(casConfig));
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalId("portal-1");
+        portalResult.setPortalSettingConfig(settingConfig);
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+
+        CasServiceDefinitionServiceImpl service =
+                new CasServiceDefinitionServiceImpl(portalService, new AdminAuthConfig());
+
+        Map<String, Object> definition = service.exportPortalServiceDefinition("portal-1", "cas");
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> proxyPolicy = (Map<String, Object>) definition.get("proxyPolicy");
+        assertEquals(
+                "org.apereo.cas.services.RestfulRegisteredServiceProxyPolicy",
+                proxyPolicy.get("@class"));
+        assertEquals("https://proxy.example.com/policies", proxyPolicy.get("endpoint"));
+        assertEquals(Map.of("X-Proxy-Policy", "enabled"), proxyPolicy.get("headers"));
     }
 }

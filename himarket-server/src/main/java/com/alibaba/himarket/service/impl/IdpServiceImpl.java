@@ -40,6 +40,7 @@ import com.alibaba.himarket.support.portal.PublicKeyConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasProxyPolicyMode;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
 import java.math.BigInteger;
@@ -187,6 +188,9 @@ public class IdpServiceImpl implements IdpService {
             return;
         }
         validateEndpoint(proxyConfig.getProxyEndpoint(), "CAS proxy endpoint");
+        if (proxyConfig.getPolicyMode() == CasProxyPolicyMode.REST) {
+            validateUrl(proxyConfig.getPolicyEndpoint(), "CAS proxy policy endpoint");
+        }
         String callbackPath = proxyConfig.getCallbackPath();
         if (StrUtil.isNotBlank(callbackPath)
                 && !StrUtil.startWithAnyIgnoreCase(callbackPath, "/", "http://", "https://")) {
