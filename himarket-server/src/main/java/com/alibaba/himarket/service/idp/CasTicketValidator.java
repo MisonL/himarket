@@ -28,6 +28,8 @@ import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -40,7 +42,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 @Component
 @Slf4j
@@ -100,29 +102,29 @@ public class CasTicketValidator {
                 .getBody();
     }
 
-    private String buildValidateGetUrl(
+    private URI buildValidateGetUrl(
             CasConfig config,
             CasValidationConfig validationConfig,
             String ticket,
             String serviceUrl,
             String proxyCallbackUrl) {
-        return UriComponentsBuilder.fromUriString(buildValidateUrl(config))
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .queryParam(IdpConstants.TICKET, ticket)
-                .queryParamIfPresent(
-                        IdpConstants.PGT_URL, java.util.Optional.ofNullable(proxyCallbackUrl))
-                .queryParamIfPresent(
-                        IdpConstants.FORMAT,
-                        java.util.Optional.ofNullable(resolveFormatQueryParam(validationConfig)))
-                .build()
-                .toUriString();
+        StringBuilder url = new StringBuilder(buildValidateUrl(config));
+        appendQueryParam(url, IdpConstants.SERVICE, serviceUrl);
+        appendQueryParam(url, IdpConstants.TICKET, ticket);
+        if (proxyCallbackUrl != null) {
+            appendQueryParam(url, IdpConstants.PGT_URL, proxyCallbackUrl);
+        }
+        String format = resolveFormatQueryParam(validationConfig);
+        if (format != null) {
+            appendQueryParam(url, IdpConstants.FORMAT, format);
+        }
+        return URI.create(url.toString());
     }
 
-    private String buildSamlValidateUrl(CasConfig config, String serviceUrl) {
-        return UriComponentsBuilder.fromUriString(buildValidateUrl(config))
-                .queryParam("TARGET", serviceUrl)
-                .build()
-                .toUriString();
+    private URI buildSamlValidateUrl(CasConfig config, String serviceUrl) {
+        StringBuilder url = new StringBuilder(buildValidateUrl(config));
+        appendQueryParam(url, "TARGET", serviceUrl);
+        return URI.create(url.toString());
     }
 
     private HttpEntity<String> buildSamlValidationRequest(String ticket) {
@@ -202,5 +204,12 @@ public class CasTicketValidator {
             return path;
         }
         return StrUtil.removeSuffix(baseUrl, "/") + StrUtil.addPrefixIfNot(path, "/");
+    }
+
+    private void appendQueryParam(StringBuilder url, String key, String value) {
+        url.append(url.indexOf("?") >= 0 ? '&' : '?')
+                .append(key)
+                .append('=')
+                .append(UriUtils.encode(value, StandardCharsets.UTF_8));
     }
 }

@@ -55,6 +55,7 @@ import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +65,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 @Slf4j
 @Service
@@ -98,7 +100,7 @@ public class AdminCasServiceImpl implements AdminCasService {
             HttpServletRequest request) {
         CasConfig config = findCasConfig(provider);
         String state = encodeState(createState(provider, apiPrefix));
-        String serviceUrl = buildServiceCallbackUrl(apiPrefix, state);
+        String serviceUrl = buildServiceCallbackUrl(apiPrefix, provider, state);
         String loginUrl = buildLoginUrl(config, serviceUrl, options);
         return IdpAuthorizeResult.builder().redirectUrl(loginUrl).state(state).build();
     }
@@ -109,7 +111,8 @@ public class AdminCasServiceImpl implements AdminCasService {
         IdpStateCookie.assertAdminCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());
-        String serviceUrl = buildServiceCallbackUrl(idpState.getApiPrefix(), state);
+        String serviceUrl =
+                buildServiceCallbackUrl(idpState.getApiPrefix(), idpState.getProvider(), state);
         Map<String, Object> userInfo =
                 casTicketValidator.validate(
                         config,
@@ -241,9 +244,10 @@ public class AdminCasServiceImpl implements AdminCasService {
                     ErrorCode.INVALID_PARAMETER,
                     "CAS authorize request cannot enable gateway and renew together");
         }
+        String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
         UriComponentsBuilder builder =
                 UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                        .queryParam(IdpConstants.SERVICE, serviceUrl);
+                        .queryParam(IdpConstants.SERVICE, encodedServiceUrl);
         if (gateway) {
             builder.queryParam(IdpConstants.GATEWAY, true);
         }
@@ -256,7 +260,7 @@ public class AdminCasServiceImpl implements AdminCasService {
         if (rememberMe) {
             builder.queryParam(IdpConstants.REMEMBER_ME, true);
         }
-        return builder.build().toUriString();
+        return builder.build(true).toUriString();
     }
 
     private boolean resolveLoginFlag(
@@ -268,13 +272,14 @@ public class AdminCasServiceImpl implements AdminCasService {
                 : Boolean.TRUE.equals(fallback);
     }
 
-    private String buildServiceCallbackUrl(String apiPrefix, String state) {
+    private String buildServiceCallbackUrl(String apiPrefix, String provider, String state) {
         String callbackUrl =
                 FrontendApiUrlBuilder.buildApiUrl(
                         adminFrontendUrlResolver.getFrontendBaseUrl(),
                         apiPrefix,
                         "/admins/cas/callback");
         return UriComponentsBuilder.fromUriString(callbackUrl)
+                .queryParam(IdpConstants.PROVIDER, provider)
                 .queryParam(IdpConstants.STATE, state)
                 .build()
                 .toUriString();
