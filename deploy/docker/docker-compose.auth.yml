@@ -67,6 +67,7 @@ services:
         }
     volumes:
       - ./auth/cas/services/himarket-local.json:/etc/cas/services/himarket-local-1000.json:ro
+      - ./auth/cas/services/himarket-header.json:/etc/cas/services/himarket-header-0950.json:ro
       - ./auth/cas/services/himarket-mfa.json:/etc/cas/services/himarket-mfa-0900.json:ro
       - ./auth/cas/services/himarket-delegated.json:/etc/cas/services/himarket-delegated-0850.json:ro
       - ./auth/cas/services/himarket-proxy-targets.json:/etc/cas/services/himarket-proxy-targets-1100.json:ro
