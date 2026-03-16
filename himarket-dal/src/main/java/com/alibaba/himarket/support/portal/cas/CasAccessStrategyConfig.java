@@ -28,6 +28,8 @@ public class CasAccessStrategyConfig {
 
     private Boolean ssoEnabled = true;
 
+    private String unauthorizedRedirectUrl;
+
     private CasDelegatedAuthenticationPolicyConfig delegatedAuthenticationPolicy;
 
     private CasHttpRequestAccessStrategyConfig httpRequest;
