@@ -149,14 +149,16 @@ class CasServiceImplTest {
         assertEquals(
                 serverUrl + "/login",
                 authUri.getScheme() + "://" + authUri.getAuthority() + authUri.getPath());
-        String serviceUrl = splitQueryValue(authUri.getQuery(), "service");
+        String serviceUrl = splitQueryValue(authUri.getRawQuery(), "service");
         assertEquals(
                 "https://portal.example.com/api/v1/developers/cas/callback",
                 URI.create(serviceUrl).getScheme()
                         + "://"
                         + URI.create(serviceUrl).getHost()
                         + URI.create(serviceUrl).getPath());
-        String state = splitQueryValue(URI.create(serviceUrl).getQuery(), "state");
+        assertEquals(
+                "cas", splitQueryValue(URI.create(serviceUrl).getQuery(), IdpConstants.PROVIDER));
+        String state = authorizeResult.getState();
         request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
         expectedServiceHolder[0] = serviceUrl;
 
@@ -274,7 +276,8 @@ class CasServiceImplTest {
         String state = authorizeResult.getState();
         request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
         String serviceUrl =
-                splitQueryValue(URI.create(authorizeResult.getRedirectUrl()).getQuery(), "service");
+                splitQueryValue(
+                        URI.create(authorizeResult.getRedirectUrl()).getRawQuery(), "service");
         expectedServiceHolder[0] = serviceUrl;
 
         String redirectUrl = casService.handleCallback("ST-1", state, request, response);
@@ -410,8 +413,9 @@ class CasServiceImplTest {
         IdpAuthorizeResult authorizeResult =
                 casService.buildAuthorizationResult("cas", "/api/v1", null, request);
         String serviceUrl =
-                splitQueryValue(URI.create(authorizeResult.getRedirectUrl()).getQuery(), "service");
-        String state = splitQueryValue(URI.create(serviceUrl).getQuery(), "state");
+                splitQueryValue(
+                        URI.create(authorizeResult.getRedirectUrl()).getRawQuery(), "service");
+        String state = authorizeResult.getState();
         expectedServiceHolder[0] = serviceUrl;
         expectedPgtUrlHolder[0] = "https://portal.example.com/api/v1/developers/cas/proxy-callback";
         request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
@@ -559,15 +563,29 @@ class CasServiceImplTest {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String query = exchange.getRequestURI().getQuery();
+            String query = exchange.getRequestURI().getRawQuery();
             String service = extract(query, "service");
             String ticket = extract(query, "ticket");
             String pgtUrl = extract(query, IdpConstants.PGT_URL);
             if (!expectedServiceHolder[0].equals(service) || !"ST-1".equals(ticket)) {
-                throw new IOException("Unexpected CAS validate request");
+                writeFailure(
+                        exchange,
+                        "Unexpected CAS validate request service="
+                                + service
+                                + ", ticket="
+                                + ticket
+                                + ", expectedService="
+                                + expectedServiceHolder[0]);
+                return;
             }
             if (expectedPgtUrlHolder[0] != null && !expectedPgtUrlHolder[0].equals(pgtUrl)) {
-                throw new IOException("Unexpected CAS proxy callback URL");
+                writeFailure(
+                        exchange,
+                        "Unexpected CAS proxy callback URL actual="
+                                + pgtUrl
+                                + ", expected="
+                                + expectedPgtUrlHolder[0]);
+                return;
             }
             exchange.getResponseHeaders().set("Content-Type", "application/xml");
             exchange.sendResponseHeaders(200, successBody.length);
@@ -586,6 +604,15 @@ class CasServiceImplTest {
             }
             return null;
         }
+
+        private void writeFailure(HttpExchange exchange, String message) throws IOException {
+            byte[] body = message.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/plain");
+            exchange.sendResponseHeaders(400, body.length);
+            try (OutputStream outputStream = exchange.getResponseBody()) {
+                outputStream.write(body);
+            }
+        }
     }
 
     private static class ProxyHandler implements HttpHandler {
@@ -601,7 +628,7 @@ class CasServiceImplTest {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String query = exchange.getRequestURI().getQuery();
+            String query = exchange.getRequestURI().getRawQuery();
             if (!expectedPgt.equals(extract(query, IdpConstants.PGT))) {
                 throw new IOException("Unexpected PGT");
             }

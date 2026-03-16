@@ -158,7 +158,8 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
         json.put("@class", CAS_REGISTERED_SERVICE);
         json.put(
                 "serviceId",
-                resolveServiceIdPattern(serviceDefinition, frontendBaseUrl, callbackPath));
+                resolveServiceIdPattern(
+                        serviceDefinition, frontendBaseUrl, callbackPath, provider));
         json.put("name", StrUtil.format("HiMarket {} CAS {}", StrUtil.upperFirst(scope), provider));
         json.put("id", resolveRegisteredServiceId(serviceDefinition, scope, ownerId, provider));
         json.put("evaluationOrder", resolveEvaluationOrder(serviceDefinition));
@@ -190,7 +191,8 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
     private String resolveServiceIdPattern(
             CasServiceDefinitionConfig serviceDefinition,
             String frontendBaseUrl,
-            String callbackPath) {
+            String callbackPath,
+            String provider) {
         if (StrUtil.isNotBlank(serviceDefinition.getServiceIdPattern())) {
             return serviceDefinition.getServiceIdPattern();
         }
@@ -198,7 +200,9 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
                 + Pattern.quote(frontendBaseUrl)
                 + "/api(?:/[^/?#]+)*"
                 + Pattern.quote(callbackPath)
-                + "(?:\\?.*)?$";
+                + "\\?provider="
+                + Pattern.quote(provider)
+                + "(?:&.*)?$";
     }
 
     private long resolveRegisteredServiceId(

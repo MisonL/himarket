@@ -148,6 +148,8 @@ class AdminCasServiceImplTest {
                         + "://"
                         + URI.create(serviceUrl).getHost()
                         + URI.create(serviceUrl).getPath());
+        assertEquals(
+                "cas", splitQueryValue(URI.create(serviceUrl).getQuery(), IdpConstants.PROVIDER));
         expectedServiceHolder[0] = serviceUrl;
         request.setCookies(new Cookie(IdpConstants.ADMIN_CAS_STATE_COOKIE_NAME, state));
 
@@ -352,7 +354,7 @@ class AdminCasServiceImplTest {
 
     private String buildServiceUrl(com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult result) {
         return splitQueryValue(
-                URI.create(result.getRedirectUrl()).getQuery(), IdpConstants.SERVICE);
+                URI.create(result.getRedirectUrl()).getRawQuery(), IdpConstants.SERVICE);
     }
 
     private String splitQueryValue(String query, String key) {
@@ -401,15 +403,29 @@ class AdminCasServiceImplTest {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String query = exchange.getRequestURI().getQuery();
+            String query = exchange.getRequestURI().getRawQuery();
             String service = extract(query, IdpConstants.SERVICE);
             String ticket = extract(query, IdpConstants.TICKET);
             String pgtUrl = extract(query, IdpConstants.PGT_URL);
             if (!expectedServiceHolder[0].equals(service) || !"ST-ADMIN-1".equals(ticket)) {
-                throw new IOException("Unexpected CAS validate request");
+                writeFailure(
+                        exchange,
+                        "Unexpected CAS validate request service="
+                                + service
+                                + ", ticket="
+                                + ticket
+                                + ", expectedService="
+                                + expectedServiceHolder[0]);
+                return;
             }
             if (expectedPgtUrlHolder[0] != null && !expectedPgtUrlHolder[0].equals(pgtUrl)) {
-                throw new IOException("Unexpected CAS proxy callback URL");
+                writeFailure(
+                        exchange,
+                        "Unexpected CAS proxy callback URL actual="
+                                + pgtUrl
+                                + ", expected="
+                                + expectedPgtUrlHolder[0]);
+                return;
             }
             byte[] successBody =
                     ("<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
@@ -447,6 +463,15 @@ class AdminCasServiceImplTest {
             }
             return null;
         }
+
+        private void writeFailure(HttpExchange exchange, String message) throws IOException {
+            byte[] body = message.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/plain");
+            exchange.sendResponseHeaders(400, body.length);
+            try (OutputStream outputStream = exchange.getResponseBody()) {
+                outputStream.write(body);
+            }
+        }
     }
 
     private static class ProxyHandler implements HttpHandler {
@@ -462,7 +487,7 @@ class AdminCasServiceImplTest {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            String query = exchange.getRequestURI().getQuery();
+            String query = exchange.getRequestURI().getRawQuery();
             if (!expectedPgt.equals(extract(query, IdpConstants.PGT))) {
                 throw new IOException("Unexpected PGT");
             }
