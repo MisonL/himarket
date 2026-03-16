@@ -32,6 +32,7 @@ import com.alibaba.himarket.support.portal.PortalSettingConfig;
 import com.alibaba.himarket.support.portal.cas.CasAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasAttributeReleasePolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasDelegatedAuthenticationPolicyConfig;
+import com.alibaba.himarket.support.portal.cas.CasHttpRequestAccessStrategyConfig;
 import com.alibaba.himarket.support.portal.cas.CasMultifactorPolicyConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
@@ -154,6 +155,11 @@ class CasServiceDefinitionServiceImplTest {
         delegated.setAllowedProviders(List.of("GithubClient"));
         delegated.setExclusive(true);
         accessStrategy.setDelegatedAuthenticationPolicy(delegated);
+        CasHttpRequestAccessStrategyConfig httpRequest = new CasHttpRequestAccessStrategyConfig();
+        httpRequest.setIpAddressPattern("^127\\.0\\.0\\.1$");
+        httpRequest.setUserAgentPattern("^curl/.*$");
+        httpRequest.setHeaders(Map.of("X-Portal-Scope", "admin"));
+        accessStrategy.setHttpRequest(httpRequest);
         casConfig.setAccessStrategy(accessStrategy);
 
         AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
@@ -177,6 +183,16 @@ class CasServiceDefinitionServiceImplTest {
                 (Map<String, Object>) definition.get("accessStrategy");
         assertEquals(false, accessStrategyJson.get("enabled"));
         assertEquals(false, accessStrategyJson.get("ssoEnabled"));
+        assertEquals(
+                "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy",
+                accessStrategyJson.get("@class"));
+        assertEquals(
+                List.of("java.util.ArrayList", List.of("^127\\.0\\.0\\.1$")),
+                accessStrategyJson.get("requiredIpAddressesPatterns"));
+        assertEquals(
+                List.of("java.util.ArrayList", List.of("^curl/.*$")),
+                accessStrategyJson.get("requiredUserAgentPatterns"));
+        assertEquals(Map.of("X-Portal-Scope", "admin"), accessStrategyJson.get("requiredHeaders"));
 
         @SuppressWarnings("unchecked")
         Map<String, Object> delegatedJson =

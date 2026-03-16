@@ -68,6 +68,28 @@ export function ThirdPartyAuthManager({
       .map(item => item.trim())
       .filter(Boolean);
 
+  const formatJsonObject = (value?: Record<string, string>) =>
+    value ? JSON.stringify(value, null, 2) : "";
+
+  const parseStringMap = (value?: string) => {
+    if (!value || !String(value).trim()) {
+      return undefined;
+    }
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("HTTP Request Headers 必须是 JSON 对象");
+    }
+    return Object.entries(parsed).reduce<Record<string, string>>(
+      (result, [key, item]) => {
+        if (typeof item === "string" && key.trim()) {
+          result[key] = item;
+        }
+        return result;
+      },
+      {}
+    );
+  };
+
   const parseOptionalNumber = (value?: string | number) => {
     if (value === undefined || value === null || value === "") {
       return undefined;
@@ -192,6 +214,13 @@ export function ThirdPartyAuthManager({
         delegatedExclusive:
           casConfig.accessStrategy?.delegatedAuthenticationPolicy?.exclusive ??
           false,
+        httpRequestIpAddressPattern:
+          casConfig.accessStrategy?.httpRequest?.ipAddressPattern,
+        httpRequestUserAgentPattern:
+          casConfig.accessStrategy?.httpRequest?.userAgentPattern,
+        httpRequestHeaders: formatJsonObject(
+          casConfig.accessStrategy?.httpRequest?.headers
+        ),
         attributeReleaseAllowedAttributes: formatCommaSeparated(
           casConfig.attributeRelease?.allowedAttributes
         ),
@@ -443,6 +472,11 @@ export function ThirdPartyAuthManager({
               permitUndefined: values.delegatedPermitUndefined ?? true,
               exclusive: values.delegatedExclusive ?? false,
             },
+            httpRequest: {
+              ipAddressPattern: values.httpRequestIpAddressPattern || undefined,
+              userAgentPattern: values.httpRequestUserAgentPattern || undefined,
+              headers: parseStringMap(values.httpRequestHeaders),
+            },
           },
           attributeRelease: {
             allowedAttributes: parseCommaSeparated(
@@ -524,8 +558,10 @@ export function ThirdPartyAuthManager({
         editingConfig ? "第三方认证配置更新成功" : "第三方认证配置添加成功"
       );
       setModalVisible(false);
-    } catch {
-      message.error("保存第三方认证配置失败");
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "保存第三方认证配置失败"
+      );
     } finally {
       setLoading(false);
     }
@@ -1158,6 +1194,28 @@ export function ThirdPartyAuthManager({
                       valuePropName="checked"
                     >
                       <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="httpRequestIpAddressPattern"
+                      label="IP Address Regex"
+                    >
+                      <Input placeholder="如: ^127\\.0\\.0\\.1$" />
+                    </Form.Item>
+                    <Form.Item
+                      name="httpRequestUserAgentPattern"
+                      label="User-Agent Regex"
+                    >
+                      <Input placeholder="如: ^curl/.*$" />
+                    </Form.Item>
+                    <Form.Item
+                      name="httpRequestHeaders"
+                      label="Required Headers"
+                      extra='JSON 对象，例如 {"X-Portal-Scope":"admin"}'
+                    >
+                      <Input.TextArea
+                        rows={4}
+                        placeholder='如: {"X-Portal-Scope":"admin"}'
+                      />
                     </Form.Item>
                   </div>
 

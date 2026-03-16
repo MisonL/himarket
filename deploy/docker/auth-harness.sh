@@ -879,6 +879,13 @@ main() {
               "allowedProviders": ["MockOidcClient"],
               "permitUndefined": false,
               "exclusive": true
+            },
+            "httpRequest": {
+              "ipAddressPattern": "^127\\.0\\.0\\.1$",
+              "userAgentPattern": "^curl/.*$",
+              "headers": {
+                "X-Portal-Scope": "developer"
+              }
             }
           },
           "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "email" }
@@ -1032,6 +1039,20 @@ main() {
   ' >/dev/null
   echo "${portal_cas_delegated_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="MockOidcClient")
+  ' >/dev/null
+  echo "${portal_cas_delegated_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy)["@class"] == "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy"
+  ' >/dev/null
+  echo "${portal_cas_delegated_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredIpAddressesPatterns // [])[1][]?]
+    | any(.[]?; contains("127"))
+  ' >/dev/null
+  echo "${portal_cas_delegated_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredUserAgentPatterns // [])[1][]?]
+    | any(.[]?; contains("^curl/"))
+  ' >/dev/null
+  echo "${portal_cas_delegated_service_definition}" | jq -e '
+    (((.data.accessStrategy // .accessStrategy).requiredHeaders // {})["X-Portal-Scope"] // "") == "developer"
   ' >/dev/null
   echo "${portal_cas_mfa_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
@@ -1717,6 +1738,17 @@ main() {
   ' >/dev/null
   echo "${admin_cas_delegated_service_definition}" | jq -e '
     (((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="MockOidcClient")
+  ' >/dev/null
+  echo "${admin_cas_delegated_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy)["@class"] == "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy"
+  ' >/dev/null
+  echo "${admin_cas_delegated_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredIpAddressesPatterns // [])[1][]?]
+    | any(.[]?; contains("127"))
+  ' >/dev/null
+  echo "${admin_cas_delegated_service_definition}" | jq -e '
+    [((.data.accessStrategy // .accessStrategy).requiredUserAgentPatterns // [])[1][]?]
+    | any(.[]?; contains("^curl/"))
   ' >/dev/null
   echo "${admin_cas_mfa_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
