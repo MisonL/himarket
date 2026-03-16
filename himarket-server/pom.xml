@@ -83,6 +83,10 @@
                     <artifactId>org.jacoco.agent</artifactId>
                     <groupId>org.jacoco</groupId>
                 </exclusion>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
