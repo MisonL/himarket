@@ -40,6 +40,12 @@ public class CasAccessStrategyConfig {
 
     private Map<String, List<String>> rejectedAttributes;
 
+    private String startingDateTime;
+
+    private String endingDateTime;
+
+    private String zoneId;
+
     private CasDelegatedAuthenticationPolicyConfig delegatedAuthenticationPolicy;
 
     private CasHttpRequestAccessStrategyConfig httpRequest;

@@ -798,6 +798,9 @@ main() {
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
+            "startingDateTime": "2026-01-01T09:00:00",
+            "endingDateTime": "2026-12-31T18:00:00",
+            "zoneId": "Asia/Shanghai",
             "requireAllAttributes": true,
             "caseInsensitive": true,
             "requiredAttributes": {
@@ -1037,6 +1040,15 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).endingDateTime == "2026-12-31T18:00:00"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).zoneId == "Asia/Shanghai"
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).requireAllAttributes == true
@@ -1769,6 +1781,15 @@ main() {
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["BlockedHandler"]
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).startingDateTime == "2026-01-01T09:00:00"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).endingDateTime == "2026-12-31T18:00:00"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    (.data.accessStrategy // .accessStrategy).zoneId == "Asia/Shanghai"
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).requireAllAttributes == true

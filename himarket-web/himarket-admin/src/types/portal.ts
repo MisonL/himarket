@@ -80,6 +80,9 @@ export interface CasAccessStrategyConfig {
   enabled?: boolean;
   ssoEnabled?: boolean;
   unauthorizedRedirectUrl?: string;
+  startingDateTime?: string;
+  endingDateTime?: string;
+  zoneId?: string;
   requireAllAttributes?: boolean;
   caseInsensitive?: boolean;
   requiredAttributes?: Record<string, string[]>;

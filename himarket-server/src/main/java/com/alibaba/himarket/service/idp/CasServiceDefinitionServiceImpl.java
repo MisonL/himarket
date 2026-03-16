@@ -353,6 +353,15 @@ public class CasServiceDefinitionServiceImpl implements CasServiceDefinitionServ
             accessStrategy.put(
                     "unauthorizedRedirectUrl", accessStrategyConfig.getUnauthorizedRedirectUrl());
         }
+        if (StrUtil.isNotBlank(accessStrategyConfig.getStartingDateTime())) {
+            accessStrategy.put("startingDateTime", accessStrategyConfig.getStartingDateTime());
+        }
+        if (StrUtil.isNotBlank(accessStrategyConfig.getEndingDateTime())) {
+            accessStrategy.put("endingDateTime", accessStrategyConfig.getEndingDateTime());
+        }
+        if (StrUtil.isNotBlank(accessStrategyConfig.getZoneId())) {
+            accessStrategy.put("zoneId", accessStrategyConfig.getZoneId());
+        }
         accessStrategy.put(
                 "requireAllAttributes",
                 Optional.ofNullable(accessStrategyConfig.getRequireAllAttributes()).orElse(false));
