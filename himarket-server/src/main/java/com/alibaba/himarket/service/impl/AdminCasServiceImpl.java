@@ -53,6 +53,7 @@ import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.IdentityMapping;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
+import com.alibaba.himarket.support.portal.cas.CasServiceLogoutType;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
@@ -185,7 +186,9 @@ public class AdminCasServiceImpl implements AdminCasService {
                                                                 .provider(config.getProvider())
                                                                 .name(config.getName())
                                                                 .type("CAS")
-                                                                .sloEnabled(config.isSloEnabled())
+                                                                .sloEnabled(
+                                                                        isSingleLogoutEnabled(
+                                                                                config))
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());
@@ -194,15 +197,14 @@ public class AdminCasServiceImpl implements AdminCasService {
     @Override
     public String buildLogoutRedirectUrl(String provider) {
         CasConfig config = findCasConfig(provider);
-        if (!config.isSloEnabled()) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_REQUEST, "CAS SLO is not enabled for this provider");
+        String serviceUrl = adminFrontendUrlResolver.buildCallbackUrl("/login");
+        CasServiceLogoutType logoutType = resolveLogoutType(config);
+        if (logoutType == CasServiceLogoutType.NONE) {
+            return serviceUrl;
         }
-
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        String serviceUrl = adminFrontendUrlResolver.buildCallbackUrl("/login");
         return UriComponentsBuilder.fromUriString(logoutUrl)
                 .queryParam(IdpConstants.SERVICE, serviceUrl)
                 .build()
@@ -283,6 +285,20 @@ public class AdminCasServiceImpl implements AdminCasService {
                 .queryParam(IdpConstants.STATE, state)
                 .build()
                 .toUriString();
+    }
+
+    private boolean isSingleLogoutEnabled(CasConfig config) {
+        return resolveLogoutType(config) != CasServiceLogoutType.NONE;
+    }
+
+    private CasServiceLogoutType resolveLogoutType(CasConfig config) {
+        CasServiceLogoutType logoutType = config.resolveServiceDefinition().getLogoutType();
+        if (logoutType != null) {
+            return logoutType;
+        }
+        return config.isSloEnabled()
+                ? CasServiceLogoutType.BACK_CHANNEL
+                : CasServiceLogoutType.NONE;
     }
 
     private String buildFrontendRedirectUrl(String code) {

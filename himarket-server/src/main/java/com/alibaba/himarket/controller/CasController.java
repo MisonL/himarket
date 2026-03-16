@@ -51,6 +51,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CasController {
 
+    private static final String JSONP_CALLBACK_PATTERN = "^[A-Za-z0-9_.$]+$";
+
     private final CasService casService;
 
     @GetMapping("/authorize")
@@ -82,12 +84,24 @@ public class CasController {
 
     @GetMapping("/callback")
     public void callback(
-            @RequestParam String ticket,
-            @RequestParam String state,
+            @RequestParam(required = false) String logoutRequest,
+            @RequestParam(required = false) String callback,
+            @RequestParam(required = false) String ticket,
+            @RequestParam(required = false) String state,
             HttpServletRequest request,
             HttpServletResponse response)
             throws IOException {
-        response.sendRedirect(casService.handleCallback(ticket, state, request, response));
+        if (StrUtil.isNotBlank(logoutRequest)) {
+            casService.handleLogoutRequest(logoutRequest);
+            writeFrontChannelLogoutResponse(callback, response);
+            return;
+        }
+        if (StrUtil.isNotBlank(ticket) && StrUtil.isNotBlank(state)) {
+            response.sendRedirect(casService.handleCallback(ticket, state, request, response));
+            return;
+        }
+        throw new BusinessException(
+                ErrorCode.INVALID_REQUEST, "Missing CAS callback ticket/state or logoutRequest");
     }
 
     @PostMapping("/callback")
@@ -142,5 +156,18 @@ public class CasController {
             throws IOException {
         String url = casService.buildLogoutRedirectUrl(provider);
         response.sendRedirect(url);
+    }
+
+    private void writeFrontChannelLogoutResponse(String jsonpCallback, HttpServletResponse response)
+            throws IOException {
+        response.setStatus(HttpServletResponse.SC_OK);
+        if (StrUtil.isBlank(jsonpCallback)) {
+            return;
+        }
+        if (!jsonpCallback.matches(JSONP_CALLBACK_PATTERN)) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid CAS logout callback");
+        }
+        response.setContentType("application/javascript;charset=UTF-8");
+        response.getWriter().write(jsonpCallback + "({\"status\":\"ok\"});");
     }
 }
