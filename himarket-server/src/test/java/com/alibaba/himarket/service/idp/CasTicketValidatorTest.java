@@ -31,6 +31,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
@@ -74,7 +75,8 @@ class CasTicketValidatorTest {
                 validator.validate(config, "ST-SAML-1", "https://portal.example.com/callback");
 
         assertEquals("POST", methodHolder[0]);
-        assertTrue(queryHolder[0].contains("TARGET=https://portal.example.com/callback"));
+        assertEquals(
+                "https://portal.example.com/callback", extractQueryValue(queryHolder[0], "TARGET"));
         assertTrue(bodyHolder[0].contains("ST-SAML-1"));
         assertTrue(bodyHolder[0].contains("RequestID=\"_"));
         assertTrue(bodyHolder[0].contains("IssueInstant=\""));
@@ -111,5 +113,15 @@ class CasTicketValidatorTest {
                 outputStream.write(bytes);
             }
         }
+    }
+
+    private String extractQueryValue(String query, String key) {
+        String prefix = key + "=";
+        for (String item : query.split("&")) {
+            if (item.startsWith(prefix)) {
+                return URLDecoder.decode(item.substring(prefix.length()), StandardCharsets.UTF_8);
+            }
+        }
+        return null;
     }
 }
