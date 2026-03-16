@@ -103,6 +103,13 @@ export interface CasMultifactorPolicyConfig {
   bypassIfMissingPrincipalAttribute?: boolean;
 }
 
+export interface CasAuthenticationPolicyConfig {
+  criteriaMode?: "ALLOWED" | "EXCLUDED" | "ANY" | "ALL" | "NOT_PREVENTED";
+  requiredAuthenticationHandlers?: string[];
+  excludedAuthenticationHandlers?: string[];
+  tryAll?: boolean;
+}
+
 export interface CasConfig {
   provider: string;
   name: string;
@@ -119,6 +126,7 @@ export interface CasConfig {
   accessStrategy?: CasAccessStrategyConfig;
   attributeRelease?: CasAttributeReleasePolicyConfig;
   multifactorPolicy?: CasMultifactorPolicyConfig;
+  authenticationPolicy?: CasAuthenticationPolicyConfig;
   identityMapping?: IdentityMapping;
 }
 

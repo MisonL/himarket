@@ -293,6 +293,16 @@ export function ThirdPartyAuthManager({
           false,
         multifactorForceExecution:
           casConfig.multifactorPolicy?.forceExecution ?? false,
+        authenticationPolicyCriteriaMode:
+          casConfig.authenticationPolicy?.criteriaMode || "ALLOWED",
+        authenticationPolicyRequiredHandlers: formatCommaSeparated(
+          casConfig.authenticationPolicy?.requiredAuthenticationHandlers
+        ),
+        authenticationPolicyExcludedHandlers: formatCommaSeparated(
+          casConfig.authenticationPolicy?.excludedAuthenticationHandlers
+        ),
+        authenticationPolicyTryAll:
+          casConfig.authenticationPolicy?.tryAll ?? false,
         userIdField: casConfig.identityMapping?.userIdField,
         userNameField: casConfig.identityMapping?.userNameField,
         emailField: casConfig.identityMapping?.emailField,
@@ -405,6 +415,8 @@ export function ThirdPartyAuthManager({
             multifactorBypassEnabled: false,
             multifactorBypassIfMissingPrincipalAttribute: false,
             multifactorForceExecution: false,
+            authenticationPolicyCriteriaMode: "ALLOWED",
+            authenticationPolicyTryAll: false,
             serviceDefinitionResponseType: "REDIRECT",
             serviceDefinitionEvaluationOrder: 0,
           });
@@ -587,6 +599,17 @@ export function ThirdPartyAuthManager({
             bypassIfMissingPrincipalAttribute:
               values.multifactorBypassIfMissingPrincipalAttribute ?? false,
             forceExecution: values.multifactorForceExecution ?? false,
+          },
+          authenticationPolicy: {
+            criteriaMode:
+              values.authenticationPolicyCriteriaMode || "ALLOWED",
+            requiredAuthenticationHandlers: parseCommaSeparated(
+              values.authenticationPolicyRequiredHandlers
+            ),
+            excludedAuthenticationHandlers: parseCommaSeparated(
+              values.authenticationPolicyExcludedHandlers
+            ),
+            tryAll: values.authenticationPolicyTryAll ?? false,
           },
           identityMapping: {
             userIdField: values.userIdField || null,
@@ -1464,6 +1487,41 @@ export function ThirdPartyAuthManager({
                     <Form.Item
                       name="multifactorForceExecution"
                       label="强制执行 MFA"
+                      valuePropName="checked"
+                    >
+                      <Switch />
+                    </Form.Item>
+                    <Form.Item
+                      name="authenticationPolicyCriteriaMode"
+                      label="Authentication Policy Criteria"
+                    >
+                      <Select>
+                        <Select.Option value="ALLOWED">ALLOWED</Select.Option>
+                        <Select.Option value="EXCLUDED">EXCLUDED</Select.Option>
+                        <Select.Option value="ANY">ANY</Select.Option>
+                        <Select.Option value="ALL">ALL</Select.Option>
+                        <Select.Option value="NOT_PREVENTED">
+                          NOT_PREVENTED
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      name="authenticationPolicyRequiredHandlers"
+                      label="Required Authentication Handlers"
+                      extra="逗号分隔，例如 AcceptUsersAuthenticationHandler,LdapAuthenticationHandler。"
+                    >
+                      <Input placeholder="如: AcceptUsersAuthenticationHandler, LdapAuthenticationHandler" />
+                    </Form.Item>
+                    <Form.Item
+                      name="authenticationPolicyExcludedHandlers"
+                      label="Excluded Authentication Handlers"
+                      extra="逗号分隔，例如 BlockedHandler。"
+                    >
+                      <Input placeholder="如: BlockedHandler" />
+                    </Form.Item>
+                    <Form.Item
+                      name="authenticationPolicyTryAll"
+                      label="Authentication Policy Try All"
                       valuePropName="checked"
                     >
                       <Switch />

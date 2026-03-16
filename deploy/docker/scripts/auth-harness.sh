@@ -787,6 +787,14 @@ main() {
             "bypassIfMissingPrincipalAttribute": true,
             "forceExecution": true
           },
+          "authenticationPolicy": {
+            "criteriaMode": "ALLOWED",
+            "requiredAuthenticationHandlers": [
+              "AcceptUsersAuthenticationHandler",
+              "LdapAuthenticationHandler"
+            ],
+            "tryAll": true
+          },
           "accessStrategy": {
             "enabled": true,
             "ssoEnabled": true,
@@ -1017,6 +1025,18 @@ main() {
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (.data.authenticationPolicy // .authenticationPolicy)["@class"] == "org.apereo.cas.services.DefaultRegisteredServiceAuthenticationPolicy"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.AllowedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"]
+  ' >/dev/null
+  echo "${portal_cas_service_definition}" | jq -e '
+    (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
   ' >/dev/null
   echo "${portal_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).requireAllAttributes == true
@@ -1745,6 +1765,12 @@ main() {
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.ExcludedAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["BlockedHandler"]
+  ' >/dev/null
+  echo "${admin_cas_service_definition}" | jq -e '
     (.data.accessStrategy // .accessStrategy).requireAllAttributes == true
   ' >/dev/null
   echo "${admin_cas_service_definition}" | jq -e '
@@ -1804,6 +1830,15 @@ main() {
   ' >/dev/null
   echo "${admin_cas_mfa_service_definition}" | jq -e '
     ((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-simple")
+  ' >/dev/null
+  echo "${admin_cas_mfa_service_definition}" | jq -e '
+    ((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.AnyAuthenticationHandlerRegisteredServiceAuthenticationPolicyCriteria"
+  ' >/dev/null
+  echo "${admin_cas_mfa_service_definition}" | jq -e '
+    [(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["SimpleTestUsernamePasswordAuthenticationHandler"]
+  ' >/dev/null
+  echo "${admin_cas_mfa_service_definition}" | jq -e '
+    (((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).tryAll // false) == true
   ' >/dev/null
 
   log "preview admin cas delegated service definition"
