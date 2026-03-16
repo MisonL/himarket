@@ -19,13 +19,8 @@
 
 package com.alibaba.himarket.support.portal.cas;
 
-import java.util.List;
-import lombok.Data;
-
-@Data
-public class CasAttributeReleasePolicyConfig {
-
-    private CasAttributeReleasePolicyMode mode = CasAttributeReleasePolicyMode.RETURN_ALLOWED;
-
-    private List<String> allowedAttributes;
+public enum CasAttributeReleasePolicyMode {
+    RETURN_ALLOWED,
+    RETURN_ALL,
+    DENY_ALL
 }
