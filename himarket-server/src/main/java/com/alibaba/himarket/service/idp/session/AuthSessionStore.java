@@ -27,9 +27,12 @@ public interface AuthSessionStore {
 
     CasLoginContext consumeCasLoginContext(String code);
 
-    void bindCasSessionToken(CasSessionScope scope, String sessionIndex, String token);
+    void bindCasSessionToken(
+            CasSessionScope scope, String userId, String sessionIndex, String token);
 
     int revokeCasSession(CasSessionScope scope, String sessionIndex);
+
+    int revokeUserSessions(CasSessionScope scope, String userId);
 
     void saveCasProxyGrantingTicket(String pgtIou, String pgtId, Duration ttl);
 

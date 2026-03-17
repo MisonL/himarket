@@ -793,6 +793,22 @@ public class ConsumerServiceImpl implements ConsumerService {
                         });
     }
 
+    @Override
+    public void existsSubscription(String consumerId, String productId) {
+        subscriptionRepository
+                .findByConsumerIdAndProductId(consumerId, productId)
+                .filter(s -> s.getStatus() == SubscriptionStatus.APPROVED)
+                .orElseThrow(
+                        () ->
+                                new BusinessException(
+                                        ErrorCode.FORBIDDEN,
+                                        StrUtil.format(
+                                                "Consumer `{}` has no approved subscription for"
+                                                        + " product `{}`",
+                                                consumerId,
+                                                productId)));
+    }
+
     /**
      * Build authentication info from credential
      *

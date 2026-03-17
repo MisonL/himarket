@@ -172,4 +172,12 @@ public interface ConsumerService {
      * @return ConsumerResult
      */
     ConsumerResult getPrimaryConsumer();
+
+    /**
+     * Check if a subscription exists for a consumer and product
+     *
+     * @param consumerId Consumer ID
+     * @param productId Product ID
+     */
+    void existsSubscription(String consumerId, String productId);
 }

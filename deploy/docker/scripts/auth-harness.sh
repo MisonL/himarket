@@ -31,6 +31,7 @@ main() {
   frontend_redirect_url="${FRONTEND_REDIRECT_URL}"
   cas_http_port="${CAS_HTTP_PORT}"
   jwk_dir="${JWK_DIR}"
+  export CAS_OIDC_DISCOVERY_URL="http://localhost:${CAS_HTTP_PORT}/cas/oidc/.well-known"
 
   if ! has_selected_non_bootstrap_phases; then
     log "all selected phases passed"

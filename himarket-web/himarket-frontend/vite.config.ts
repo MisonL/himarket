@@ -33,7 +33,25 @@ export default defineConfig({
   optimizeDeps: {
   },
   build: {
+    chunkSizeWarningLimit: 1500,
+    minify: 'terser',
     rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('swagger-ui-react')) {
+              if (id.includes('swagger-ui-es-bundle-core')) return 'vendor-swagger-core'
+              return 'vendor-swagger-ui'
+            }
+            if (id.includes('antd')) return 'vendor-antd'
+            if (id.includes('@ant-design/icons')) return 'vendor-antd-icons'
+            if (id.includes('react-dom')) return 'vendor-react-dom'
+            if (id.includes('lodash')) return 'vendor-lodash'
+            if (id.includes('echarts')) return 'vendor-echarts'
+            if (id.includes('zrender')) return 'vendor-zrender'
+          }
+        }
+      }
     }
   },
   define: {
