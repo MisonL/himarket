@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Alert, Button, Divider, Form, Input, Select } from "antd";
-import api from "../lib/api";
-import { authApi } from "@/lib/api";
+import api, { authApi } from "@/lib/api";
 import { setLastAuthState } from "@/lib/authStorage";
 
 interface IdpProvider {
@@ -10,6 +9,7 @@ interface IdpProvider {
   name?: string;
   type?: string;
   sloEnabled?: boolean;
+  interactiveBrowserLogin?: boolean;
 }
 
 const Login: React.FC = () => {
@@ -19,6 +19,10 @@ const Login: React.FC = () => {
   const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
   const [ldapProviders, setLdapProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
+
+  const interactiveCasProviders = casProviders.filter(
+    provider => provider.interactiveBrowserLogin === true
+  );
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -73,7 +77,10 @@ const Login: React.FC = () => {
       provider: provider.provider,
       sloEnabled: !!provider.sloEnabled,
     });
-    window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
+    window.location.href = buildAuthorizeUrl(
+      "/admins/cas/authorize",
+      provider.provider
+    );
   };
 
   const handleLogin = async (values: {
@@ -152,7 +159,8 @@ const Login: React.FC = () => {
       <div
         className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)",
+          background:
+            "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)",
         }}
       >
         <div className="absolute inset-0 opacity-10">
@@ -204,13 +212,23 @@ const Login: React.FC = () => {
                 name="username"
                 rules={[{ required: true, message: "请输入账号" }]}
               >
-                <Input placeholder="账号" size="large" />
+                <Input
+                  autoComplete="username"
+                  name="username"
+                  placeholder="账号"
+                  size="large"
+                />
               </Form.Item>
               <Form.Item
                 name="password"
                 rules={[{ required: true, message: "请输入密码" }]}
               >
-                <Input.Password placeholder="密码" size="large" />
+                <Input.Password
+                  autoComplete="current-password"
+                  name="password"
+                  placeholder="密码"
+                  size="large"
+                />
               </Form.Item>
               {error && <Alert message={error} type="error" showIcon className="mb-2" />}
               <Form.Item>
@@ -225,13 +243,13 @@ const Login: React.FC = () => {
                 </Button>
               </Form.Item>
 
-              {casProviders.length > 0 && (
+              {interactiveCasProviders.length > 0 && (
                 <>
                   <Divider plain className="text-gray-400">
                     或
                   </Divider>
                   <div className="flex flex-col gap-2">
-                    {casProviders.map(provider => (
+                    {interactiveCasProviders.map(provider => (
                       <Button
                         key={provider.provider}
                         className="w-full"

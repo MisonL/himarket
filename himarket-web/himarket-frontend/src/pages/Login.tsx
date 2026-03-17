@@ -15,6 +15,7 @@ import googleIcon from "../assets/google.png";
 
 type LoginProvider = IIdpProvider & {
   sloEnabled?: boolean;
+  interactiveBrowserLogin?: boolean;
   authType: "OIDC" | "CAS";
 };
 
@@ -27,15 +28,19 @@ const oidcIcons: Record<string, React.ReactNode> = {
 const Login: React.FC = () => {
   const { t } = useTranslation("login");
   const [providers, setProviders] = useState<LoginProvider[]>([]);
-  const [ldapProviders, setLdapProviders] = useState<Array<{ provider: string; name?: string }>>(
-    []
-  );
+  const [ldapProviders, setLdapProviders] = useState<
+    Array<{ provider: string; name?: string }>
+  >([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    Promise.allSettled([APIs.getOidcProviders(), APIs.getCasProviders(), APIs.getLdapProviders()])
+    Promise.allSettled([
+      APIs.getOidcProviders(),
+      APIs.getCasProviders(),
+      APIs.getLdapProviders(),
+    ])
       .then(results => {
         const mergedProviders: LoginProvider[] = [];
 
@@ -43,6 +48,8 @@ const Login: React.FC = () => {
           mergedProviders.push(
             ...results[0].value.data.map(provider => ({
               ...provider,
+              interactiveBrowserLogin:
+                provider.interactiveBrowserLogin === true,
               authType: "OIDC" as const,
             }))
           );
@@ -52,6 +59,8 @@ const Login: React.FC = () => {
           mergedProviders.push(
             ...results[1].value.data.map(provider => ({
               ...provider,
+              interactiveBrowserLogin:
+                provider.interactiveBrowserLogin === true,
               authType: "CAS" as const,
             }))
           );
@@ -70,6 +79,10 @@ const Login: React.FC = () => {
         setLdapProviders([]);
       });
   }, []);
+
+  const interactiveProviders = providers.filter(
+    provider => provider.interactiveBrowserLogin === true
+  );
 
   const handlePasswordLogin = async (values: {
     username: string;
@@ -117,7 +130,9 @@ const Login: React.FC = () => {
       }
     } catch (error) {
       if (error instanceof AxiosError) {
-        message.error(error.response?.data.message || t("loginFailedCheckCredentials"));
+        message.error(
+          error.response?.data.message || t("loginFailedCheckCredentials")
+        );
       } else {
         message.error(t("loginFailed"));
       }
@@ -139,7 +154,10 @@ const Login: React.FC = () => {
 
   const handleOidcLogin = (provider: LoginProvider) => {
     setLastAuthState({ type: "OIDC", provider: provider.provider });
-    window.location.href = buildAuthorizeUrl("/developers/oidc/authorize", provider.provider);
+    window.location.href = buildAuthorizeUrl(
+      "/developers/oidc/authorize",
+      provider.provider
+    );
   };
 
   const handleCasLogin = (provider: LoginProvider) => {
@@ -148,7 +166,10 @@ const Login: React.FC = () => {
       provider: provider.provider,
       sloEnabled: !!provider.sloEnabled,
     });
-    window.location.href = buildAuthorizeUrl("/developers/cas/authorize", provider.provider);
+    window.location.href = buildAuthorizeUrl(
+      "/developers/cas/authorize",
+      provider.provider
+    );
   };
 
   return (
@@ -184,6 +205,7 @@ const Login: React.FC = () => {
                   />
                 </Form.Item>
               )}
+
               <Form.Item
                 name="username"
                 rules={[{ required: true, message: t("usernameRequired") }]}
@@ -221,16 +243,16 @@ const Login: React.FC = () => {
               </Form.Item>
             </Form>
 
-            {providers.length > 0 && (
+            {interactiveProviders.length > 0 && (
               <Divider plain className="text-subTitle">
                 <span className="text-subTitle">{t("or")}</span>
               </Divider>
             )}
 
             <div className="flex flex-col gap-2 mb-2">
-              {providers.length === 0
+              {interactiveProviders.length === 0
                 ? null
-                : providers.map(provider => (
+                : interactiveProviders.map(provider => (
                     <Button
                       key={provider.provider}
                       onClick={() =>

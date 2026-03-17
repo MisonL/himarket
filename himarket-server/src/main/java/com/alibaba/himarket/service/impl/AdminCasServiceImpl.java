@@ -181,7 +181,6 @@ public class AdminCasServiceImpl implements AdminCasService {
                         configs ->
                                 configs.stream()
                                         .filter(CasConfig::isEnabled)
-                                        .filter(this::isInteractiveLoginProvider)
                                         .map(
                                                 config ->
                                                         IdpResult.builder()
@@ -190,6 +189,9 @@ public class AdminCasServiceImpl implements AdminCasService {
                                                                 .type("CAS")
                                                                 .sloEnabled(
                                                                         isSingleLogoutEnabled(
+                                                                                config))
+                                                                .interactiveBrowserLogin(
+                                                                        isInteractiveLoginProvider(
                                                                                 config))
                                                                 .build())
                                         .collect(Collectors.toList()))

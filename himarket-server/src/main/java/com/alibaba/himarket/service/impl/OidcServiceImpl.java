@@ -145,6 +145,7 @@ public class OidcServiceImpl implements OidcService {
                                                                 .provider(config.getProvider())
                                                                 .name(config.getName())
                                                                 .type("OIDC")
+                                                                .interactiveBrowserLogin(true)
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());

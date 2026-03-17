@@ -331,6 +331,7 @@ class CasServiceImplTest {
 
         assertEquals("https://portal.example.com/login", casService.buildLogoutRedirectUrl("cas"));
         assertEquals(false, casService.getAvailableProviders().get(0).getSloEnabled());
+        assertEquals(true, casService.getAvailableProviders().get(0).getInteractiveBrowserLogin());
     }
 
     @Test
@@ -432,7 +433,8 @@ class CasServiceImplTest {
                                 .getRedirectUrl());
 
         assertEquals("HEADER", splitQueryValue(uri.getQuery(), IdpConstants.METHOD));
-        assertEquals(0, casService.getAvailableProviders().size());
+        assertEquals(1, casService.getAvailableProviders().size());
+        assertEquals(false, casService.getAvailableProviders().get(0).getInteractiveBrowserLogin());
     }
 
     @Test
