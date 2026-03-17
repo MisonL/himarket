@@ -9,6 +9,7 @@ interface IdpProvider {
   name?: string;
   type?: string;
   sloEnabled?: boolean;
+  interactiveBrowserLogin?: boolean;
 }
 
 const Login: React.FC = () => {
@@ -18,6 +19,10 @@ const Login: React.FC = () => {
   const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
   const [ldapProviders, setLdapProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
+
+  const interactiveCasProviders = casProviders.filter(
+    provider => provider.interactiveBrowserLogin === true
+  );
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -207,13 +212,13 @@ const Login: React.FC = () => {
                   登录
                 </Button>
               </Form.Item>
-              {casProviders.length > 0 && (
+              {interactiveCasProviders.length > 0 && (
                 <>
                   <Divider plain className="text-gray-400">
                     或
                   </Divider>
                   <div className="flex flex-col gap-2">
-                    {casProviders.map(provider => (
+                    {interactiveCasProviders.map(provider => (
                       <Button
                         key={provider.provider}
                         className="w-full"

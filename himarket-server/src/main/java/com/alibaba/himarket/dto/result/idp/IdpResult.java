@@ -45,4 +45,9 @@ public class IdpResult {
      * Whether provider supports SLO redirection.
      */
     private Boolean sloEnabled;
+
+    /**
+     * Whether provider can be used directly as an interactive browser login option.
+     */
+    private Boolean interactiveBrowserLogin;
 }

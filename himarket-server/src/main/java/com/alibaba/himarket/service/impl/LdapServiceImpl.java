@@ -78,6 +78,7 @@ public class LdapServiceImpl implements LdapService {
                                                                 .provider(config.getProvider())
                                                                 .name(config.getName())
                                                                 .type("LDAP")
+                                                                .interactiveBrowserLogin(false)
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());

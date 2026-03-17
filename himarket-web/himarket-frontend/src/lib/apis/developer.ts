@@ -11,6 +11,7 @@ export interface IIdpProvider {
   name?: string;
   displayName?: string;
   sloEnabled?: boolean;
+  interactiveBrowserLogin?: boolean;
 }
 
 export interface IAuthResult {
@@ -36,7 +37,7 @@ interface IDeveloperInfo {
   username: string;
   email: string;
   createdAt: string;
-  avatarUrl?: string
+  avatarUrl?: string;
 }
 
 // ============ API 函数 ============
@@ -46,7 +47,7 @@ interface IDeveloperInfo {
  */
 export function getDeveloperInfo() {
   return request.get<RespI<IDeveloperInfo>, RespI<IDeveloperInfo>>(
-    '/developers/profile'
+    "/developers/profile"
   );
 }
 
@@ -55,19 +56,19 @@ export function getDeveloperInfo() {
  */
 export function getOidcProviders() {
   return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
-    '/developers/oidc/providers'
+    "/developers/oidc/providers"
   );
 }
 
 export function getCasProviders() {
   return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
-    '/developers/cas/providers'
+    "/developers/cas/providers"
   );
 }
 
 export function getLdapProviders() {
   return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
-    '/developers/ldap/providers'
+    "/developers/ldap/providers"
   );
 }
 
@@ -76,7 +77,7 @@ export function getLdapProviders() {
  */
 export function handleOidcCallback(params: OidcCallbackParams) {
   return request.get<RespI<IAuthResult>, RespI<IAuthResult>>(
-    '/developers/oidc/callback',
+    "/developers/oidc/callback",
     {
       params: {
         code: params.code,
@@ -88,14 +89,14 @@ export function handleOidcCallback(params: OidcCallbackParams) {
 
 export function exchangeCasCode(params: CasExchangeParams) {
   return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
-    '/developers/cas/exchange',
+    "/developers/cas/exchange",
     params
   );
 }
 
 export function handleLdapLogin(params: LdapLoginParam) {
   return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
-    '/developers/ldap/login',
+    "/developers/ldap/login",
     params
   );
 }
@@ -104,15 +105,12 @@ export function handleLdapLogin(params: LdapLoginParam) {
  * 开发者登出
  */
 export function developerLogout() {
-  return request.post<RespI<void>, RespI<void>>(
-    '/developers/logout'
-  );
+  return request.post<RespI<void>, RespI<void>>("/developers/logout");
 }
-
 
 export function developersListIdentities() {
   return request.post<RespI<IIdentity[]>, RespI<IIdentity[]>>(
-    '/developers/list-identities'
+    "/developers/list-identities"
   );
 }
 

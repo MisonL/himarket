@@ -48,6 +48,8 @@ const Login: React.FC = () => {
           mergedProviders.push(
             ...results[0].value.data.map(provider => ({
               ...provider,
+              interactiveBrowserLogin:
+                provider.interactiveBrowserLogin === true,
               authType: "OIDC" as const,
             }))
           );
@@ -57,6 +59,8 @@ const Login: React.FC = () => {
           mergedProviders.push(
             ...results[1].value.data.map(provider => ({
               ...provider,
+              interactiveBrowserLogin:
+                provider.interactiveBrowserLogin === true,
               authType: "CAS" as const,
             }))
           );

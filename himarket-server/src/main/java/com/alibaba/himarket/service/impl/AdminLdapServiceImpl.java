@@ -68,6 +68,7 @@ public class AdminLdapServiceImpl implements AdminLdapService {
                                                                 .provider(config.getProvider())
                                                                 .name(config.getName())
                                                                 .type("LDAP")
+                                                                .interactiveBrowserLogin(false)
                                                                 .build())
                                         .collect(Collectors.toList()))
                 .orElse(Collections.emptyList());
