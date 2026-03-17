@@ -24,6 +24,10 @@
   - local `apereo/cas` cold start can exceed 200 seconds on the current arm64/qemu path
 
 ## State Estimate
+- Remote sync truth as of `2026-03-16`:
+  - `origin/main` is an ancestor of `origin/feature/cas-auth-complete`
+  - `origin/feature/cas-auth-support` is an ancestor of `origin/feature/cas-auth-complete`
+  - therefore syncing the other two remote branches into `complete` is currently a no-op and should not create an empty merge commit
 - The branch has already closed the main CAS integration set:
   - CAS1
   - CAS2
