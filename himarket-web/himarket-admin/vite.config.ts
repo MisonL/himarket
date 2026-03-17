@@ -7,17 +7,35 @@ import monacoEditorModule from "vite-plugin-monaco-editor";
 const monacoEditor = (monacoEditorModule as any).default || monacoEditorModule;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function sanitizeChunkName(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function getAntdComponentName(id: string) {
+  const match = id.match(/node_modules\/antd\/(?:es|lib)\/([^/]+)/);
+  if (!match) {
+    return "shared";
+  }
+  const componentName = match[1];
+  if (
+    componentName === "index" ||
+    componentName === "index.js" ||
+    componentName === "_util" ||
+    componentName === "style" ||
+    componentName === "theme" ||
+    componentName === "locale" ||
+    componentName === "config-provider"
+  ) {
+    return "shared";
+  }
+  return componentName;
+}
+
 function manualChunks(id: string) {
   if (!id.includes("node_modules")) {
     return undefined;
   }
 
-  if (id.includes("swagger-ui-react")) {
-    return "vendor-swagger-ui";
-  }
-  if (id.includes("@ant-design/icons")) {
-    return "vendor-antd-icons";
-  }
   if (
     id.includes("monaco-editor") ||
     id.includes("react-monaco-editor") ||
@@ -32,27 +50,63 @@ function manualChunks(id: string) {
   ) {
     return "vendor-markdown";
   }
+
+  if (id.includes("swagger-ui-react/swagger-ui-es-bundle-core.js")) {
+    return "vendor-swagger-core";
+  }
+
+  if (
+    id.includes("swagger-ui-react/index.mjs") ||
+    id.includes("swagger-ui-react/index.cjs")
+  ) {
+    return "vendor-swagger-react";
+  }
+
+  if (
+    id.includes("swagger-client") ||
+    id.includes("@swagger-api/apidom") ||
+    id.includes("@swaggerexpert")
+  ) {
+    return "vendor-swagger-support";
+  }
+
+  if (
+    id.includes("immutable") ||
+    id.includes("react-redux") ||
+    id.includes("redux")
+  ) {
+    return "vendor-swagger-state";
+  }
+
   if (id.includes("echarts")) {
     return "vendor-echarts";
   }
-  if (id.includes("rc-table") || id.includes("rc-pagination")) {
-    return "vendor-antd-table";
-  }
-  if (id.includes("rc-picker") || id.includes("dayjs")) {
-    return "vendor-antd-date";
-  }
-  if (
-    id.includes("rc-select") ||
-    id.includes("rc-tree-select") ||
-    id.includes("rc-cascader")
-  ) {
-    return "vendor-antd-select";
-  }
-  if (id.includes("rc-field-form") || id.includes("async-validator")) {
-    return "vendor-antd-form";
+
+  if (id.includes("zrender")) {
+    return "vendor-zrender";
   }
   if (id.includes("antd")) {
-    return "vendor-antd-core";
+    return `vendor-antd-${sanitizeChunkName(getAntdComponentName(id))}`;
+  }
+
+  if (id.includes("@ant-design/icons")) {
+    return "vendor-antd-icons";
+  }
+
+  if (id.includes("react-dom")) {
+    return "vendor-react-dom";
+  }
+
+  if (id.includes("@remix-run/router") || id.includes("react-router")) {
+    return "vendor-react-router";
+  }
+
+  if (id.includes("axios")) {
+    return "vendor-axios";
+  }
+
+  if (id.includes("dayjs")) {
+    return "vendor-dayjs";
   }
 
   return undefined;
