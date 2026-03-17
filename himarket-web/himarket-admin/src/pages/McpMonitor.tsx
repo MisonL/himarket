@@ -11,7 +11,7 @@ import {
   Table,
   message,
 } from "antd";
-import * as echarts from "echarts";
+import { echarts, type ECharts } from "@/lib/echarts";
 import slsApi from "../lib/slsApi";
 import {
   SlsQueryRequest,
@@ -76,9 +76,9 @@ const McpMonitor: React.FC = () => {
   const qpsChartRef = useRef<HTMLDivElement>(null);
   const rtChartRef = useRef<HTMLDivElement>(null);
 
-  const successRateChartInstance = useRef<echarts.ECharts | null>(null);
-  const qpsChartInstance = useRef<echarts.ECharts | null>(null);
-  const rtChartInstance = useRef<echarts.ECharts | null>(null);
+  const successRateChartInstance = useRef<ECharts | null>(null);
+  const qpsChartInstance = useRef<ECharts | null>(null);
+  const rtChartInstance = useRef<ECharts | null>(null);
 
   // 初始化ECharts实例
   useEffect(() => {

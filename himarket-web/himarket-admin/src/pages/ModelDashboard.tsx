@@ -1,12 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from "react";
 import { Form, message } from "antd";
-import * as echarts from "echarts";
 import { Dayjs } from "dayjs";
 import { ModelDashboardCharts } from "@/components/model-dashboard/ModelDashboardCharts";
 import { ModelDashboardFilters } from "@/components/model-dashboard/ModelDashboardFilters";
 import { ModelDashboardKpiCards } from "@/components/model-dashboard/ModelDashboardKpiCards";
 import { ModelDashboardTables } from "@/components/model-dashboard/ModelDashboardTables";
+import { echarts, type ECharts } from "@/lib/echarts";
 import slsApi from "../lib/slsApi";
 import {
   SlsQueryRequest,
@@ -79,12 +79,12 @@ const ModelDashboard: React.FC = () => {
   const ratelimitedChartRef = useRef<HTMLDivElement>(null);
   const cacheChartRef = useRef<HTMLDivElement>(null);
 
-  const qpsChartInstance = useRef<echarts.ECharts | null>(null);
-  const successRateChartInstance = useRef<echarts.ECharts | null>(null);
-  const tokenPerSecChartInstance = useRef<echarts.ECharts | null>(null);
-  const rtChartInstance = useRef<echarts.ECharts | null>(null);
-  const ratelimitedChartInstance = useRef<echarts.ECharts | null>(null);
-  const cacheChartInstance = useRef<echarts.ECharts | null>(null);
+  const qpsChartInstance = useRef<ECharts | null>(null);
+  const successRateChartInstance = useRef<ECharts | null>(null);
+  const tokenPerSecChartInstance = useRef<ECharts | null>(null);
+  const rtChartInstance = useRef<ECharts | null>(null);
+  const ratelimitedChartInstance = useRef<ECharts | null>(null);
+  const cacheChartInstance = useRef<ECharts | null>(null);
 
   // 初始化ECharts实例
   useEffect(() => {
