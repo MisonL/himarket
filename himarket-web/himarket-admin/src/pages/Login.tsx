@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
-import { authApi } from '@/lib/api'
+import { authApi } from "@/lib/api";
 import { Form, Input, Button, Alert, Divider, Select } from "antd";
 import { setLastAuthState } from "@/lib/authStorage";
 
@@ -10,6 +10,7 @@ interface IdpProvider {
   name?: string;
   type?: string;
   sloEnabled?: boolean;
+  interactiveBrowserLogin?: boolean;
 }
 
 const Login: React.FC = () => {
@@ -19,6 +20,9 @@ const Login: React.FC = () => {
   const [casProviders, setCasProviders] = useState<IdpProvider[]>([]);
   const [ldapProviders, setLdapProviders] = useState<IdpProvider[]>([]);
   const navigate = useNavigate();
+  const interactiveCasProviders = casProviders.filter(
+    provider => provider.interactiveBrowserLogin === true
+  );
 
   // 页面加载时检查权限
   useEffect(() => {
@@ -74,11 +78,18 @@ const Login: React.FC = () => {
       provider: provider.provider,
       sloEnabled: !!provider.sloEnabled,
     });
-    window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
+    window.location.href = buildAuthorizeUrl(
+      "/admins/cas/authorize",
+      provider.provider
+    );
   };
 
   // 登录表单提交
-  const handleLogin = async (values: { username: string; password: string; loginMode?: string }) => {
+  const handleLogin = async (values: {
+    username: string;
+    password: string;
+    loginMode?: string;
+  }) => {
     setLoading(true);
     setError("");
     try {
@@ -90,17 +101,17 @@ const Login: React.FC = () => {
               password: values.password,
             })
           : loginMode.startsWith("ldap:")
-          ? await api.post("/admins/ldap/login", {
-              provider: loginMode.replace(/^ldap:/, ""),
-              username: values.username,
-              password: values.password,
-            })
-          : (() => {
-              throw new Error("未知登录方式");
-            })();
+            ? await api.post("/admins/ldap/login", {
+                provider: loginMode.replace(/^ldap:/, ""),
+                username: values.username,
+                password: values.password,
+              })
+            : (() => {
+                throw new Error("未知登录方式");
+              })();
       const accessToken = response.data.access_token;
-      localStorage.setItem('access_token', accessToken);
-      localStorage.setItem('userInfo', JSON.stringify(response.data));
+      localStorage.setItem("access_token", accessToken);
+      localStorage.setItem("userInfo", JSON.stringify(response.data));
       if (loginMode === "builtin") {
         setLastAuthState({ type: "BUILTIN" });
       } else {
@@ -109,7 +120,7 @@ const Login: React.FC = () => {
           provider: loginMode.replace(/^ldap:/, ""),
         });
       }
-      navigate('/portals');
+      navigate("/portals");
     } catch {
       setError("账号或密码错误");
     } finally {
@@ -118,7 +129,11 @@ const Login: React.FC = () => {
   };
 
   // 注册表单提交
-  const handleRegister = async (values: { username: string; password: string; confirmPassword: string }) => {
+  const handleRegister = async (values: {
+    username: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
     setLoading(true);
     setError("");
     if (values.password !== values.confirmPassword) {
@@ -154,17 +169,21 @@ const Login: React.FC = () => {
 
         {/* 登录表单 */}
         {!isRegister && (
-            <Form
-              className="w-full flex flex-col gap-4"
-              layout="vertical"
-              onFinish={handleLogin}
-            >
+          <Form
+            className="w-full flex flex-col gap-4"
+            layout="vertical"
+            onFinish={handleLogin}
+          >
             {ldapProviders.length > 0 && (
-              <Form.Item name="loginMode" initialValue="builtin" label="登录方式">
+              <Form.Item
+                name="loginMode"
+                initialValue="builtin"
+                label="登录方式"
+              >
                 <Select
                   options={[
                     { label: "内置账号", value: "builtin" },
-                    ...ldapProviders.map((p) => ({
+                    ...ldapProviders.map(p => ({
                       label: `LDAP: ${p.name || p.provider}`,
                       value: `ldap:${p.provider}`,
                     })),
@@ -184,7 +203,9 @@ const Login: React.FC = () => {
             >
               <Input.Password placeholder="密码" size="large" />
             </Form.Item>
-            {error && <Alert message={error} type="error" showIcon className="mb-2" />}
+            {error && (
+              <Alert message={error} type="error" showIcon className="mb-2" />
+            )}
             <Form.Item>
               <Button
                 type="primary"
@@ -197,13 +218,13 @@ const Login: React.FC = () => {
               </Button>
             </Form.Item>
 
-            {casProviders.length > 0 && (
+            {interactiveCasProviders.length > 0 && (
               <>
                 <Divider plain className="text-gray-400">
                   或
                 </Divider>
                 <div className="flex flex-col gap-2">
-                  {casProviders.map((provider) => (
+                  {interactiveCasProviders.map(provider => (
                     <Button
                       key={provider.provider}
                       className="w-full"
@@ -244,7 +265,9 @@ const Login: React.FC = () => {
             >
               <Input.Password placeholder="确认密码" size="large" />
             </Form.Item>
-            {error && <Alert message={error} type="error" showIcon className="mb-2" />}
+            {error && (
+              <Alert message={error} type="error" showIcon className="mb-2" />
+            )}
             <Form.Item>
               <Button
                 type="primary"
