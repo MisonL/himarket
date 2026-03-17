@@ -1,4 +1,4 @@
-import * as echarts from "echarts";
+import type { EChartsOption } from "@/lib/echarts";
 import { DataPoint } from "../types/sls";
 
 /**
@@ -20,7 +20,7 @@ export interface ChartBaseOptions {
 export function generateLineChartOption(
   dataPoints: DataPoint[],
   options: ChartBaseOptions & { seriesName?: string } = {}
-): echarts.EChartsOption {
+): EChartsOption {
   const {
     title,
     xAxisLabel,
@@ -104,7 +104,7 @@ export function generateLineChartOption(
 export function generateMultiLineChartOption(
   seriesData: { name: string; dataPoints: DataPoint[] }[],
   options: ChartBaseOptions = {}
-): echarts.EChartsOption {
+): EChartsOption {
   const { title, xAxisLabel, yAxisLabel, isPercentage = false } = options;
 
   if (seriesData.length === 0) {
@@ -189,7 +189,7 @@ export function generateMultiLineChartOption(
  */
 export function generateEmptyChartOption(
   message: string = "暂无数据"
-): echarts.EChartsOption {
+): EChartsOption {
   return {
     title: {
       text: message,
