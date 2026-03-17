@@ -32,7 +32,7 @@ db:
 
 # Encryptor
 encryption:
-  root-key: portalmanagement
+  root-key: ${ENCRYPTION_ROOT_KEY:portalmanagement}
 
 springdoc:
   api-docs:

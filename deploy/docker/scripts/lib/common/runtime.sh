@@ -161,7 +161,7 @@ ensure_cas_modules_loaded() {
     return 0
   fi
   log "sync cas modules into exploded webapp"
-  docker exec himarket-cas sh -lc 'cp -f /docker/cas/modules/*.jar /tmp/cas-exploded/WEB-INF/lib/'
+  docker exec himarket-cas sh -lc 'mkdir -p /tmp/cas-exploded/WEB-INF/lib/ && cp -f /docker/cas/modules/*.jar /tmp/cas-exploded/WEB-INF/lib/'
   docker restart himarket-cas >/dev/null
 }
 

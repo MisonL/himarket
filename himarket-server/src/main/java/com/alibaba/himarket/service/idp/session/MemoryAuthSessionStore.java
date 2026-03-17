@@ -34,6 +34,8 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
     private final Map<String, Long> revokedTokens = new ConcurrentHashMap<>();
 
+    private final Map<String, java.util.Set<String>> userSessions = new ConcurrentHashMap<>();
+
     private final Map<String, SessionArtifacts> sessionArtifacts = new ConcurrentHashMap<>();
 
     private final Map<String, String> userProxyGrantingTickets = new ConcurrentHashMap<>();
@@ -56,19 +58,38 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
     }
 
     @Override
-    public void bindCasSessionToken(CasSessionScope scope, String sessionIndex, String token) {
-        String key = buildSessionKey(scope, sessionIndex);
+    public void bindCasSessionToken(
+            CasSessionScope scope, String userId, String sessionIndex, String token) {
+        String sessionKey = buildSessionKey(scope, sessionIndex);
+        String userKey = buildUserKey(scope, userId);
+
         SessionArtifacts bucket =
-                sessionArtifacts.computeIfAbsent(key, ignored -> new SessionArtifacts());
+                sessionArtifacts.computeIfAbsent(
+                        sessionKey, ignored -> new SessionArtifacts(userId));
         bucket.addToken(TokenUtil.getTokenDigest(token), TokenUtil.getTokenExpireTime(token));
+
+        userSessions
+                .computeIfAbsent(userKey, ignored -> ConcurrentHashMap.newKeySet())
+                .add(sessionKey);
     }
 
     @Override
     public int revokeCasSession(CasSessionScope scope, String sessionIndex) {
-        SessionArtifacts bucket = sessionArtifacts.remove(buildSessionKey(scope, sessionIndex));
+        String sessionKey = buildSessionKey(scope, sessionIndex);
+        SessionArtifacts bucket = sessionArtifacts.remove(sessionKey);
         if (bucket == null) {
             return 0;
         }
+
+        String userKey = buildUserKey(scope, bucket.getUserId());
+        java.util.Set<String> sessions = userSessions.get(userKey);
+        if (sessions != null) {
+            sessions.remove(sessionKey);
+            if (sessions.isEmpty()) {
+                userSessions.remove(userKey);
+            }
+        }
+
         bucket.snapshotProxyKeys().forEach(userProxyGrantingTickets::remove);
         int revoked = 0;
         for (Map.Entry<String, Long> entry : bucket.snapshot().entrySet()) {
@@ -76,6 +97,21 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
             revoked++;
         }
         return revoked;
+    }
+
+    @Override
+    public int revokeUserSessions(CasSessionScope scope, String userId) {
+        String userKey = buildUserKey(scope, userId);
+        java.util.Set<String> sessions = userSessions.remove(userKey);
+        if (sessions == null) {
+            return 0;
+        }
+        int totalRevoked = 0;
+        for (String sessionKey : sessions) {
+            String sessionIndex = sessionKey.substring(sessionKey.indexOf(':') + 1);
+            totalRevoked += revokeCasSession(scope, sessionIndex);
+        }
+        return totalRevoked;
     }
 
     @Override
@@ -99,7 +135,8 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
         userProxyGrantingTickets.put(principalKey, pgtId);
         sessionArtifacts
                 .computeIfAbsent(
-                        buildSessionKey(scope, sessionIndex), ignored -> new SessionArtifacts())
+                        buildSessionKey(scope, sessionIndex),
+                        ignored -> new SessionArtifacts(userId))
                 .addProxyKey(principalKey);
     }
 
@@ -142,11 +179,25 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
         return scope.name() + ":" + provider + ":" + userId;
     }
 
+    private String buildUserKey(CasSessionScope scope, String userId) {
+        return scope.name() + ":u:" + userId;
+    }
+
     private static final class SessionArtifacts {
+
+        private final String userId;
 
         private final Map<String, Long> tokens = new ConcurrentHashMap<>();
 
         private final Map<String, Boolean> proxyKeys = new ConcurrentHashMap<>();
+
+        public SessionArtifacts(String userId) {
+            this.userId = userId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
 
         private void addToken(String tokenDigest, long expireAt) {
             tokens.put(tokenDigest, expireAt);

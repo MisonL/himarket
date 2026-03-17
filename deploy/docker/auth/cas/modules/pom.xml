@@ -22,5 +22,10 @@
       <artifactId>cas-server-support-pac4j-webflow</artifactId>
       <version>7.0.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apereo.cas</groupId>
+      <artifactId>cas-server-support-oidc</artifactId>
+      <version>7.0.0</version>
+    </dependency>
   </dependencies>
 </project>

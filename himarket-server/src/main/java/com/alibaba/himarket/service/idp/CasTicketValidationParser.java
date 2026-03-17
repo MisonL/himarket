@@ -100,7 +100,23 @@ public class CasTicketValidationParser {
             if (node instanceof Element element) {
                 String value = StrUtil.trim(element.getTextContent());
                 if (StrUtil.isNotBlank(value)) {
-                    attributes.put(resolveElementName(element), value);
+                    attributes.compute(
+                            resolveElementName(element),
+                            (k, v) -> {
+                                if (v == null) {
+                                    return value;
+                                }
+                                if (v instanceof java.util.List) {
+                                    @SuppressWarnings("unchecked")
+                                    java.util.List<Object> list = (java.util.List<Object>) v;
+                                    list.add(value);
+                                    return list;
+                                }
+                                java.util.ArrayList<Object> list = new java.util.ArrayList<>();
+                                list.add(v);
+                                list.add(value);
+                                return list;
+                            });
                 }
             }
         }

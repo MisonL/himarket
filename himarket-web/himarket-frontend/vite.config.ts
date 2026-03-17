@@ -46,17 +46,37 @@ export default defineConfig({
   optimizeDeps: {
   },
   build: {
+    chunkSizeWarningLimit: 1500,
+    minify: 'terser',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-antd': ['antd', '@ant-design/icons'],
-          'vendor-markdown': ['react-markdown', 'remark-gfm', 'rehype-highlight', 'highlight.js'],
-          'vendor-swagger': ['swagger-ui-react'],
-          'vendor-xterm': ['@xterm/xterm', '@xterm/addon-fit'],
-        },
-      },
-    },
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('swagger-ui-react')) {
+              if (id.includes('swagger-ui-es-bundle-core')) return 'vendor-swagger-core'
+              return 'vendor-swagger-ui'
+            }
+            if (id.includes('@ant-design/icons')) return 'vendor-antd-icons'
+            if (id.includes('antd')) return 'vendor-antd'
+            if (id.includes('@xterm/xterm') || id.includes('@xterm/addon-fit')) return 'vendor-xterm'
+            if (
+              id.includes('react-markdown') ||
+              id.includes('remark-gfm') ||
+              id.includes('rehype-highlight') ||
+              id.includes('highlight.js')
+            ) {
+              return 'vendor-markdown'
+            }
+            if (id.includes('react-router-dom')) return 'vendor-react-router'
+            if (id.includes('react-dom')) return 'vendor-react-dom'
+            if (id.includes('/react/')) return 'vendor-react'
+            if (id.includes('lodash')) return 'vendor-lodash'
+            if (id.includes('echarts')) return 'vendor-echarts'
+            if (id.includes('zrender')) return 'vendor-zrender'
+          }
+        }
+      }
+    }
   },
   define: {
     'process.env': {}
