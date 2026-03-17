@@ -135,11 +135,31 @@ public class AdminCasServiceImpl implements AdminCasService {
     @Override
     public AuthResult exchangeCode(String code) {
         CasLoginContext loginContext = consumeLoginContext(code);
+
+        // Systemic Governance: Enforce Max Sessions Per User
+        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
+        if (maxSessions > 0) {
+            authSessionStore.revokeUserSessions(loginContext.getScope(), loginContext.getUserId());
+        }
+
         String accessToken = TokenUtil.generateAdminToken(loginContext.getUserId());
         authSessionStore.bindCasSessionToken(
-                loginContext.getScope(), loginContext.getSessionIndex(), accessToken);
+                loginContext.getScope(),
+                loginContext.getUserId(),
+                loginContext.getSessionIndex(),
+                accessToken);
         bindProxyGrantingTicket(loginContext);
-        return AuthResult.of(accessToken, TokenUtil.getTokenExpiresIn());
+
+        // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
+        long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
+        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
+        long maxSafetyExpiresIn = 86400; // Default 24h as a broad safety net
+        if (leaseBuffer != null) {
+            maxSafetyExpiresIn = Math.max(0, 86400 - leaseBuffer.toSeconds());
+        }
+        long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
+
+        return AuthResult.of(accessToken, expiresIn);
     }
 
     @Override

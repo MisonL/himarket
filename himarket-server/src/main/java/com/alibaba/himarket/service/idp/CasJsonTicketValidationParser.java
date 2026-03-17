@@ -82,8 +82,8 @@ public class CasJsonTicketValidationParser {
             return attributes;
         }
         for (String key : attributeRoot.keySet()) {
-            String value = normalizeValue(attributeRoot.get(key));
-            if (StrUtil.isNotBlank(value)) {
+            Object value = normalizeValue(attributeRoot.get(key));
+            if (value != null && StrUtil.isNotBlank(value.toString())) {
                 attributes.put(key, value);
             }
         }
@@ -101,18 +101,20 @@ public class CasJsonTicketValidationParser {
                             .collect(Collectors.joining(": "));
             return StrUtil.blankToDefault(message, defaultMessage);
         }
-        return StrUtil.blankToDefault(normalizeValue(failure), defaultMessage);
+        Object normalizedFailure = normalizeValue(failure);
+        return StrUtil.blankToDefault(
+                normalizedFailure == null ? null : normalizedFailure.toString(), defaultMessage);
     }
 
-    private String normalizeValue(Object value) {
+    private Object normalizeValue(Object value) {
         if (value == null) {
             return null;
         }
         if (value instanceof JSONArray array) {
             return array.stream()
                     .map(this::normalizeValue)
-                    .filter(StrUtil::isNotBlank)
-                    .collect(Collectors.joining(","));
+                    .filter(v -> v != null && StrUtil.isNotBlank(v.toString()))
+                    .collect(Collectors.toList());
         }
         if (value instanceof JSONObject object) {
             return StrUtil.blankToDefault(object.getStr("value"), object.toString());

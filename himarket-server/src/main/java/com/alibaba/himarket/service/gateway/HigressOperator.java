@@ -68,7 +68,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 @Service
 @Slf4j
@@ -463,8 +465,16 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
     @Override
     public boolean isConsumerExists(String consumerId, GatewayConfig config) {
-        // TODO: 实现Higress网关消费者存在性检查
-        return true;
+        HigressClient client = new HigressClient(config.getHigressConfig());
+        try {
+            client.execute("/v1/consumers/" + consumerId, HttpMethod.GET, null, null, String.class);
+            return true;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
     }
 
     @Override

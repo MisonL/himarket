@@ -38,6 +38,7 @@ import com.alibaba.himarket.entity.ChatSession;
 import com.alibaba.himarket.repository.ChatRepository;
 import com.alibaba.himarket.repository.ChatSessionRepository;
 import com.alibaba.himarket.service.ChatSessionService;
+import com.alibaba.himarket.service.ConsumerService;
 import com.alibaba.himarket.service.ProductService;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -61,6 +62,8 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     private final ProductService productService;
 
+    private final ConsumerService consumerService;
+
     private final ContextHolder contextHolder;
 
     /**
@@ -73,7 +76,11 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         // Check products exist
         productService.existsProducts(param.getProducts());
 
-        // TODO check if the user has subscribed to the product
+        // Check if the user has subscribed to the products via primary consumer
+        String consumerId = consumerService.getPrimaryConsumer().getConsumerId();
+        for (String productId : param.getProducts()) {
+            consumerService.existsSubscription(consumerId, productId);
+        }
 
         String sessionId = IdGenerator.genSessionId();
         ChatSession session = param.convertTo();
