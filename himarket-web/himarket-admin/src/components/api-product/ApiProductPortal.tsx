@@ -1,99 +1,115 @@
-import { useNavigate } from 'react-router-dom'
-import { Card, Button, Table, Space, Modal, message } from 'antd'
-import { PlusOutlined, EyeOutlined, DeleteOutlined, ExclamationCircleOutlined, GlobalOutlined, CheckCircleFilled, MinusCircleFilled } from '@ant-design/icons'
-import { useState, useEffect } from 'react'
-import type { ApiProduct, Publication } from '@/types/api-product';
-import { apiProductApi, portalApi } from '@/lib/api';
+import { useNavigate } from "react-router-dom";
+import { Card, Button, Table, Space, Modal, message } from "antd";
+import {
+  PlusOutlined,
+  EyeOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
+  GlobalOutlined,
+  CheckCircleFilled,
+  MinusCircleFilled,
+} from "@ant-design/icons";
+import { useState, useEffect } from "react";
+import type { ApiProduct, Publication } from "@/types/api-product";
+import { apiProductApi, portalApi } from "@/lib/api";
 
 interface ApiProductPortalProps {
-  apiProduct: ApiProduct
+  apiProduct: ApiProduct;
 }
 
 interface Portal {
-  portalId: string
-  portalName: string
-  autoApproveSubscription: boolean
+  portalId: string;
+  portalName: string;
+  autoApproveSubscription: boolean;
 }
 
 export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
-  const [publishedPortals, setPublishedPortals] = useState<Publication[]>([])
-  const [allPortals, setAllPortals] = useState<Portal[]>([])
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedPortalIds, setSelectedPortalIds] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [portalLoading, setPortalLoading] = useState(false)
-  const [modalLoading, setModalLoading] = useState(false)
+  const [publishedPortals, setPublishedPortals] = useState<Publication[]>([]);
+  const [allPortals, setAllPortals] = useState<Portal[]>([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedPortalIds, setSelectedPortalIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
   // 分页状态
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const [total, setTotal] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   // 获取已发布的门户列表
   useEffect(() => {
     if (apiProduct.productId) {
-      fetchPublishedPortals()
+      fetchPublishedPortals();
     }
-  }, [apiProduct.productId, currentPage, pageSize])
+  }, [apiProduct.productId, currentPage, pageSize]);
 
   // 获取所有门户列表
   useEffect(() => {
-    fetchAllPortals()
-  }, [])
+    fetchAllPortals();
+  }, []);
 
   const fetchPublishedPortals = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const res = await apiProductApi.getApiProductPublications(apiProduct.productId, {
-        page: currentPage,
-        size: pageSize
-      })
-      setPublishedPortals(res.data.content?.map((item: any) => ({
-        ...item,
-        autoApproveSubscription: item.autoApproveSubscriptions || false,
-      })) || [])
-      setTotal(res.data.totalElements || 0)
+      const res = await apiProductApi.getApiProductPublications(
+        apiProduct.productId,
+        {
+          page: currentPage,
+          size: pageSize,
+        }
+      );
+      setPublishedPortals(
+        res.data.content?.map((item: any) => ({
+          ...item,
+          autoApproveSubscription: item.autoApproveSubscriptions || false,
+        })) || []
+      );
+      setTotal(res.data.totalElements || 0);
     } catch (error) {
-      console.error('获取已发布门户失败:', error)
+      console.error("获取已发布门户失败:", error);
       // message.error('获取已发布门户失败')
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchAllPortals = async () => {
-    setPortalLoading(true)
+    setPortalLoading(true);
     try {
       const res = await portalApi.getPortals({
         page: 1,
-        size: 500 // 获取所有门户
-      })
-      setAllPortals(res.data.content?.map((item: any) => ({
-        ...item,
-        portalName: item.name,
-        autoApproveSubscription: item.portalSettingConfig?.autoApproveSubscriptions || false,
-      })) || [])
+        size: 500, // 获取所有门户
+      });
+      setAllPortals(
+        res.data.content?.map((item: any) => ({
+          ...item,
+          portalName: item.name,
+          autoApproveSubscription:
+            item.portalSettingConfig?.autoApproveSubscriptions || false,
+        })) || []
+      );
     } catch (error) {
-      console.error('获取门户列表失败:', error)
+      console.error("获取门户列表失败:", error);
       // message.error('获取门户列表失败')
     } finally {
-      setPortalLoading(false)
+      setPortalLoading(false);
     }
-  }
+  };
 
   const handlePageChange = (page: number, size?: number) => {
-    setCurrentPage(page)
+    setCurrentPage(page);
     if (size) {
-      setPageSize(size)
+      setPageSize(size);
     }
-  }
+  };
 
   const columns = [
     {
-      title: '门户信息',
-      key: 'portalInfo',
+      title: "门户信息",
+      key: "portalInfo",
       width: 400,
       render: (_: any, record: Publication) => (
         <div>
@@ -107,19 +123,25 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
       ),
     },
     {
-      title: '订阅自动审批',
-      key: 'autoApprove',
+      title: "订阅自动审批",
+      key: "autoApprove",
       width: 160,
       render: (_: any, record: Publication) => (
         <div className="flex items-center">
           {record.autoApproveSubscriptions ? (
             <>
-              <CheckCircleFilled className="text-green-500 mr-1" style={{fontSize: '10px'}} />
+              <CheckCircleFilled
+                className="text-green-500 mr-1"
+                style={{ fontSize: "10px" }}
+              />
               <span className="text-xs text-gray-900">已开启</span>
             </>
           ) : (
             <>
-              <MinusCircleFilled className="text-gray-400 mr-1" style={{fontSize: '10px'}} />
+              <MinusCircleFilled
+                className="text-gray-400 mr-1"
+                style={{ fontSize: "10px" }}
+              />
               <span className="text-xs text-gray-900">已关闭</span>
             </>
           )}
@@ -127,120 +149,133 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
       ),
     },
     {
-      title: '操作',
-      key: 'action',
+      title: "操作",
+      key: "action",
       width: 180,
       render: (_: any, record: Publication) => (
         <Space size="middle">
-          <Button onClick={() => {
-            navigate(`/portals/detail?id=${record.portalId}`)
-          }} type="link" icon={<EyeOutlined />}>
+          <Button
+            onClick={() => {
+              navigate(`/portals/detail?id=${record.portalId}`);
+            }}
+            type="link"
+            icon={<EyeOutlined />}
+          >
             查看
           </Button>
-         
-          <Button 
-            type="link" 
-            danger 
+
+          <Button
+            type="link"
+            danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.publicationId, record.portalName)}
+            onClick={() =>
+              handleDelete(record.publicationId, record.portalName)
+            }
           >
             移除
           </Button>
         </Space>
       ),
     },
-  ]
+  ];
 
   const modalColumns = [
     {
-      title: '门户信息',
-      key: 'portalInfo',
+      title: "门户信息",
+      key: "portalInfo",
       render: (_: any, record: Portal) => (
         <div>
           <div className="text-xs font-normal text-gray-900 truncate">
             {record.portalName}
           </div>
-          <div className="text-xs text-gray-500">
-            {record.portalId}
-          </div>
+          <div className="text-xs text-gray-500">{record.portalId}</div>
         </div>
       ),
     },
     {
-      title: '订阅自动审批',
-      key: 'autoApprove',
+      title: "订阅自动审批",
+      key: "autoApprove",
       width: 140,
       render: (_: any, record: Portal) => (
         <div className="flex items-center">
           {record.autoApproveSubscription ? (
             <>
-              <CheckCircleFilled className="text-green-500 mr-1" style={{fontSize: '10px'}} />
+              <CheckCircleFilled
+                className="text-green-500 mr-1"
+                style={{ fontSize: "10px" }}
+              />
               <span className="text-xs text-gray-900">已开启</span>
             </>
           ) : (
             <>
-              <MinusCircleFilled className="text-gray-400 mr-1" style={{fontSize: '10px'}} />
+              <MinusCircleFilled
+                className="text-gray-400 mr-1"
+                style={{ fontSize: "10px" }}
+              />
               <span className="text-xs text-gray-900">已关闭</span>
             </>
           )}
         </div>
       ),
     },
-  ]
+  ];
 
   const handleAdd = () => {
-    setIsModalVisible(true)
-  }
+    setIsModalVisible(true);
+  };
 
   const handleDelete = (publicationId: string, portalName: string) => {
     Modal.confirm({
-      title: '确认移除',
+      title: "确认移除",
       icon: <ExclamationCircleOutlined />,
       content: `确定要从API产品中移除门户 "${portalName}" 吗？此操作不可恢复。`,
-      okText: '确认移除',
-      okType: 'danger',
-      cancelText: '取消',
+      okText: "确认移除",
+      okType: "danger",
+      cancelText: "取消",
       onOk() {
-        apiProductApi.cancelPublishToPortal(apiProduct.productId, publicationId).then(() => {
-          message.success('移除成功')
-          fetchPublishedPortals()
-        }).catch((error) => {
-          console.error('移除失败:', error)
-          // message.error('移除失败')
-        })
+        apiProductApi
+          .cancelPublishToPortal(apiProduct.productId, publicationId)
+          .then(() => {
+            message.success("移除成功");
+            fetchPublishedPortals();
+          })
+          .catch(error => {
+            console.error("移除失败:", error);
+            // message.error('移除失败')
+          });
       },
-    })
-  }
+    });
+  };
 
   const handleModalOk = async () => {
     if (selectedPortalIds.length === 0) {
-      message.warning('请至少选择一个门户')
-      return
+      message.warning("请至少选择一个门户");
+      return;
     }
 
-    setModalLoading(true)
+    setModalLoading(true);
     try {
       // 批量发布到选中的门户
       for (const portalId of selectedPortalIds) {
-        await apiProductApi.publishToPortal(apiProduct.productId, portalId)
+        await apiProductApi.publishToPortal(apiProduct.productId, portalId);
       }
-      message.success(`成功发布到 ${selectedPortalIds.length} 个门户`)
-      setSelectedPortalIds([])
-      setIsModalVisible(false)
+      message.success(`成功发布到 ${selectedPortalIds.length} 个门户`);
+      setSelectedPortalIds([]);
+      setIsModalVisible(false);
       // 重新获取已发布的门户列表
-      fetchPublishedPortals()
+      fetchPublishedPortals();
     } catch (error) {
-      console.error('发布失败:', error)
+      console.error("发布失败:", error);
       // message.error('发布失败')
     } finally {
-      setModalLoading(false)
+      setModalLoading(false);
     }
-  }
+  };
 
   const handleModalCancel = () => {
-    setIsModalVisible(false)
-    setSelectedPortalIds([])
-  }
+    setIsModalVisible(false);
+    setSelectedPortalIds([]);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -260,8 +295,8 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
             <p>暂未发布到任何门户</p>
           </div>
         ) : (
-          <Table 
-            columns={columns} 
+          <Table
+            columns={columns}
             dataSource={publishedPortals}
             rowKey="portalId"
             loading={loading}
@@ -271,7 +306,7 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
               total: total,
               showSizeChanger: true,
               showQuickJumper: true,
-              showTotal: (total) => `共 ${total} 条`,
+              showTotal: total => `共 ${total} 条`,
               onChange: handlePageChange,
               onShowSizeChange: handlePageChange,
             }}
@@ -293,8 +328,11 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <Table
             columns={modalColumns}
-            dataSource={allPortals.filter(portal => 
-              !publishedPortals.some(published => published.portalId === portal.portalId)
+            dataSource={allPortals.filter(
+              portal =>
+                !publishedPortals.some(
+                  published => published.portalId === portal.portalId
+                )
             )}
             rowKey="portalId"
             loading={portalLoading}
@@ -303,31 +341,31 @@ export function ApiProductPortal({ apiProduct }: ApiProductPortalProps) {
             size="middle"
             className="portal-selection-table"
             rowSelection={{
-              type: 'checkbox',
+              type: "checkbox",
               selectedRowKeys: selectedPortalIds,
-              onChange: (selectedRowKeys) => {
-                setSelectedPortalIds(selectedRowKeys as string[])
+              onChange: selectedRowKeys => {
+                setSelectedPortalIds(selectedRowKeys as string[]);
               },
               columnWidth: 50,
             }}
-            rowClassName={(record) => 
-              selectedPortalIds.includes(record.portalId) 
-                ? 'bg-blue-50 hover:bg-blue-100' 
-                : 'hover:bg-gray-50'
+            rowClassName={record =>
+              selectedPortalIds.includes(record.portalId)
+                ? "bg-blue-50 hover:bg-blue-100"
+                : "hover:bg-gray-50"
             }
             locale={{
               emptyText: (
                 <div className="py-8">
                   <div className="text-gray-400 mb-2">
-                    <GlobalOutlined style={{ fontSize: '24px' }} />
+                    <GlobalOutlined style={{ fontSize: "24px" }} />
                   </div>
                   <div className="text-gray-500 text-sm">暂无可发布的门户</div>
                 </div>
-              )
+              ),
             }}
           />
         </div>
       </Modal>
     </div>
-  )
-} 
+  );
+}

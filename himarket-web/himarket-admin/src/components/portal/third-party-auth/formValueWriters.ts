@@ -75,8 +75,7 @@ export function buildConfigFromFormValues(
       name: formValues.name,
       logoUrl: null,
       enabled: formValues.enabled ?? true,
-      grantType:
-        formValues.oidcGrantType || ("AUTHORIZATION_CODE" as const),
+      grantType: formValues.oidcGrantType || ("AUTHORIZATION_CODE" as const),
       authCodeConfig,
       identityMapping: authCodeConfig.identityMapping,
       type: AuthenticationType.OIDC,
@@ -153,10 +152,8 @@ export function buildConfigFromFormValues(
           exclusive: formValues.delegatedExclusive ?? false,
         },
         httpRequest: {
-          ipAddressPattern:
-            formValues.httpRequestIpAddressPattern || undefined,
-          userAgentPattern:
-            formValues.httpRequestUserAgentPattern || undefined,
+          ipAddressPattern: formValues.httpRequestIpAddressPattern || undefined,
+          userAgentPattern: formValues.httpRequestUserAgentPattern || undefined,
           headers: parseStringMap(formValues.httpRequestHeaders),
         },
       },
@@ -179,8 +176,7 @@ export function buildConfigFromFormValues(
         forceExecution: formValues.multifactorForceExecution ?? false,
       },
       authenticationPolicy: {
-        criteriaMode:
-          formValues.authenticationPolicyCriteriaMode || "ALLOWED",
+        criteriaMode: formValues.authenticationPolicyCriteriaMode || "ALLOWED",
         requiredAuthenticationHandlers: parseCommaSeparated(
           formValues.authenticationPolicyRequiredHandlers
         ),
@@ -190,8 +186,7 @@ export function buildConfigFromFormValues(
         tryAll: formValues.authenticationPolicyTryAll ?? false,
       },
       expirationPolicy: {
-        expirationDate:
-          formValues.expirationPolicyExpirationDate || undefined,
+        expirationDate: formValues.expirationPolicyExpirationDate || undefined,
         deleteWhenExpired:
           formValues.expirationPolicyDeleteWhenExpired ?? false,
         notifyWhenExpired:
@@ -229,10 +224,8 @@ export function buildConfigFromFormValues(
   }
 
   if (selectedType === AuthenticationType.OAUTH2) {
-    const grantType =
-      formValues.oauth2GrantType || GrantType.JWT_BEARER;
-    const validationMode =
-      formValues.oauth2JwtValidationMode || "PUBLIC_KEYS";
+    const grantType = formValues.oauth2GrantType || GrantType.JWT_BEARER;
+    const validationMode = formValues.oauth2JwtValidationMode || "PUBLIC_KEYS";
 
     return {
       provider: formValues.provider,

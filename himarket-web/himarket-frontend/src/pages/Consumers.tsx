@@ -1,18 +1,36 @@
-import { Table, Button, Space, Typography, Input, Pagination, type TableColumnType, Select } from "antd";
-import { DeleteOutlined, PlusOutlined, SearchOutlined, ReloadOutlined, EditOutlined } from "@ant-design/icons";
+import {
+  Table,
+  Button,
+  Space,
+  Typography,
+  Input,
+  Pagination,
+  type TableColumnType,
+  Select,
+} from "antd";
+import {
+  DeleteOutlined,
+  PlusOutlined,
+  SearchOutlined,
+  ReloadOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import { Layout } from "../components/Layout";
 import { useEffect, useState, useCallback } from "react";
 import { getConsumers, deleteConsumer, createConsumer } from "../lib/api";
 import { message, Modal } from "antd";
 import { Link, useSearchParams } from "react-router-dom";
 import { formatDateTime } from "../lib/utils";
-import APIs, { type IConsumer, type IGetPrimaryConsumerResp } from "../lib/apis";
+import APIs, {
+  type IConsumer,
+  type IGetPrimaryConsumerResp,
+} from "../lib/apis";
 
 const { Title } = Typography;
 
 function ConsumersPage() {
   const [searchParams] = useSearchParams();
-  const productId = searchParams.get('productId');
+  const productId = searchParams.get("productId");
 
   const [consumers, setConsumers] = useState<IConsumer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -23,44 +41,50 @@ function ConsumersPage() {
   const [searchName, setSearchName] = useState(""); // 实际搜索的值
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [addLoading, setAddLoading] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', description: '' });
+  const [addForm, setAddForm] = useState({ name: "", description: "" });
   const [_refreshIndex, setRefreshIndex] = useState(0);
-  const [primaryConsumer, setPrimaryConsumer] = useState<IGetPrimaryConsumerResp>();
+  const [primaryConsumer, setPrimaryConsumer] =
+    useState<IGetPrimaryConsumerResp>();
 
   const [consumersForSelect, setConsumersForSelect] = useState<IConsumer[]>([]);
-  const [showModifyPrimaryConsumerModal, setShowModifyPrimaryConsumerModal] = useState(false);
+  const [showModifyPrimaryConsumerModal, setShowModifyPrimaryConsumerModal] =
+    useState(false);
   const [selectedPrimaryConsumer, setSelectedPrimaryConsumer] = useState("");
 
+  const fetchConsumers = useCallback(
+    async (searchKeyword?: string, targetPage?: number) => {
+      setLoading(true);
+      try {
+        const res = await getConsumers(
+          { name: searchKeyword || "" },
+          { page: targetPage || page, size: pageSize }
+        );
+        setConsumers(res.data?.content || []);
+        setTotal(res.data?.totalElements || 0);
+      } catch {
+        // message.error("获取消费者列表失败");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, pageSize]
+  ); // refreshIndex is intentionally excluded to prevent unnecessary re-fetches
 
-  const fetchConsumers = useCallback(async (searchKeyword?: string, targetPage?: number) => {
-    setLoading(true);
+  const fetchConsumersForSelect = async (
+    searchKeyword?: string,
+    targetPage?: number,
+    size = 100,
+    isRefresh = false
+  ) => {
     try {
-      const res = await getConsumers(
-        { name: searchKeyword || '' },
-        { page: targetPage || page, size: pageSize }
-      );
-      setConsumers(res.data?.content || []);
-      setTotal(res.data?.totalElements || 0);
-    } catch {
-      // message.error("获取消费者列表失败");
-    } finally {
-      setLoading(false);
-    }
-  }, [page, pageSize]); // refreshIndex is intentionally excluded to prevent unnecessary re-fetches
-
-  const fetchConsumersForSelect = async (searchKeyword?: string, targetPage?: number, size = 100, isRefresh = false) => {
-    try {
-      const res = await APIs.getConsumers(
-        {
-          name: searchKeyword || '',
-          page: targetPage,
-          size: size
-        },
-
-      );
+      const res = await APIs.getConsumers({
+        name: searchKeyword || "",
+        page: targetPage,
+        size: size,
+      });
       if (res?.data?.content) {
         if (searchKeyword || isRefresh) {
-          setConsumersForSelect(res.data.content)
+          setConsumersForSelect(res.data.content);
         } else {
           setConsumersForSelect(v => [...v, ...res.data.content]);
         }
@@ -70,14 +94,13 @@ function ConsumersPage() {
     }
   }; // 不依赖 searchName
 
-
   const getPrimaryConsumer = () => {
     APIs.getPrimaryConsumer().then(({ data }) => {
       if (data) {
-        setPrimaryConsumer(data)
+        setPrimaryConsumer(data);
       }
-    })
-  }
+    });
+  };
 
   // 初始加载和分页变化时调用
   useEffect(() => {
@@ -85,13 +108,17 @@ function ConsumersPage() {
   }, [page, pageSize, fetchConsumers, searchName]); // 包含fetchConsumers以确保初始加载
 
   // 处理搜索
-  const handleSearch = useCallback(async (searchValue?: string) => {
-    const actualSearchValue = searchValue !== undefined ? searchValue : searchInput;
-    setSearchName(actualSearchValue);
-    setPage(1);
-    // 直接调用API，不依赖状态变化
-    await fetchConsumers(actualSearchValue, 1);
-  }, [searchInput, fetchConsumers]);
+  const handleSearch = useCallback(
+    async (searchValue?: string) => {
+      const actualSearchValue =
+        searchValue !== undefined ? searchValue : searchInput;
+      setSearchName(actualSearchValue);
+      setPage(1);
+      // 直接调用API，不依赖状态变化
+      await fetchConsumers(actualSearchValue, 1);
+    },
+    [searchInput, fetchConsumers]
+  );
 
   const handleDelete = (record: IConsumer) => {
     Modal.confirm({
@@ -110,15 +137,18 @@ function ConsumersPage() {
 
   const handleAdd = async () => {
     if (!addForm.name.trim()) {
-      message.warning('请输入消费者名称');
+      message.warning("请输入消费者名称");
       return;
     }
     setAddLoading(true);
     try {
-      await createConsumer({ name: addForm.name, description: addForm.description });
-      message.success('新增成功');
+      await createConsumer({
+        name: addForm.name,
+        description: addForm.description,
+      });
+      message.success("新增成功");
       setAddModalOpen(false);
-      setAddForm({ name: '', description: '' });
+      setAddForm({ name: "", description: "" });
       await fetchConsumers(searchName); // 使用当前搜索条件重新加载
     } catch {
       // message.error('新增失败');
@@ -131,20 +161,21 @@ function ConsumersPage() {
     APIs.putPrimaryConsumer(selectedPrimaryConsumer)
       .then(({ code }) => {
         if (code === "SUCCESS") {
-          message.success("修改成功！")
+          message.success("修改成功！");
           setShowModifyPrimaryConsumerModal(false);
           getPrimaryConsumer();
         }
-      }).catch(() => {
-        message.error("修改失败，请重试")
       })
-  }
+      .catch(() => {
+        message.error("修改失败，请重试");
+      });
+  };
 
   const columns: TableColumnType<IConsumer>[] = [
     {
-      title: '消费者',
-      dataIndex: 'name',
-      key: 'name',
+      title: "消费者",
+      dataIndex: "name",
+      key: "name",
       width: "20%",
       render: (name: string, record) => (
         <div className="flex gap-2 items-center">
@@ -155,7 +186,8 @@ function ConsumersPage() {
                 setShowModifyPrimaryConsumerModal(true);
                 fetchConsumersForSelect(undefined, 1, 1000, true);
               }}
-              className="px-2 py-1 gap-2 cursor-pointer rounded-md bg-black/70 text-white">
+              className="px-2 py-1 gap-2 cursor-pointer rounded-md bg-black/70 text-white"
+            >
               <span> 默认消费者 </span>
               <EditOutlined />
             </div>
@@ -164,36 +196,41 @@ function ConsumersPage() {
       ),
     },
     {
-      title: '创建时间',
-      dataIndex: 'createAt',
-      key: 'createAt',
+      title: "创建时间",
+      dataIndex: "createAt",
+      key: "createAt",
       width: "20%",
-      render: (date: string) => date ? formatDateTime(date) : '-',
+      render: (date: string) => (date ? formatDateTime(date) : "-"),
     },
     {
       title: "描述",
       dataIndex: "description",
       key: "description",
       width: "30%",
-      render: (description: string) => description || '-',
+      render: (description: string) => description || "-",
     },
     {
-      title: '操作',
-      key: 'action',
+      title: "操作",
+      key: "action",
       render: (_: unknown, record: IConsumer) => (
         <Space>
           <Link to={`/consumers/${record.consumerId}`}>
-            <Button
-              className="rounded-lg text-colorPrimary"
-            >
-              查看详情
-            </Button>
+            <Button className="rounded-lg text-colorPrimary">查看详情</Button>
           </Link>
           <Button
             disabled={record.consumerId === primaryConsumer?.consumerId}
-            className="rounded-lg" icon={<DeleteOutlined className={record.consumerId === primaryConsumer?.consumerId ? "" : "text-[#EF4444]"} />}
-            onClick={() => handleDelete(record)}>
-          </Button>
+            className="rounded-lg"
+            icon={
+              <DeleteOutlined
+                className={
+                  record.consumerId === primaryConsumer?.consumerId
+                    ? ""
+                    : "text-[#EF4444]"
+                }
+              />
+            }
+            onClick={() => handleDelete(record)}
+          ></Button>
         </Space>
       ),
     },
@@ -206,12 +243,11 @@ function ConsumersPage() {
   return (
     <Layout>
       <div className="w-full ">
-
         {/* 主内容区域 - glass-morphism 风格 */}
         <div className="min-h-[calc(100vh-96px)] bg-white backdrop-blur-xl rounded-2xl shadow-xs border border-white/40 p-6">
           <div className="mb-5">
             <Title level={2} className="text-gray-900">
-              {productId ? '产品订阅管理' : '消费者管理'}
+              {productId ? "产品订阅管理" : "消费者管理"}
             </Title>
           </div>
           {/* 搜索和新增按钮 */}
@@ -242,7 +278,11 @@ function ConsumersPage() {
               />
             </div>
             <div>
-              <Button className="rounded-lg" icon={<ReloadOutlined />} onClick={() => setRefreshIndex(v => v + 1)} />
+              <Button
+                className="rounded-lg"
+                icon={<ReloadOutlined />}
+                onClick={() => setRefreshIndex(v => v + 1)}
+              />
             </div>
           </div>
 
@@ -264,7 +304,7 @@ function ConsumersPage() {
                 pageSize,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total) => `共 ${total} 条`,
+                showTotal: total => `共 ${total} 条`,
                 onChange: (p, ps) => {
                   setPage(p);
                   setPageSize(ps);
@@ -278,7 +318,10 @@ function ConsumersPage() {
         <Modal
           title="新增消费者"
           open={addModalOpen}
-          onCancel={() => { setAddModalOpen(false); setAddForm({ name: '', description: '' }); }}
+          onCancel={() => {
+            setAddModalOpen(false);
+            setAddForm({ name: "", description: "" });
+          }}
           onOk={handleAdd}
           confirmLoading={addLoading}
           okText="提交"
@@ -298,7 +341,9 @@ function ConsumersPage() {
               placeholder="描述（可选），长度限制64"
               value={addForm.description}
               maxLength={64}
-              onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))}
+              onChange={e =>
+                setAddForm(f => ({ ...f, description: e.target.value }))
+              }
               disabled={addLoading}
               rows={3}
             />
@@ -318,19 +363,26 @@ function ConsumersPage() {
             <Select
               defaultValue={primaryConsumer?.consumerId}
               style={{ width: "100%" }}
-              options={consumersForSelect.map(v => ({ label: v.name, value: v.consumerId }))}
+              options={consumersForSelect.map(v => ({
+                label: v.name,
+                value: v.consumerId,
+              }))}
               filterOption={(input, option) => {
-                return (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                return (option?.label ?? "")
+                  .toLowerCase()
+                  .includes(input.toLowerCase());
               }}
               showSearch
               onChange={setSelectedPrimaryConsumer}
             />
           </div>
           <div className="flex gap-2 justify-end">
-            <Button type="primary" onClick={handleConfirmModifyPrimaryConsumer}>确认</Button>
-            <Button
-              onClick={() => setShowModifyPrimaryConsumerModal(false)}
-            >取消</Button>
+            <Button type="primary" onClick={handleConfirmModifyPrimaryConsumer}>
+              确认
+            </Button>
+            <Button onClick={() => setShowModifyPrimaryConsumerModal(false)}>
+              取消
+            </Button>
           </div>
         </div>
       </Modal>
@@ -338,4 +390,4 @@ function ConsumersPage() {
   );
 }
 
-export default ConsumersPage; 
+export default ConsumersPage;

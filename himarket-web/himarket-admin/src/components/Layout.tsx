@@ -134,7 +134,9 @@ const Layout: React.FC = () => {
   const handleLogout = async () => {
     const lastAuth = getLastAuthState();
     const shouldCasSlo =
-      lastAuth?.type === "CAS" && !!lastAuth.provider && lastAuth.sloEnabled === true;
+      lastAuth?.type === "CAS" &&
+      !!lastAuth.provider &&
+      lastAuth.sloEnabled === true;
     let serverLogoutSucceeded = false;
 
     try {
@@ -150,7 +152,10 @@ const Layout: React.FC = () => {
     }
 
     if (shouldCasSlo && lastAuth?.provider) {
-      window.location.href = buildAuthorizeUrl("/admins/cas/logout", lastAuth.provider);
+      window.location.href = buildAuthorizeUrl(
+        "/admins/cas/logout",
+        lastAuth.provider
+      );
       return;
     }
 

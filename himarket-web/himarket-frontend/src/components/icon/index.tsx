@@ -632,7 +632,6 @@ export const Folder = ({ className = "" }: { className?: string }) => {
   );
 };
 
-
 export const File = ({ className }: { className?: string }) => {
   return (
     <svg

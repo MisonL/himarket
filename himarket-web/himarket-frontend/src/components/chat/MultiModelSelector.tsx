@@ -3,7 +3,6 @@ import { Modal, Checkbox, Spin } from "antd";
 import { ProductIconRenderer } from "../icon/ProductIconRenderer";
 import type { IProductDetail } from "../../lib/apis";
 
-
 interface MultiModelSelectorProps {
   currentModelId: string;
   excludeModels?: string[];
@@ -13,11 +12,20 @@ interface MultiModelSelectorProps {
   loading?: boolean;
 }
 
-export function MultiModelSelector({ currentModelId, excludeModels = [], onConfirm, onCancel, modelList = [], loading = false }: MultiModelSelectorProps) {
+export function MultiModelSelector({
+  currentModelId,
+  excludeModels = [],
+  onConfirm,
+  onCancel,
+  modelList = [],
+  loading = false,
+}: MultiModelSelectorProps) {
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
 
   // 过滤掉已排除的模型
-  const availableModels = modelList.filter(model => !excludeModels.includes(model.productId));
+  const availableModels = modelList.filter(
+    model => !excludeModels.includes(model.productId)
+  );
 
   // 根据模型ID获取模型名称
   const getModelName = (modelId: string) => {
@@ -29,9 +37,9 @@ export function MultiModelSelector({ currentModelId, excludeModels = [], onConfi
     // 当前模型不能被取消选择
     if (modelId === currentModelId) return;
 
-    setSelectedModels((prev) => {
+    setSelectedModels(prev => {
       if (prev.includes(modelId)) {
-        return prev.filter((id) => id !== modelId);
+        return prev.filter(id => id !== modelId);
       } else {
         // 计算还能选择多少个（总共3个减去已排除的）
         const maxSelectable = 3 - excludeModels.length;
@@ -62,31 +70,38 @@ export function MultiModelSelector({ currentModelId, excludeModels = [], onConfi
       cancelText="取消"
       okButtonProps={{
         disabled: selectedModels.length < 1,
-        className: "rounded-lg"
+        className: "rounded-lg",
       }}
       cancelButtonProps={{
-        className: "rounded-lg"
+        className: "rounded-lg",
       }}
       width={600}
       className="multi-model-selector-modal"
       styles={{
         body: {
-          borderRadius: '16px',
-          overflow: 'hidden'
-        }
+          borderRadius: "16px",
+          overflow: "hidden",
+        },
       }}
     >
       <div className="py-4">
         <div className="mb-4 text-sm text-gray-500">
           {excludeModels.length > 0 ? (
             <>
-              已选模型：<span className="font-medium text-colorPrimary">{excludeModels.map(id => getModelName(id)).join('、')}</span>
-              {" "}| 再选择 1-{maxSelectable} 个模型（已选 {selectedModels.length}/{maxSelectable}）
+              已选模型：
+              <span className="font-medium text-colorPrimary">
+                {excludeModels.map(id => getModelName(id)).join("、")}
+              </span>{" "}
+              | 再选择 1-{maxSelectable} 个模型（已选 {selectedModels.length}/
+              {maxSelectable}）
             </>
           ) : (
             <>
-              当前模型：<span className="font-medium text-colorPrimary">{getModelName(currentModelId)}</span>
-              {" "}| 再选择 1-2 个模型（已选 {selectedModels.length}/2）
+              当前模型：
+              <span className="font-medium text-colorPrimary">
+                {getModelName(currentModelId)}
+              </span>{" "}
+              | 再选择 1-2 个模型（已选 {selectedModels.length}/2）
             </>
           )}
         </div>
@@ -97,25 +112,32 @@ export function MultiModelSelector({ currentModelId, excludeModels = [], onConfi
           </div>
         ) : (
           <div className="space-y-2 max-h-[400px] overflow-y-auto">
-            {availableModels.map((model) => {
-              const isCurrentModel = model.productId === currentModelId && excludeModels.length === 0;
+            {availableModels.map(model => {
+              const isCurrentModel =
+                model.productId === currentModelId &&
+                excludeModels.length === 0;
               const isSelected = selectedModels.includes(model.productId);
-              const isDisabled = !isCurrentModel && !isSelected && selectedModels.length >= maxSelectable;
+              const isDisabled =
+                !isCurrentModel &&
+                !isSelected &&
+                selectedModels.length >= maxSelectable;
 
               return (
                 <div
                   key={model.productId}
-                  onClick={() => !isDisabled && handleToggleModel(model.productId)}
+                  onClick={() =>
+                    !isDisabled && handleToggleModel(model.productId)
+                  }
                   className={`
                     px-4 py-3 rounded-xl border transition-all duration-200
                     ${
                       isCurrentModel
                         ? "bg-colorPrimary/5 border-colorPrimary/30 cursor-default"
                         : isSelected
-                        ? "bg-colorPrimary/10 border-colorPrimary shadow-sm "
-                        : isDisabled
-                        ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
-                        : "bg-white border-gray-200 hover:border-colorPrimary/50 hover:bg-colorPrimaryBgHover cursor-pointer hover:shadow-sm"
+                          ? "bg-colorPrimary/10 border-colorPrimary shadow-sm "
+                          : isDisabled
+                            ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
+                            : "bg-white border-gray-200 hover:border-colorPrimary/50 hover:bg-colorPrimaryBgHover cursor-pointer hover:shadow-sm"
                     }
                   `}
                 >
@@ -129,15 +151,22 @@ export function MultiModelSelector({ currentModelId, excludeModels = [], onConfi
                         checked={isSelected}
                         disabled={isDisabled}
                         onChange={() => handleToggleModel(model.productId)}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                       />
                     )}
 
-                    <ProductIconRenderer iconType={model.icon?.value} className="w-6 h-6" />
+                    <ProductIconRenderer
+                      iconType={model.icon?.value}
+                      className="w-6 h-6"
+                    />
 
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 mb-0.5">{model.name}</div>
-                      <p className="text-sm text-gray-500 line-clamp-1">{model.description}</p>
+                      <div className="font-semibold text-gray-900 mb-0.5">
+                        {model.name}
+                      </div>
+                      <p className="text-sm text-gray-500 line-clamp-1">
+                        {model.description}
+                      </p>
                     </div>
                   </div>
                 </div>

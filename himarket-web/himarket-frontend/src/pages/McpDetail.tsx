@@ -3,9 +3,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { ProductHeader } from "../components/ProductHeader";
 import {
-  Alert, Button, message,
-  Tabs, Collapse, Select,
-  Spin, Tooltip,
+  Alert,
+  Button,
+  message,
+  Tabs,
+  Collapse,
+  Select,
+  Spin,
+  Tooltip,
 } from "antd";
 import { ArrowLeftOutlined, CopyOutlined } from "@ant-design/icons";
 import { ProductType } from "../types";
@@ -86,33 +91,46 @@ function McpDetail() {
   };
 
   // 生成连接配置的函数
-  const generateConnectionConfig = useCallback((
-    domains: Array<{ domain: string; port?: number; protocol: string }> | null | undefined,
-    path: string | null | undefined,
-    serverName: string,
-    localConfig?: unknown,
-    protocolType?: string,
-    domainIndex: number = 0
-  ) => {
-    // 互斥：优先判断本地模式
-    if (localConfig) {
-      const localConfigJson = JSON.stringify(localConfig, null, 2);
-      setLocalJson(localConfigJson);
-      setHttpJson("");
-      setSseJson("");
-      return;
-    }
+  const generateConnectionConfig = useCallback(
+    (
+      domains:
+        | Array<{ domain: string; port?: number; protocol: string }>
+        | null
+        | undefined,
+      path: string | null | undefined,
+      serverName: string,
+      localConfig?: unknown,
+      protocolType?: string,
+      domainIndex: number = 0
+    ) => {
+      // 互斥：优先判断本地模式
+      if (localConfig) {
+        const localConfigJson = JSON.stringify(localConfig, null, 2);
+        setLocalJson(localConfigJson);
+        setHttpJson("");
+        setSseJson("");
+        return;
+      }
 
-    // HTTP/SSE 模式
-    if (domains && domains.length > 0 && path && domainIndex < domains.length) {
-      const domain = domains[domainIndex];
-      const formattedDomain = formatDomainWithPort(domain.domain, domain.port, domain.protocol);
-      const baseUrl = `${domain.protocol}://${formattedDomain}`;
-      let endpoint = `${baseUrl}${path}`;
+      // HTTP/SSE 模式
+      if (
+        domains &&
+        domains.length > 0 &&
+        path &&
+        domainIndex < domains.length
+      ) {
+        const domain = domains[domainIndex];
+        const formattedDomain = formatDomainWithPort(
+          domain.domain,
+          domain.port,
+          domain.protocol
+        );
+        const baseUrl = `${domain.protocol}://${formattedDomain}`;
+        let endpoint = `${baseUrl}${path}`;
 
-      if (protocolType === 'SSE') {
-        // 仅生成SSE配置，不追加/sse
-        const sseConfig = `{
+        if (protocolType === "SSE") {
+          // 仅生成SSE配置，不追加/sse
+          const sseConfig = `{
   "mcpServers": {
     "${serverName}": {
       "type": "sse",
@@ -120,26 +138,26 @@ function McpDetail() {
     }
   }
 }`;
-        setSseJson(sseConfig);
-        setHttpJson("");
-        setLocalJson("");
-        return;
-      } else if (protocolType === 'StreamableHTTP') {
-        // 仅生成HTTP配置
-        const httpConfig = `{
+          setSseJson(sseConfig);
+          setHttpJson("");
+          setLocalJson("");
+          return;
+        } else if (protocolType === "StreamableHTTP") {
+          // 仅生成HTTP配置
+          const httpConfig = `{
   "mcpServers": {
     "${serverName}": {
       "url": "${endpoint}"
     }
   }
 }`;
-        setHttpJson(httpConfig);
-        setSseJson("");
-        setLocalJson("");
-        return;
-      } else {
-        // protocol为null或其他值：生成两种配置
-        const httpConfig = `{
+          setHttpJson(httpConfig);
+          setSseJson("");
+          setLocalJson("");
+          return;
+        } else {
+          // protocol为null或其他值：生成两种配置
+          const httpConfig = `{
   "mcpServers": {
     "${serverName}": {
       "url": "${endpoint}"
@@ -147,7 +165,7 @@ function McpDetail() {
   }
 }`;
 
-        const sseConfig = `{
+          const sseConfig = `{
   "mcpServers": {
     "${serverName}": {
       "type": "sse",
@@ -156,18 +174,20 @@ function McpDetail() {
   }
 }`;
 
-        setHttpJson(httpConfig);
-        setSseJson(sseConfig);
-        setLocalJson("");
-        return;
+          setHttpJson(httpConfig);
+          setSseJson(sseConfig);
+          setLocalJson("");
+          return;
+        }
       }
-    }
 
-    // 无有效配置
-    setHttpJson("");
-    setSseJson("");
-    setLocalJson("");
-  }, [mcpConfig]);
+      // 无有效配置
+      setHttpJson("");
+      setSseJson("");
+      setLocalJson("");
+    },
+    [mcpConfig]
+  );
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -227,23 +247,33 @@ function McpDetail() {
   }, [mcpConfig, generateConnectionConfig, selectedDomainIndex, data]);
 
   // 生成域名选项的函数
-  const getDomainOptions = (domains: Array<{ domain: string; port?: number; protocol: string; networkType?: string }>) => {
+  const getDomainOptions = (
+    domains: Array<{
+      domain: string;
+      port?: number;
+      protocol: string;
+      networkType?: string;
+    }>
+  ) => {
     return domains.map((domain, index) => {
-      const formattedDomain = formatDomainWithPort(domain.domain, domain.port, domain.protocol);
+      const formattedDomain = formatDomainWithPort(
+        domain.domain,
+        domain.port,
+        domain.protocol
+      );
       return {
         value: index,
         label: `${domain.protocol}://${formattedDomain}`,
-        domain: domain
-      }
-    })
-  }
-
-  const handleCopy = async (text: string) => {
-    copyToClipboard(text).then(() => {
-      message.success("已复制到剪贴板")
+        domain: domain,
+      };
     });
   };
 
+  const handleCopy = async (text: string) => {
+    copyToClipboard(text).then(() => {
+      message.success("已复制到剪贴板");
+    });
+  };
 
   const domainOptions = useMemo(() => {
     return getDomainOptions(mcpConfig?.mcpServerConfig?.domains || []);
@@ -281,7 +311,6 @@ function McpDetail() {
 
   const { name, description } = data;
   const hasLocalConfig = Boolean(mcpConfig?.mcpServerConfig.rawConfig);
-
 
   return (
     <Layout>
@@ -335,64 +364,88 @@ function McpDetail() {
                 {
                   key: "tools",
                   label: `Tools (${parsedTools.length})`,
-                  children: parsedTools.length > 0 ? (
-                    <div className="border border-gray-200 rounded-lg bg-gray-50">
-                      {parsedTools.map((tool, idx) => (
-                        <div key={idx} className={idx < parsedTools.length - 1 ? "border-b border-gray-200" : ""}>
-                          <Collapse
-                            ghost
-                            expandIconPosition="end"
-                            items={[{
-                              key: idx.toString(),
-                              label: tool.name,
-                              children: (
-                                <div className="px-4 pb-2">
-                                  <div className="text-gray-600 mb-4">{tool.description}</div>
+                  children:
+                    parsedTools.length > 0 ? (
+                      <div className="border border-gray-200 rounded-lg bg-gray-50">
+                        {parsedTools.map((tool, idx) => (
+                          <div
+                            key={idx}
+                            className={
+                              idx < parsedTools.length - 1
+                                ? "border-b border-gray-200"
+                                : ""
+                            }
+                          >
+                            <Collapse
+                              ghost
+                              expandIconPosition="end"
+                              items={[
+                                {
+                                  key: idx.toString(),
+                                  label: tool.name,
+                                  children: (
+                                    <div className="px-4 pb-2">
+                                      <div className="text-gray-600 mb-4">
+                                        {tool.description}
+                                      </div>
 
-                                  {tool.args && tool.args.length > 0 && (
-                                    <div>
-                                      <p className="font-medium text-gray-700 mb-3">输入参数:</p>
-                                      {tool.args.map((arg, argIdx) => (
-                                        <div key={argIdx} className="mb-3">
-                                          <div className="flex items-center mb-2">
-                                            <span className="font-medium text-gray-800 mr-2">{arg.name}</span>
-                                            <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded mr-2">
-                                              {arg.type}
-                                            </span>
-                                            {arg.required && (
-                                              <span className="text-red-500 text-xs mr-2">*</span>
-                                            )}
-                                            {arg.description && (
-                                              <span className="text-xs text-gray-500">
-                                                {arg.description}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <input
-                                            type="text"
-                                            placeholder={arg.description || `请输入${arg.name}`}
-                                            className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                          />
+                                      {tool.args && tool.args.length > 0 && (
+                                        <div>
+                                          <p className="font-medium text-gray-700 mb-3">
+                                            输入参数:
+                                          </p>
+                                          {tool.args.map((arg, argIdx) => (
+                                            <div key={argIdx} className="mb-3">
+                                              <div className="flex items-center mb-2">
+                                                <span className="font-medium text-gray-800 mr-2">
+                                                  {arg.name}
+                                                </span>
+                                                <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded mr-2">
+                                                  {arg.type}
+                                                </span>
+                                                {arg.required && (
+                                                  <span className="text-red-500 text-xs mr-2">
+                                                    *
+                                                  </span>
+                                                )}
+                                                {arg.description && (
+                                                  <span className="text-xs text-gray-500">
+                                                    {arg.description}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <input
+                                                type="text"
+                                                placeholder={
+                                                  arg.description ||
+                                                  `请输入${arg.name}`
+                                                }
+                                                className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                              />
+                                            </div>
+                                          ))}
                                         </div>
-                                      ))}
-                                    </div>
-                                  )}
+                                      )}
 
-                                  {(!tool.args || tool.args.length === 0) && (
-                                    <div className="text-gray-500 text-sm">No parameters required</div>
-                                  )}
-                                </div>
-                              ),
-                            }]}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 text-center py-8">
-                      No tools available
-                    </div>
-                  ),
+                                      {(!tool.args ||
+                                        tool.args.length === 0) && (
+                                        <div className="text-gray-500 text-sm">
+                                          No parameters required
+                                        </div>
+                                      )}
+                                    </div>
+                                  ),
+                                },
+                              ]}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-gray-500 text-center py-8">
+                        No tools available
+                      </div>
+                    ),
                 },
               ]}
             />
@@ -407,53 +460,70 @@ function McpDetail() {
                 <h3 className="text-base font-semibold  text-gray-900">
                   连接点配置
                 </h3>
-                <CopyOutlined className="ml-1 text-sm text-subTitle" onClick={() => {
-                  copyToClipboard(domainOptions[selectedDomainIndex].label).then(() => {
-                    message.success("域名已复制");
-                  });
-                }} />
+                <CopyOutlined
+                  className="ml-1 text-sm text-subTitle"
+                  onClick={() => {
+                    copyToClipboard(
+                      domainOptions[selectedDomainIndex].label
+                    ).then(() => {
+                      message.success("域名已复制");
+                    });
+                  }}
+                />
               </div>
 
               {/* 域名选择器 */}
-              {mcpConfig?.mcpServerConfig?.domains && mcpConfig.mcpServerConfig.domains.length > 0 && (
-                <div className="mb-2">
-                  <div className="flex border border-gray-200 rounded-md overflow-hidden">
-                    <div
-                      className="flex-shrink-0 bg-gray-50 px-3 py-2 text-xs text-gray-600 border-r border-gray-200 flex items-center whitespace-nowrap">
-                      域名
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <Select
-                        value={selectedDomainIndex}
-                        onChange={setSelectedDomainIndex}
-                        className="w-full"
-                        placeholder="选择域名"
-                        size="middle"
-                        variant="borderless"
-                        style={{
-                          fontSize: '12px',
-                          height: '100%'
-                        }}
-                      // options={getDomainOptions(mcpConfig.mcpServerConfig.domains)}
-                      >
-                        {domainOptions.map((option) => (
-                          <Select.Option key={option.value} value={option.value}>
-                            <Tooltip classNames={{ root: "bg-white" }} title={<span className="text-gray-900 bg-white">{option.label}</span>}>
-                              <span className="text-xs text-gray-900 font-mono">
-                                {option.label}
-                              </span>
-                            </Tooltip>
-                          </Select.Option>
-                        ))}
-                      </Select>
+              {mcpConfig?.mcpServerConfig?.domains &&
+                mcpConfig.mcpServerConfig.domains.length > 0 && (
+                  <div className="mb-2">
+                    <div className="flex border border-gray-200 rounded-md overflow-hidden">
+                      <div className="flex-shrink-0 bg-gray-50 px-3 py-2 text-xs text-gray-600 border-r border-gray-200 flex items-center whitespace-nowrap">
+                        域名
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Select
+                          value={selectedDomainIndex}
+                          onChange={setSelectedDomainIndex}
+                          className="w-full"
+                          placeholder="选择域名"
+                          size="middle"
+                          variant="borderless"
+                          style={{
+                            fontSize: "12px",
+                            height: "100%",
+                          }}
+                          // options={getDomainOptions(mcpConfig.mcpServerConfig.domains)}
+                        >
+                          {domainOptions.map(option => (
+                            <Select.Option
+                              key={option.value}
+                              value={option.value}
+                            >
+                              <Tooltip
+                                classNames={{ root: "bg-white" }}
+                                title={
+                                  <span className="text-gray-900 bg-white">
+                                    {option.label}
+                                  </span>
+                                }
+                              >
+                                <span className="text-xs text-gray-900 font-mono">
+                                  {option.label}
+                                </span>
+                              </Tooltip>
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <Tabs
                 size="small"
-                defaultActiveKey={hasLocalConfig ? "local" : (sseJson ? "sse" : "http")}
+                defaultActiveKey={
+                  hasLocalConfig ? "local" : sseJson ? "sse" : "http"
+                }
                 items={(() => {
                   const tabs = [];
 
@@ -471,7 +541,9 @@ function McpDetail() {
                             onClick={() => handleCopy(localJson)}
                           />
                           <div className="bg-gray-800 text-gray-100 font-mono text-xs overflow-x-auto">
-                            <pre className="whitespace-pre p-3">{localJson}</pre>
+                            <pre className="whitespace-pre p-3">
+                              {localJson}
+                            </pre>
                           </div>
                         </div>
                       ),
@@ -491,7 +563,9 @@ function McpDetail() {
                               onClick={() => handleCopy(sseJson)}
                             />
                             <div className="bg-gray-800 text-gray-100 font-mono text-xs overflow-x-auto">
-                              <pre className="whitespace-pre p-3">{sseJson}</pre>
+                              <pre className="whitespace-pre p-3">
+                                {sseJson}
+                              </pre>
                             </div>
                           </div>
                         ),
@@ -512,7 +586,9 @@ function McpDetail() {
                               onClick={() => handleCopy(httpJson)}
                             />
                             <div className="bg-gray-900  text-gray-100 font-mono text-xs overflow-x-auto">
-                              <pre className="whitespace-pre p-3">{httpJson}</pre>
+                              <pre className="whitespace-pre p-3">
+                                {httpJson}
+                              </pre>
                             </div>
                           </div>
                         ),

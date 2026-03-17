@@ -4,14 +4,13 @@ import * as developer from "./developer";
 import * as category from "./category";
 import * as chat from "./chat";
 
-
 const APIs = {
   ...product,
   ...consumer,
   ...developer,
   ...category,
   ...chat,
-}
+};
 export default APIs;
 
 // 也可以单独导出，方便按需引入

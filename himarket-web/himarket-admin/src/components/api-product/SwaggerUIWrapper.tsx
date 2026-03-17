@@ -291,9 +291,7 @@ export const SwaggerUIWrapper: React.FC<SwaggerUIWrapperProps> = ({
       })
       .catch(error => {
         if (!cancelled) {
-          setLoadError(
-            error instanceof Error ? error.message : String(error)
-          );
+          setLoadError(error instanceof Error ? error.message : String(error));
         }
       });
 

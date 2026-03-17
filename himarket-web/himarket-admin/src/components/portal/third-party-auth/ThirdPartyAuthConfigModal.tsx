@@ -71,16 +71,12 @@ export function ThirdPartyAuthConfigModal({
         </Select.Option>
         <Select.Option value={AuthenticationType.LDAP}>
           <div className="py-2">
-            <div className="font-medium">
-              LDAP（适用于企业目录服务登录）
-            </div>
+            <div className="font-medium">LDAP（适用于企业目录服务登录）</div>
           </div>
         </Select.Option>
         <Select.Option value={AuthenticationType.OAUTH2}>
           <div className="py-2">
-            <div className="font-medium">
-              OAuth2（适用于服务间集成）
-            </div>
+            <div className="font-medium">OAuth2（适用于服务间集成）</div>
           </div>
         </Select.Option>
       </Select>
@@ -183,11 +179,7 @@ export function ThirdPartyAuthConfigModal({
               </Form.Item>
             </div>
 
-            <Form.Item
-              name="enabled"
-              label="启用状态"
-              valuePropName="checked"
-            >
+            <Form.Item name="enabled" label="启用状态" valuePropName="checked">
               <Switch />
             </Form.Item>
 

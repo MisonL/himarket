@@ -1,6 +1,6 @@
 // 迁移自 portal-web/portal-frontend/src/lib/utils.ts
 export function fetcher(url: string) {
-  return fetch(url).then((res) => res.json());
+  return fetch(url).then(res => res.json());
 }
 
 export function getTokenFromCookie(): string | null {
@@ -13,24 +13,24 @@ export function getTokenFromCookie(): string | null {
  * 将 \\n 转换为 \n
  */
 export function unescapeNewlines(str: string): string {
-  return str.replace(/\\n/g, '\n');
+  return str.replace(/\\n/g, "\n");
 }
 
 /**
  * 处理产品数据中的 mcpSpec 和 apiSpec 换行符转义
  */
-export function processProductSpecs<T extends { type: string; mcpSpec?: string | null; apiSpec?: string | null }>(
-  product: T
-): T {
-  if (product.type === 'MCP_SERVER' && product.mcpSpec) {
+export function processProductSpecs<
+  T extends { type: string; mcpSpec?: string | null; apiSpec?: string | null },
+>(product: T): T {
+  if (product.type === "MCP_SERVER" && product.mcpSpec) {
     return {
       ...product,
-      mcpSpec: unescapeNewlines(product.mcpSpec)
+      mcpSpec: unescapeNewlines(product.mcpSpec),
     };
-  } else if (product.type === 'REST_API' && product.apiSpec) {
+  } else if (product.type === "REST_API" && product.apiSpec) {
     return {
       ...product,
-      apiSpec: unescapeNewlines(product.apiSpec)
+      apiSpec: unescapeNewlines(product.apiSpec),
     };
   }
   return product;
@@ -43,19 +43,20 @@ export function processProductSpecs<T extends { type: string; mcpSpec?: string |
  */
 export const formatDateTime = (dateString: string | Date): string => {
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
     if (isNaN(date.getTime())) {
       return String(dateString);
     }
-    
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
+
+    return date.toLocaleString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
     });
   } catch {
     return String(dateString);
@@ -69,20 +70,21 @@ export const formatDateTime = (dateString: string | Date): string => {
  */
 export const formatDate = (dateString: string | Date): string => {
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
     if (isNaN(date.getTime())) {
       return String(dateString);
     }
-    
-    return date.toLocaleDateString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
+
+    return date.toLocaleDateString("zh-CN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   } catch {
     return String(dateString);
   }
-}; 
+};
 
 export const safeJSONParse = <T>(value: string, fallback: T): T => {
   try {
@@ -91,7 +93,7 @@ export const safeJSONParse = <T>(value: string, fallback: T): T => {
     console.log(error);
     return fallback;
   }
-}
+};
 
 export function copyToClipboard(text: string) {
   // 返回一个 Promise 对象
@@ -101,31 +103,31 @@ export function copyToClipboard(text: string) {
       navigator.clipboard.writeText(text).then(resolve, reject);
     } else {
       // 非安全环境下或不支持 Clipboard API 的浏览器的回退方法
-      const textArea = document.createElement('textarea');
+      const textArea = document.createElement("textarea");
       textArea.value = text;
 
       // 避免出现滚动条
-      textArea.style.position = 'fixed';
-      textArea.style.top = '0';
-      textArea.style.left = '0';
-      textArea.style.width = '2em';
-      textArea.style.height = '2em';
-      textArea.style.padding = '0';
-      textArea.style.border = 'none';
-      textArea.style.outline = 'none';
-      textArea.style.boxShadow = 'none';
-      textArea.style.background = 'transparent';
+      textArea.style.position = "fixed";
+      textArea.style.top = "0";
+      textArea.style.left = "0";
+      textArea.style.width = "2em";
+      textArea.style.height = "2em";
+      textArea.style.padding = "0";
+      textArea.style.border = "none";
+      textArea.style.outline = "none";
+      textArea.style.boxShadow = "none";
+      textArea.style.background = "transparent";
 
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
 
       try {
-        const successful = document.execCommand('copy');
+        const successful = document.execCommand("copy");
         if (successful) {
           resolve(true);
         } else {
-          return(false)
+          return false;
         }
       } catch (err) {
         reject(err); // 如果执行失败，调用 reject
@@ -141,19 +143,19 @@ export function copyToClipboard(text: string) {
  * @param port - 端口号（可选）
  * @param protocol - 协议（http/https）
  * @returns 格式化后的 host 字符串
- * 
+ *
  * 规则：
  * - 如果 port 为 null/undefined，只返回 domain
  * - 如果 port 是默认端口（http:80, https:443），只返回 domain
  * - 其他情况返回 domain:port
  */
 export function formatDomainWithPort(
-  domain: string, 
-  port: number | null | undefined, 
+  domain: string,
+  port: number | null | undefined,
   protocol: string
 ): string {
   if (!port) return domain;
-  if (protocol === 'http' && port === 80) return domain;
-  if (protocol === 'https' && port === 443) return domain;
+  if (protocol === "http" && port === 80) return domain;
+  if (protocol === "https" && port === 443) return domain;
   return `${domain}:${port}`;
 }

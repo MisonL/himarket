@@ -128,7 +128,7 @@ public class CasServiceImpl implements CasService {
         long expirationPolicy =
                 Convert.toLong(
                         userInfo.get("longTermAuthenticationRequestTokenUsed"),
-                        86400000L); // Default fallback 1 day
+                        IdpConstants.DEFAULT_EXPIRATION_MILLIS);
 
         String code =
                 issueLoginCode(
@@ -169,9 +169,10 @@ public class CasServiceImpl implements CasService {
         // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
         java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
-        long maxSafetyExpiresIn = 86400; // Default 24h as a broad safety net
+        long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn = Math.max(0, 86400 - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn =
+                    Math.max(0, IdpConstants.SECONDS_PER_DAY - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Select, Input, Button, Tag, Space } from 'antd';
-import { SearchOutlined, CloseOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from "react";
+import { Select, Input, Button, Tag, Space } from "antd";
+import { SearchOutlined, CloseOutlined } from "@ant-design/icons";
 // import './AdvancedSearch.css';
 
 const { Option } = Select;
@@ -9,7 +9,7 @@ export interface SearchParam {
   label: string;
   name: string;
   placeholder: string;
-  type?: 'input' | 'select';
+  type?: "input" | "select";
   optionList?: Array<{ label: string; value: string }>;
 }
 
@@ -24,19 +24,21 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   searchParamsList,
   onSearch,
   onClear,
-  className = ''
+  className = "",
 }) => {
-  const [activeSearchName, setActiveSearchName] = useState<string>('');
-  const [activeSearchValue, setActiveSearchValue] = useState<string>('');
-  const [tagList, setTagList] = useState<Array<SearchParam & { value: string }>>([]);
+  const [activeSearchName, setActiveSearchName] = useState<string>("");
+  const [activeSearchValue, setActiveSearchValue] = useState<string>("");
+  const [tagList, setTagList] = useState<
+    Array<SearchParam & { value: string }>
+  >([]);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
 
   useEffect(() => {
     // 防止初始化时自动触发搜索
     if (isInitialized && activeSearchName) {
-      setActiveSearchValue(''); // 清空输入框
+      setActiveSearchValue(""); // 清空输入框
       setTagList([]); // 清空关联标签
-      onSearch(activeSearchName, '');
+      onSearch(activeSearchName, "");
     }
   }, [activeSearchName, isInitialized]); // 移除 onSearch 避免无限循环
 
@@ -50,26 +52,28 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const handleSearch = () => {
     if (activeSearchValue.trim()) {
       // 添加到标签列表
-      const currentParam = searchParamsList.find(item => item.name === activeSearchName);
+      const currentParam = searchParamsList.find(
+        item => item.name === activeSearchName
+      );
       if (currentParam) {
         const newTag = {
           ...currentParam,
-          value: activeSearchValue
+          value: activeSearchValue,
         };
         setTagList(prev => {
           const filtered = prev.filter(tag => tag.name !== activeSearchName);
           return [...filtered, newTag];
         });
       }
-      
+
       onSearch(activeSearchName, activeSearchValue);
-      setActiveSearchValue('');
+      setActiveSearchValue("");
     }
   };
 
   const handleClearOne = (tagName: string) => {
     setTagList(prev => prev.filter(tag => tag.name !== tagName));
-    onSearch(tagName, '');
+    onSearch(tagName, "");
   };
 
   const handleClearAll = () => {
@@ -101,11 +105,11 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         <Select
           value={activeSearchName}
           onChange={setActiveSearchName}
-          style={{ 
+          style={{
             width: 120,
             borderTopRightRadius: 0,
             borderBottomRightRadius: 0,
-            borderRight: 'none'
+            borderRight: "none",
           }}
           className="h-10"
           size="large"
@@ -118,25 +122,25 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         </Select>
 
         {/* 中间：搜索值输入框 */}
-        {currentParam?.type === 'select' ? (
+        {currentParam?.type === "select" ? (
           <Select
             placeholder={currentParam.placeholder}
             value={activeSearchValue}
-            onChange={(value) => {
+            onChange={value => {
               setActiveSearchValue(value);
               // 自动触发搜索
               if (value) {
                 onSearch(activeSearchName, value);
               }
             }}
-            style={{ 
+            style={{
               width: 400,
               borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0
+              borderBottomLeftRadius: 0,
             }}
             allowClear
             onClear={() => {
-              setActiveSearchValue('');
+              setActiveSearchValue("");
               onClear?.();
             }}
             className="h-10"
@@ -152,15 +156,15 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
           <Input
             placeholder={currentParam?.placeholder}
             value={activeSearchValue}
-            onChange={(e) => setActiveSearchValue(e.target.value)}
-            style={{ 
+            onChange={e => setActiveSearchValue(e.target.value)}
+            style={{
               width: 400,
               borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0
+              borderBottomLeftRadius: 0,
             }}
             onPressEnter={handleSearch}
             allowClear
-            onClear={() => setActiveSearchValue('')}
+            onClear={() => setActiveSearchValue("")}
             size="large"
             className="h-10"
             suffix={
@@ -198,7 +202,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                 onClose={() => handleClearOne(tag.name)}
                 onClick={() => handleSelectOne(tag.name)}
                 className="cursor-pointer"
-                color={tag.name === activeSearchName ? 'blue' : 'default'}
+                color={tag.name === activeSearchName ? "blue" : "default"}
               >
                 {tag.label}：{tag.value}
               </Tag>

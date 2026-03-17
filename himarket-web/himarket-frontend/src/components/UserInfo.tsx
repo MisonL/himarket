@@ -52,7 +52,7 @@ export function UserInfo() {
     setLoading(true);
 
     APIs.getDeveloperInfo()
-      .then((response) => {
+      .then(response => {
         const data = response.data;
         if (data) {
           const userData = {
@@ -66,8 +66,8 @@ export function UserInfo() {
           }
         }
       })
-      .catch((error) => {
-        console.error('获取用户信息失败:', error);
+      .catch(error => {
+        console.error("获取用户信息失败:", error);
       })
       .finally(() => {
         globalLoading = false;
@@ -84,7 +84,9 @@ export function UserInfo() {
   const handleLogout = async () => {
     const lastAuth = getLastAuthState();
     const shouldCasSlo =
-      lastAuth?.type === "CAS" && !!lastAuth.provider && lastAuth.sloEnabled === true;
+      lastAuth?.type === "CAS" &&
+      !!lastAuth.provider &&
+      lastAuth.sloEnabled === true;
     let serverLogoutSucceeded = false;
 
     const buildAuthorizeUrl = (path: string, provider: string) => {
@@ -103,10 +105,10 @@ export function UserInfo() {
       await APIs.developerLogout();
       serverLogoutSucceeded = true;
     } catch (error) {
-      console.error('退出登录接口调用失败:', error);
+      console.error("退出登录接口调用失败:", error);
       message.error("服务端登出失败，已清理本地登录状态");
     } finally {
-      localStorage.removeItem('access_token');
+      localStorage.removeItem("access_token");
       clearLastAuthState();
       // 清除全局用户信息
       globalUserInfo = null;
@@ -115,7 +117,10 @@ export function UserInfo() {
     }
 
     if (shouldCasSlo && lastAuth?.provider) {
-      window.location.href = buildAuthorizeUrl("/developers/cas/logout", lastAuth.provider);
+      window.location.href = buildAuthorizeUrl(
+        "/developers/cas/logout",
+        lastAuth.provider
+      );
       return;
     }
 
@@ -127,10 +132,12 @@ export function UserInfo() {
 
   const menuItems = [
     {
-      key: 'user-info',
+      key: "user-info",
       label: (
         <div>
-          <div className="font-semibold text-gray-900 text-base">{userInfo?.displayName}</div>
+          <div className="font-semibold text-gray-900 text-base">
+            {userInfo?.displayName}
+          </div>
           {userInfo?.email && (
             <div className="text-xs text-gray-500 mt-0.5">{userInfo.email}</div>
           )}
@@ -139,28 +146,28 @@ export function UserInfo() {
       disabled: true,
     },
     {
-      type: 'divider' as const,
+      type: "divider" as const,
     },
     {
-      key: 'my-applications',
+      key: "my-applications",
       icon: <UserRoundCheck className="mr-1" />,
-      label: '消费者管理',
-      onClick: () => navigate('/consumers'),
+      label: "消费者管理",
+      onClick: () => navigate("/consumers"),
     },
     {
-      type: 'divider' as const,
+      type: "divider" as const,
     },
     {
-      key: 'logout',
+      key: "logout",
       icon: <LogOut className="mr-1" />,
-      label: '退出登录',
+      label: "退出登录",
       onClick: handleLogout,
     },
   ];
 
   // 获取用户名首字母
   const getInitials = (name: string) => {
-    if (!name) return 'U';
+    if (!name) return "U";
     // 如果是中文名，取第一个字
     if (/[\u4e00-\u9fa5]/.test(name)) {
       return name.charAt(0);
@@ -182,16 +189,19 @@ export function UserInfo() {
       <Dropdown
         menu={{ items: menuItems }}
         placement="bottomRight"
-        trigger={['hover']}
+        trigger={["hover"]}
         classNames={{
-          root: "user-dropdown"
+          root: "user-dropdown",
         }}
       >
         <div className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity px-2 py-1 rounded-full">
           {userInfo.avatar ? (
             <Avatar src={userInfo.avatar} size="default" />
           ) : (
-            <Avatar size="default" className="bg-colorPrimarySecondary text-mainTitle font-medium">
+            <Avatar
+              size="default"
+              className="bg-colorPrimarySecondary text-mainTitle font-medium"
+            >
               {getInitials(userInfo.displayName)}
             </Avatar>
           )}

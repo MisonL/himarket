@@ -1,5 +1,5 @@
 export interface IProductIcon {
-  type: 'URL' | 'BASE64';
+  type: "URL" | "BASE64";
   value: string;
 }
 
@@ -12,14 +12,14 @@ export interface IAgentConfig {
         port?: number;
         protocol: string;
         networkType: string;
-      }[],
+      }[];
       description: string;
       match: {
-        methods: string[],
+        methods: string[];
         path: {
           value: string;
           type: string;
-        },
+        };
         headers: {
           name: string;
           type: string;
@@ -30,7 +30,7 @@ export interface IAgentConfig {
           type: string;
           value: string;
         }[];
-      },
+      };
       backend: {
         scene: string;
         services: {
@@ -38,9 +38,9 @@ export interface IAgentConfig {
           port: number;
           protocol: string;
           weight: number;
-        }[]
-      },
-      builtin: boolean
+        }[];
+      };
+      builtin: boolean;
     }[];
     agentCard?: {
       name: string;
@@ -67,8 +67,9 @@ export interface IAgentConfig {
       [key: string]: any;
     };
   };
-  meta?: {  // 元数据信息
-    source?: string;  // 来源：NACOS / APIG_AI / HIGRESS 等
+  meta?: {
+    // 元数据信息
+    source?: string; // 来源：NACOS / APIG_AI / HIGRESS 等
   };
 }
 
@@ -77,7 +78,7 @@ export interface IAPIConfig {
   meta: {
     source: string;
     type: string;
-  }
+  };
 }
 
 export interface IMCPConfig {
@@ -91,13 +92,13 @@ export interface IMCPConfig {
     }[];
     rawConfig: Record<string, string>;
     transportMode: string;
-  },
+  };
   tools: string;
   meta: {
     source: string;
     createFromType: string;
     protocol: string;
-  }
+  };
 }
 
 export interface IModelAPIConfig {

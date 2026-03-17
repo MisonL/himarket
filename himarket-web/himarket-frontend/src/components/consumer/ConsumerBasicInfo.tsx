@@ -11,7 +11,9 @@ export function ConsumerBasicInfo({ consumer }: ConsumerBasicInfoProps) {
       <h3 className="text-base font-semibold text-gray-900 mb-4">基本信息</h3>
       <Descriptions column={2} size="middle">
         <Descriptions.Item label="名称">{consumer.name}</Descriptions.Item>
-        <Descriptions.Item label="描述">{consumer.description || '-'}</Descriptions.Item>
+        <Descriptions.Item label="描述">
+          {consumer.description || "-"}
+        </Descriptions.Item>
       </Descriptions>
     </div>
   );

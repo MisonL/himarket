@@ -1,48 +1,48 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Button, Dropdown, MenuProps, Modal, message } from 'antd'
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Button, Dropdown, MenuProps, Modal, message } from "antd";
 import {
   MoreOutlined,
   LeftOutlined,
   EyeOutlined,
   LinkOutlined,
   BookOutlined,
-  GlobalOutlined
-} from '@ant-design/icons'
-import { ApiProductOverview } from '@/components/api-product/ApiProductOverview'
-import { ApiProductLinkApi } from '@/components/api-product/ApiProductLinkApi'
-import { ApiProductUsageGuide } from '@/components/api-product/ApiProductUsageGuide'
-import { ApiProductPortal } from '@/components/api-product/ApiProductPortal'
+  GlobalOutlined,
+} from "@ant-design/icons";
+import { ApiProductOverview } from "@/components/api-product/ApiProductOverview";
+import { ApiProductLinkApi } from "@/components/api-product/ApiProductLinkApi";
+import { ApiProductUsageGuide } from "@/components/api-product/ApiProductUsageGuide";
+import { ApiProductPortal } from "@/components/api-product/ApiProductPortal";
 // import { ApiProductDashboard } from '@/components/api-product/ApiProductDashboard'
-import { apiProductApi } from '@/lib/api';
-import type { ApiProduct, LinkedService } from '@/types/api-product';
+import { apiProductApi } from "@/lib/api";
+import type { ApiProduct, LinkedService } from "@/types/api-product";
 
-import ApiProductFormModal from '@/components/api-product/ApiProductFormModal';
+import ApiProductFormModal from "@/components/api-product/ApiProductFormModal";
 
 const menuItems = [
   {
     key: "overview",
     label: "Overview",
     description: "产品概览",
-    icon: EyeOutlined
+    icon: EyeOutlined,
   },
   {
     key: "link-api",
     label: "Link API",
     description: "API关联",
-    icon: LinkOutlined
+    icon: LinkOutlined,
   },
   {
     key: "usage-guide",
     label: "Usage Guide",
     description: "使用指南",
-    icon: BookOutlined
+    icon: BookOutlined,
   },
   {
     key: "portal",
     label: "Portal",
     description: "发布的门户",
-    icon: GlobalOutlined
+    icon: GlobalOutlined,
   },
   // {
   //   key: "dashboard",
@@ -50,137 +50,166 @@ const menuItems = [
   //   description: "实时监控和统计",
   //   icon: DashboardOutlined
   // }
-]
+];
 
 export default function ApiProductDetail() {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const [apiProduct, setApiProduct] = useState<ApiProduct | null>(null)
-  const [linkedService, setLinkedService] = useState<LinkedService | null>(null)
-  const [, setLoading] = useState(true) // 添加 loading 状态
-  
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [apiProduct, setApiProduct] = useState<ApiProduct | null>(null);
+  const [linkedService, setLinkedService] = useState<LinkedService | null>(
+    null
+  );
+  const [, setLoading] = useState(true); // 添加 loading 状态
+
   // 从URL query参数获取当前tab，默认为overview
-  const currentTab = searchParams.get('tab') || 'overview'
+  const currentTab = searchParams.get("tab") || "overview";
   // 验证tab值是否有效，如果无效则使用默认值
-  const validTab = menuItems.some(item => item.key === currentTab) ? currentTab : 'overview'
-  const [activeTab, setActiveTab] = useState(validTab)
+  const validTab = menuItems.some(item => item.key === currentTab)
+    ? currentTab
+    : "overview";
+  const [activeTab, setActiveTab] = useState(validTab);
 
-  const [editModalVisible, setEditModalVisible] = useState(false)
+  const [editModalVisible, setEditModalVisible] = useState(false);
 
-  
   const fetchApiProduct = async () => {
-    const productId = searchParams.get('productId')
+    const productId = searchParams.get("productId");
     if (productId) {
-      setLoading(true)
+      setLoading(true);
       try {
         // 并行获取Product详情和关联信息
         const [productRes, refRes] = await Promise.all([
           apiProductApi.getApiProductDetail(productId),
-          apiProductApi.getApiProductRef(productId).catch(() => ({ data: null })) // 关联信息获取失败不影响页面显示
-        ])
-        
-        setApiProduct(productRes.data)
-        setLinkedService(refRes.data || null)
+          apiProductApi
+            .getApiProductRef(productId)
+            .catch(() => ({ data: null })), // 关联信息获取失败不影响页面显示
+        ]);
+
+        setApiProduct(productRes.data);
+        setLinkedService(refRes.data || null);
       } catch (error) {
-        console.error('获取Product详情失败:', error)
+        console.error("获取Product详情失败:", error);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
 
   // 更新关联信息的回调函数
-  const handleLinkedServiceUpdate = (newLinkedService: LinkedService | null) => {
-    setLinkedService(newLinkedService)
-  }
+  const handleLinkedServiceUpdate = (
+    newLinkedService: LinkedService | null
+  ) => {
+    setLinkedService(newLinkedService);
+  };
 
   useEffect(() => {
-    fetchApiProduct()
-  }, [searchParams.get('productId')])
+    fetchApiProduct();
+  }, [searchParams.get("productId")]);
 
   // 同步URL参数和activeTab状态
   useEffect(() => {
-    setActiveTab(validTab)
-  }, [validTab, searchParams])
+    setActiveTab(validTab);
+  }, [validTab, searchParams]);
 
   const handleBackToApiProducts = () => {
-    navigate('/api-products')
-  }
+    navigate("/api-products");
+  };
 
   const handleTabChange = (tabKey: string) => {
-    setActiveTab(tabKey)
+    setActiveTab(tabKey);
     // 更新URL query参数
-    const newSearchParams = new URLSearchParams(searchParams)
-    newSearchParams.set('tab', tabKey)
-    setSearchParams(newSearchParams)
-  }
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set("tab", tabKey);
+    setSearchParams(newSearchParams);
+  };
 
   const renderContent = () => {
     if (!apiProduct) {
-      return <div className="p-6">Loading...</div>
+      return <div className="p-6">Loading...</div>;
     }
-    
+
     switch (activeTab) {
       case "overview":
-        return <ApiProductOverview apiProduct={apiProduct} linkedService={linkedService} onEdit={handleEdit} />
+        return (
+          <ApiProductOverview
+            apiProduct={apiProduct}
+            linkedService={linkedService}
+            onEdit={handleEdit}
+          />
+        );
       case "link-api":
-        return <ApiProductLinkApi 
-          apiProduct={apiProduct} 
-          linkedService={linkedService}
-          onLinkedServiceUpdate={handleLinkedServiceUpdate}
-          handleRefresh={fetchApiProduct}
-        />
+        return (
+          <ApiProductLinkApi
+            apiProduct={apiProduct}
+            linkedService={linkedService}
+            onLinkedServiceUpdate={handleLinkedServiceUpdate}
+            handleRefresh={fetchApiProduct}
+          />
+        );
       case "usage-guide":
-        return <ApiProductUsageGuide apiProduct={apiProduct} handleRefresh={fetchApiProduct} />
+        return (
+          <ApiProductUsageGuide
+            apiProduct={apiProduct}
+            handleRefresh={fetchApiProduct}
+          />
+        );
       case "portal":
-        return <ApiProductPortal apiProduct={apiProduct} />
+        return <ApiProductPortal apiProduct={apiProduct} />;
       // case "dashboard":
       //   return <ApiProductDashboard apiProduct={apiProduct} />
       default:
-        return <ApiProductOverview apiProduct={apiProduct} linkedService={linkedService} onEdit={handleEdit} />
+        return (
+          <ApiProductOverview
+            apiProduct={apiProduct}
+            linkedService={linkedService}
+            onEdit={handleEdit}
+          />
+        );
     }
-  }
+  };
 
-  const dropdownItems: MenuProps['items'] = [
+  const dropdownItems: MenuProps["items"] = [
     {
-      key: 'delete',
-      label: '删除',
+      key: "delete",
+      label: "删除",
       onClick: () => {
         Modal.confirm({
-          title: '确认删除',
-          content: '确定要删除该产品吗？',
+          title: "确认删除",
+          content: "确定要删除该产品吗？",
           onOk: () => {
-            handleDeleteApiProduct()
+            handleDeleteApiProduct();
           },
-        })
+        });
       },
       danger: true,
     },
-  ]
+  ];
 
   const handleDeleteApiProduct = () => {
     if (!apiProduct) return;
-    
-    apiProductApi.deleteApiProduct(apiProduct.productId).then(() => {
-      message.success('删除成功')
-      navigate('/api-products')
-    }).catch(() => {
-      // message.error(error.response?.data?.message || '删除失败')
-    })
-  }
+
+    apiProductApi
+      .deleteApiProduct(apiProduct.productId)
+      .then(() => {
+        message.success("删除成功");
+        navigate("/api-products");
+      })
+      .catch(() => {
+        // message.error(error.response?.data?.message || '删除失败')
+      });
+  };
 
   const handleEdit = () => {
-    setEditModalVisible(true)
-  }
+    setEditModalVisible(true);
+  };
 
   const handleEditSuccess = () => {
-    setEditModalVisible(false)
-    fetchApiProduct()
-  }
+    setEditModalVisible(false);
+    fetchApiProduct();
+  };
 
   const handleEditCancel = () => {
-    setEditModalVisible(false)
-  }
+    setEditModalVisible(false);
+  };
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -201,8 +230,10 @@ export default function ApiProductDetail() {
         {/* API Product 信息 */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-lg font-semibold">{apiProduct?.name || 'Loading...'}</h2>
-            <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
+            <h2 className="text-lg font-semibold">
+              {apiProduct?.name || "Loading..."}
+            </h2>
+            <Dropdown menu={{ items: dropdownItems }} trigger={["click"]}>
               <Button type="text" icon={<MoreOutlined />} />
             </Dropdown>
           </div>
@@ -210,7 +241,7 @@ export default function ApiProductDetail() {
 
         {/* 导航菜单 */}
         <nav className="flex-1 p-4 space-y-1">
-          {menuItems.map((item) => {
+          {menuItems.map(item => {
             const Icon = item.icon;
             return (
               <button
@@ -235,9 +266,7 @@ export default function ApiProductDetail() {
 
       {/* 主内容区域 */}
       <div className="flex-1 overflow-auto min-w-0">
-        <div className="w-full max-w-full">
-          {renderContent()}
-        </div>
+        <div className="w-full max-w-full">{renderContent()}</div>
       </div>
 
       {apiProduct && (
@@ -250,5 +279,5 @@ export default function ApiProductDetail() {
         />
       )}
     </div>
-  )
+  );
 }

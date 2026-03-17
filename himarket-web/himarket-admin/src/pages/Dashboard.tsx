@@ -1,68 +1,66 @@
-import { Card, Row, Col, Statistic, Progress, Table } from 'antd'
-import { 
-  EyeOutlined, 
-  UserOutlined, 
+import { Card, Row, Col, Statistic, Progress, Table } from "antd";
+import {
+  EyeOutlined,
+  UserOutlined,
   ApiOutlined,
   GlobalOutlined,
   ArrowUpOutlined,
-  ArrowDownOutlined
-} from '@ant-design/icons'
+  ArrowDownOutlined,
+} from "@ant-design/icons";
 
 const mockRecentActivity = [
   {
-    key: '1',
-    action: 'Portal访问',
-    description: 'Company Portal被访问了1250次',
-    time: '2小时前',
-    user: 'developer@example.com'
+    key: "1",
+    action: "Portal访问",
+    description: "Company Portal被访问了1250次",
+    time: "2小时前",
+    user: "developer@example.com",
   },
   {
-    key: '2',
-    action: 'API调用',
-    description: 'Payment API被调用了8765次',
-    time: '4小时前',
-    user: 'api@company.com'
+    key: "2",
+    action: "API调用",
+    description: "Payment API被调用了8765次",
+    time: "4小时前",
+    user: "api@company.com",
   },
   {
-    key: '3',
-    action: '新用户注册',
-    description: '新开发者注册了账户',
-    time: '6小时前',
-    user: 'newuser@example.com'
-  }
-]
+    key: "3",
+    action: "新用户注册",
+    description: "新开发者注册了账户",
+    time: "6小时前",
+    user: "newuser@example.com",
+  },
+];
 
 export default function Dashboard() {
   const activityColumns = [
     {
-      title: '操作',
-      dataIndex: 'action',
-      key: 'action',
+      title: "操作",
+      dataIndex: "action",
+      key: "action",
     },
     {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
+      title: "描述",
+      dataIndex: "description",
+      key: "description",
     },
     {
-      title: '用户',
-      dataIndex: 'user',
-      key: 'user',
+      title: "用户",
+      dataIndex: "user",
+      key: "user",
     },
     {
-      title: '时间',
-      dataIndex: 'time',
-      key: 'time',
+      title: "时间",
+      dataIndex: "time",
+      key: "time",
     },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">仪表板</h1>
-        <p className="text-gray-500 mt-2">
-          欢迎使用Himarket管理系统
-        </p>
+        <p className="text-gray-500 mt-2">欢迎使用Himarket管理系统</p>
       </div>
 
       {/* 统计卡片 */}
@@ -73,8 +71,8 @@ export default function Dashboard() {
               title="Portal访问量"
               value={1250}
               prefix={<EyeOutlined />}
-              valueStyle={{ color: '#3f8600' }}
-              suffix={<ArrowUpOutlined style={{ fontSize: '14px' }} />}
+              valueStyle={{ color: "#3f8600" }}
+              suffix={<ArrowUpOutlined style={{ fontSize: "14px" }} />}
             />
           </Card>
         </Col>
@@ -84,8 +82,8 @@ export default function Dashboard() {
               title="注册用户"
               value={45}
               prefix={<UserOutlined />}
-              valueStyle={{ color: '#1890ff' }}
-              suffix={<ArrowUpOutlined style={{ fontSize: '14px' }} />}
+              valueStyle={{ color: "#1890ff" }}
+              suffix={<ArrowUpOutlined style={{ fontSize: "14px" }} />}
             />
           </Card>
         </Col>
@@ -95,8 +93,8 @@ export default function Dashboard() {
               title="API调用"
               value={8765}
               prefix={<ApiOutlined />}
-              valueStyle={{ color: '#722ed1' }}
-              suffix={<ArrowUpOutlined style={{ fontSize: '14px' }} />}
+              valueStyle={{ color: "#722ed1" }}
+              suffix={<ArrowUpOutlined style={{ fontSize: "14px" }} />}
             />
           </Card>
         </Col>
@@ -106,8 +104,8 @@ export default function Dashboard() {
               title="活跃Portal"
               value={3}
               prefix={<GlobalOutlined />}
-              valueStyle={{ color: '#fa8c16' }}
-              suffix={<ArrowDownOutlined style={{ fontSize: '14px' }} />}
+              valueStyle={{ color: "#fa8c16" }}
+              suffix={<ArrowDownOutlined style={{ fontSize: "14px" }} />}
             />
           </Card>
         </Col>
@@ -174,8 +172,8 @@ export default function Dashboard() {
 
       {/* 最近活动 */}
       <Card title="最近活动">
-        <Table 
-          columns={activityColumns} 
+        <Table
+          columns={activityColumns}
           dataSource={mockRecentActivity}
           rowKey="key"
           pagination={false}
@@ -183,5 +181,5 @@ export default function Dashboard() {
         />
       </Card>
     </div>
-  )
-} 
+  );
+}

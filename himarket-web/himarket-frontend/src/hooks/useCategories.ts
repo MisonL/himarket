@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import type { ICategory } from "../lib/apis";
 import APIs from "../lib/apis";
 
-function useCategories(params: { type: string, addAll?: boolean }) {
+function useCategories(params: { type: string; addAll?: boolean }) {
   const [data, setData] = useState<ICategory[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -20,11 +20,12 @@ function useCategories(params: { type: string, addAll?: boolean }) {
                 createAt: "",
                 updatedAt: "",
               },
-              ...res.data.content
-            ])
+              ...res.data.content,
+            ]);
           }
         }
-      }).finally(() => setLoading(false));
+      })
+      .finally(() => setLoading(false));
   }, [params.type, params.addAll]);
 
   useEffect(() => {
@@ -34,9 +35,8 @@ function useCategories(params: { type: string, addAll?: boolean }) {
   return {
     data,
     loading,
-    get
-  }
-
+    get,
+  };
 }
 
 export default useCategories;

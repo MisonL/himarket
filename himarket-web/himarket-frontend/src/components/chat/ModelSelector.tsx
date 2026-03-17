@@ -5,7 +5,6 @@ import { ProductIconRenderer } from "../icon/ProductIconRenderer";
 import EmptyData from "../../assets/empty-data.svg";
 import type { ICategory, IProductDetail } from "../../lib/apis";
 
-
 interface ModelSelectorProps {
   selectedModelId: string;
   onSelectModel: (model: IProductDetail) => void;
@@ -27,16 +26,19 @@ export function ModelSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
-  const currentModel = modelList.find(m => m.productId === selectedModelId) || modelList[0];
+  const currentModel =
+    modelList.find(m => m.productId === selectedModelId) || modelList[0];
 
   // 根据分类和搜索过滤模型
-  const filteredModels =  modelList.filter(model => {
+  const filteredModels = modelList.filter(model => {
     // 分类过滤：如果选择"全部"或模型的 productCategories 包含当前选中的分类
-    const matchesCategory = activeCategory === "all" ||
+    const matchesCategory =
+      activeCategory === "all" ||
       model.categories.map(c => c.categoryId).includes(activeCategory);
 
     // 搜索过滤
-    const matchesSearch = searchQuery === "" ||
+    const matchesSearch =
+      searchQuery === "" ||
       model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       model.description.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -58,7 +60,7 @@ export function ModelSelector({
           prefix={<SearchOutlined className="text-gray-400" />}
           placeholder="搜索模型..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           className="rounded-lg"
           allowClear
         />
@@ -106,7 +108,10 @@ export function ModelSelector({
                   }
                 `}
               >
-                <ProductIconRenderer iconType={model.icon?.value} className="w-5 h-5" />
+                <ProductIconRenderer
+                  iconType={model.icon?.value}
+                  className="w-5 h-5"
+                />
                 <span className="font-medium flex-1">{model.name}</span>
                 {model.productId === selectedModelId && (
                   <CheckOutlined className="text-colorPrimary text-xs" />
@@ -119,7 +124,9 @@ export function ModelSelector({
                 <div className="text-[#333] text-[16px] font-medium">
                   暂无模型
                 </div>
-                <div className="text-[#333]">您需要首先在 Admin 中配置模型，才能在 HiChat 中体验</div>
+                <div className="text-[#333]">
+                  您需要首先在 Admin 中配置模型，才能在 HiChat 中体验
+                </div>
               </div>
             )}
           </div>
@@ -136,20 +143,23 @@ export function ModelSelector({
           open={isOpen}
           onOpenChange={setIsOpen}
           popupRender={() => dropdownContent}
-          trigger={['click']}
+          trigger={["click"]}
           placement="bottomLeft"
         >
           {/* 当前模型 */}
-          <button
-            className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 hover:scale-[1.01] hover:bg-colorPrimaryBgHover"
-          >
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200 hover:scale-[1.01] hover:bg-colorPrimaryBgHover">
             {currentModel?.icon && (
-              <ProductIconRenderer iconType={currentModel.icon.value} className="w-5 h-5" />
+              <ProductIconRenderer
+                iconType={currentModel.icon.value}
+                className="w-5 h-5"
+              />
             )}
             <span className="font-medium text-gray-900">
               {currentModel?.name || "选择模型"}
             </span>
-            <DownOutlined className={`text-xs text-gray-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            <DownOutlined
+              className={`text-xs text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            />
           </button>
         </Dropdown>
       </div>

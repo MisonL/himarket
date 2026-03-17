@@ -1,60 +1,77 @@
-import { clsx, type ClassValue } from "clsx"
-import { twMerge } from "tailwind-merge"
-import * as yaml from 'js-yaml'
- 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-} 
+import { clsx, type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
+import * as yaml from "js-yaml";
 
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // Token 相关函数
 export const getToken = (): string | null => {
-  return localStorage.getItem('access_token')
-}
+  return localStorage.getItem("access_token");
+};
 
 export const removeToken = (): void => {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('userInfo')
-}
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("userInfo");
+};
 
 export const isAuthenticated = (): boolean => {
-  return !!getToken()
-}
+  return !!getToken();
+};
 
 export const getStatusBadgeVariant = (status: string) => {
-  return status === "PENDING" ? "orange" : status === "READY" ? "blue" : "green"
-}
+  return status === "PENDING"
+    ? "orange"
+    : status === "READY"
+      ? "blue"
+      : "green";
+};
 
-export const getServiceName = (linkedServiceParam: any) => {  
-  
-  if (linkedServiceParam?.sourceType === 'NACOS') {
-    return linkedServiceParam.nacosRefConfig?.mcpServerName||'Nacos MCP服务'
-  }    
+export const getServiceName = (linkedServiceParam: any) => {
+  if (linkedServiceParam?.sourceType === "NACOS") {
+    return linkedServiceParam.nacosRefConfig?.mcpServerName || "Nacos MCP服务";
+  }
   if (linkedServiceParam?.apigRefConfig) {
-    if ('apiName' in linkedServiceParam.apigRefConfig && linkedServiceParam.apigRefConfig.apiName) {
-      return linkedServiceParam.apigRefConfig.apiName
+    if (
+      "apiName" in linkedServiceParam.apigRefConfig &&
+      linkedServiceParam.apigRefConfig.apiName
+    ) {
+      return linkedServiceParam.apigRefConfig.apiName;
     }
-    if ('mcpServerName' in linkedServiceParam.apigRefConfig && linkedServiceParam.apigRefConfig.mcpServerName) {
-      return linkedServiceParam.apigRefConfig.mcpServerName
+    if (
+      "mcpServerName" in linkedServiceParam.apigRefConfig &&
+      linkedServiceParam.apigRefConfig.mcpServerName
+    ) {
+      return linkedServiceParam.apigRefConfig.mcpServerName;
     }
-    if ('agentApiName' in linkedServiceParam.apigRefConfig && linkedServiceParam.apigRefConfig.agentApiName) {
-      return linkedServiceParam.apigRefConfig.agentApiName
+    if (
+      "agentApiName" in linkedServiceParam.apigRefConfig &&
+      linkedServiceParam.apigRefConfig.agentApiName
+    ) {
+      return linkedServiceParam.apigRefConfig.agentApiName;
     }
-    if ('modelApiName' in linkedServiceParam.apigRefConfig && linkedServiceParam.apigRefConfig.modelApiName) {
-      return linkedServiceParam.apigRefConfig.modelApiName
+    if (
+      "modelApiName" in linkedServiceParam.apigRefConfig &&
+      linkedServiceParam.apigRefConfig.modelApiName
+    ) {
+      return linkedServiceParam.apigRefConfig.modelApiName;
     }
   }
   if (linkedServiceParam?.higressRefConfig) {
-    return linkedServiceParam.higressRefConfig.mcpServerName
+    return linkedServiceParam.higressRefConfig.mcpServerName;
   }
   if (linkedServiceParam?.adpAIGatewayRefConfig) {
     // ADP_AI_GATEWAY 只支持 MCP Server，不支持 Agent API
-    if ('mcpServerName' in linkedServiceParam.adpAIGatewayRefConfig && linkedServiceParam.adpAIGatewayRefConfig.mcpServerName) {
-      return linkedServiceParam.adpAIGatewayRefConfig.mcpServerName
+    if (
+      "mcpServerName" in linkedServiceParam.adpAIGatewayRefConfig &&
+      linkedServiceParam.adpAIGatewayRefConfig.mcpServerName
+    ) {
+      return linkedServiceParam.adpAIGatewayRefConfig.mcpServerName;
     }
   }
-  return '未知服务'
-}
+  return "未知服务";
+};
 
 /**
  * 格式化日期时间，显示完整的时间点包括小时、分钟、秒
@@ -63,18 +80,19 @@ export const getServiceName = (linkedServiceParam: any) => {
  */
 export const formatDateTime = (dateString: string | Date): string => {
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
     if (isNaN(date.getTime())) {
       return String(dateString);
     }
-    
+
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   } catch {
     return String(dateString);
@@ -88,15 +106,16 @@ export const formatDateTime = (dateString: string | Date): string => {
  */
 export const formatDate = (dateString: string | Date): string => {
   try {
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
+    const date =
+      typeof dateString === "string" ? new Date(dateString) : dateString;
     if (isNaN(date.getTime())) {
       return String(dateString);
     }
-    
+
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
     return `${year}-${month}-${day}`;
   } catch {
     return String(dateString);
@@ -105,10 +124,10 @@ export const formatDate = (dateString: string | Date): string => {
 
 // 类型映射
 export const ProductTypeMap: Record<string, string> = {
-  REST_API: 'REST API',
-  MCP_SERVER: 'MCP Server',
-  AGENT_API: 'Agent API',
-  MODEL_API: 'Model API',
+  REST_API: "REST API",
+  MCP_SERVER: "MCP Server",
+  AGENT_API: "Agent API",
+  MODEL_API: "Model API",
 };
 
 // OpenAPI 规范解析相关类型和函数
@@ -130,10 +149,13 @@ export interface OpenAPIEndpoint {
     content?: any;
     required?: boolean;
   };
-  responses?: Record<string, {
-    description: string;
-    content?: any;
-  }>;
+  responses?: Record<
+    string,
+    {
+      description: string;
+      content?: any;
+    }
+  >;
   tags?: string[];
 }
 
@@ -158,7 +180,7 @@ export interface ParsedOpenAPI {
 export const parseOpenAPISpec = (spec: string): ParsedOpenAPI | null => {
   try {
     let openApiDoc: any;
-    
+
     // 尝试解析YAML格式
     try {
       openApiDoc = yaml.load(spec);
@@ -174,29 +196,40 @@ export const parseOpenAPISpec = (spec: string): ParsedOpenAPI | null => {
     const endpoints: OpenAPIEndpoint[] = [];
 
     // 解析路径和方法
-    Object.entries(openApiDoc.paths).forEach(([path, pathItem]: [string, any]) => {
-      if (pathItem && typeof pathItem === 'object') {
-        // HTTP方法
-        const methods = ['get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace'];
-        
-        methods.forEach(method => {
-          const operation = pathItem[method];
-          if (operation) {
-            endpoints.push({
-              path,
-              method: method.toUpperCase(),
-              operationId: operation.operationId,
-              summary: operation.summary,
-              description: operation.description,
-              parameters: operation.parameters,
-              requestBody: operation.requestBody,
-              responses: operation.responses,
-              tags: operation.tags,
-            });
-          }
-        });
+    Object.entries(openApiDoc.paths).forEach(
+      ([path, pathItem]: [string, any]) => {
+        if (pathItem && typeof pathItem === "object") {
+          // HTTP方法
+          const methods = [
+            "get",
+            "post",
+            "put",
+            "delete",
+            "patch",
+            "head",
+            "options",
+            "trace",
+          ];
+
+          methods.forEach(method => {
+            const operation = pathItem[method];
+            if (operation) {
+              endpoints.push({
+                path,
+                method: method.toUpperCase(),
+                operationId: operation.operationId,
+                summary: operation.summary,
+                description: operation.description,
+                parameters: operation.parameters,
+                requestBody: operation.requestBody,
+                responses: operation.responses,
+                tags: operation.tags,
+              });
+            }
+          });
+        }
       }
-    });
+    );
 
     return {
       info: openApiDoc.info,
@@ -204,7 +237,7 @@ export const parseOpenAPISpec = (spec: string): ParsedOpenAPI | null => {
       endpoints,
     };
   } catch (error) {
-    console.error('OpenAPI规范解析失败:', error);
+    console.error("OpenAPI规范解析失败:", error);
     return null;
   }
 };
@@ -216,16 +249,16 @@ export const parseOpenAPISpec = (spec: string): ParsedOpenAPI | null => {
  */
 export const getMethodColor = (method: string): string => {
   const colors: Record<string, string> = {
-    GET: 'green',
-    POST: 'blue',
-    PUT: 'orange',
-    DELETE: 'red',
-    PATCH: 'purple',
-    HEAD: 'gray',
-    OPTIONS: 'gray',
-    TRACE: 'gray',
+    GET: "green",
+    POST: "blue",
+    PUT: "orange",
+    DELETE: "red",
+    PATCH: "purple",
+    HEAD: "gray",
+    OPTIONS: "gray",
+    TRACE: "gray",
   };
-  return colors[method.toUpperCase()] || 'gray';
+  return colors[method.toUpperCase()] || "gray";
 };
 
 /**
@@ -241,21 +274,21 @@ export const copyToClipboard = async (text: string): Promise<void> => {
     }
   } catch (error) {
     // 现代API失败，继续降级处理
-    console.warn('Modern clipboard API failed, falling back to execCommand');
+    console.warn("Modern clipboard API failed, falling back to execCommand");
   }
 
   try {
     // 降级到传统方法
-    const textarea = document.createElement('textarea');
+    const textarea = document.createElement("textarea");
     textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.select();
-    document.execCommand('copy');
+    document.execCommand("copy");
     document.body.removeChild(textarea);
   } catch (error) {
-    console.error('All copy methods failed:', error);
+    console.error("All copy methods failed:", error);
     throw error;
   }
 };
@@ -266,19 +299,19 @@ export const copyToClipboard = async (text: string): Promise<void> => {
  * @param port - 端口号（可选）
  * @param protocol - 协议（http/https）
  * @returns 格式化后的 host 字符串
- * 
+ *
  * 规则：
  * - 如果 port 为 null/undefined，只返回 domain
  * - 如果 port 是默认端口（http:80, https:443），只返回 domain
  * - 其他情况返回 domain:port
  */
 export function formatDomainWithPort(
-  domain: string, 
-  port: number | null | undefined, 
+  domain: string,
+  port: number | null | undefined,
   protocol: string
 ): string {
   if (!port) return domain;
-  if (protocol === 'http' && port === 80) return domain;
-  if (protocol === 'https' && port === 443) return domain;
+  if (protocol === "http" && port === 80) return domain;
+  if (protocol === "https" && port === 443) return domain;
   return `${domain}:${port}`;
 }

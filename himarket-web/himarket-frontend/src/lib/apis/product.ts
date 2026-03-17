@@ -3,7 +3,14 @@
  */
 
 import request, { type RespI } from "../request";
-import type { IAgentConfig, IAPIConfig, IInputSchema, IMCPConfig, IModelConfig, IProductIcon } from "./typing";
+import type {
+  IAgentConfig,
+  IAPIConfig,
+  IInputSchema,
+  IMCPConfig,
+  IModelConfig,
+  IProductIcon,
+} from "./typing";
 
 export interface IProductDetail {
   productId: string;
@@ -19,16 +26,16 @@ export interface IProductDetail {
     name: string;
     description: string;
     icon: {
-      type: string,
-      value: string
-    },
+      type: string;
+      value: string;
+    };
     createAt: string;
     updatedAt: string;
   }[];
   autoApprove: boolean | null;
   createAt: string;
   updatedAt: string;
-  apiConfig: IAPIConfig,
+  apiConfig: IAPIConfig;
   agentConfig: IAgentConfig;
   mcpConfig: IMCPConfig;
   modelConfig?: IModelConfig;
@@ -37,15 +44,15 @@ export interface IProductDetail {
     modelFeature: {
       webSearch: boolean;
       enableMultiModal: boolean;
-    }
-  }
+    };
+  };
 }
 
 interface GetProductsResp {
   content: IProductDetail[];
-  number: number
-  size: number
-  totalElements: number
+  number: number;
+  size: number;
+  totalElements: number;
 }
 // 获取模型列表
 export function getProducts(params: {
@@ -56,21 +63,25 @@ export function getProducts(params: {
   size?: number;
   ["modelFilter.category"]?: "Image" | "TEXT";
 }) {
-  return request.get<RespI<GetProductsResp>, RespI<GetProductsResp>>('/products', {
-    params: {
-      name: params.name,
-      type: params.type,
-      categoryIds: params.categoryIds,
-      page: params.page || 0,
-      size: params.size || 100,
-      ["modelFilter.category"]: params["modelFilter.category"],
-    },
-  });
+  return request.get<RespI<GetProductsResp>, RespI<GetProductsResp>>(
+    "/products",
+    {
+      params: {
+        name: params.name,
+        type: params.type,
+        categoryIds: params.categoryIds,
+        page: params.page || 0,
+        size: params.size || 100,
+        ["modelFilter.category"]: params["modelFilter.category"],
+      },
+    }
+  );
 }
 
-
 export function getProduct(params: { id: string }) {
-  return request.get<RespI<IProductDetail>, RespI<IProductDetail>>('/products/' + params.id)
+  return request.get<RespI<IProductDetail>, RespI<IProductDetail>>(
+    "/products/" + params.id
+  );
 }
 
 // MCP 工具列表相关类型

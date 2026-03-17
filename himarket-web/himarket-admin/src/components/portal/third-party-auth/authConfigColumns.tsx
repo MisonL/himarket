@@ -50,7 +50,9 @@ function renderActions(
       {actions.onPreviewCasServiceDefinition ? (
         <Button
           type="link"
-          onClick={() => actions.onPreviewCasServiceDefinition?.(record.provider)}
+          onClick={() =>
+            actions.onPreviewCasServiceDefinition?.(record.provider)
+          }
         >
           预览定义
         </Button>

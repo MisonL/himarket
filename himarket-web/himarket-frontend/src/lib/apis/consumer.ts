@@ -23,7 +23,7 @@ export interface ISubscription {
   consumerName: string;
   productId: string;
   productName: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  status: "PENDING" | "APPROVED" | "REJECTED";
   createAt: string;
   updatedAt: string;
 }
@@ -80,7 +80,7 @@ interface SubscribeProductData {
  */
 export function getConsumers(params: QueryConsumerParams) {
   return request.get<RespI<GetConsumersResp>, RespI<GetConsumersResp>>(
-    '/consumers',
+    "/consumers",
     {
       params: {
         name: params.name,
@@ -108,19 +108,14 @@ export function getConsumer(params: { id: string }) {
  * 创建消费者
  */
 export function createConsumer(data: CreateConsumerData) {
-  return request.post<RespI<IConsumer>, RespI<IConsumer>>(
-    '/consumers',
-    data
-  );
+  return request.post<RespI<IConsumer>, RespI<IConsumer>>("/consumers", data);
 }
 
 /**
  * 删除消费者
  */
 export function deleteConsumer(consumerId: string) {
-  return request.delete<RespI<void>, RespI<void>>(
-    `/consumers/${consumerId}`
-  );
+  return request.delete<RespI<void>, RespI<void>>(`/consumers/${consumerId}`);
 }
 
 /**
@@ -198,7 +193,7 @@ export async function getProductSubscriptionStatus(productId: string) {
     const subscriptions = response.data.content || [];
 
     // 转换为原有格式以保持兼容性
-    const subscribedConsumers = subscriptions.map((sub) => ({
+    const subscribedConsumers = subscriptions.map(sub => ({
       consumer: {
         consumerId: sub.consumerId,
         name: sub.consumerName,
@@ -219,11 +214,10 @@ export async function getProductSubscriptionStatus(productId: string) {
       },
     };
   } catch (error) {
-    console.error('Failed to get product subscription status:', error);
+    console.error("Failed to get product subscription status:", error);
     throw error;
   }
 }
-
 
 /**
  * 获取默认消费者
@@ -232,13 +226,14 @@ export interface IGetPrimaryConsumerResp {
   consumerId: string;
   name: string;
   description: string;
-  isPrimary: true,
+  isPrimary: true;
   createAt: string;
 }
 export function getPrimaryConsumer() {
-  return request<RespI<IGetPrimaryConsumerResp>, RespI<IGetPrimaryConsumerResp>>(
-    "/consumers/primary"
-  );
+  return request<
+    RespI<IGetPrimaryConsumerResp>,
+    RespI<IGetPrimaryConsumerResp>
+  >("/consumers/primary");
 }
 
 /**
@@ -246,5 +241,7 @@ export function getPrimaryConsumer() {
  */
 
 export function putPrimaryConsumer(id: string) {
-  return request.put<RespI<unknown>, RespI<unknown>>(`/consumers/${id}/primary`)
+  return request.put<RespI<unknown>, RespI<unknown>>(
+    `/consumers/${id}/primary`
+  );
 }

@@ -20,13 +20,13 @@ const Callback: React.FC = () => {
     // 调用后端获取token
     api
       .post<{ access_token: string }>("/developers/token", { code, state })
-      .then((res) => {
+      .then(res => {
         if (res && res.data && res.data.access_token) {
           message.success("登录成功！");
           // 存储access_token
-          localStorage.setItem('access_token', res.data.access_token);
+          localStorage.setItem("access_token", res.data.access_token);
           // 跳转首页
-          navigate('/');
+          navigate("/");
         } else {
           message.error("登录失败，未获取到 access_token");
         }

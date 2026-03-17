@@ -3,7 +3,10 @@ import { CloseCircleFilled, LoadingOutlined } from "@ant-design/icons";
 import { File as FileIcon } from "../icon";
 import { type IAttachment, getAttachment } from "../../lib/apis";
 
-export type PreviewAttachment = Partial<IAttachment> & { attachmentId: string; url?: string };
+export type PreviewAttachment = Partial<IAttachment> & {
+  attachmentId: string;
+  url?: string;
+};
 
 interface AttachmentPreviewProps {
   attachments: PreviewAttachment[];
@@ -13,14 +16,23 @@ interface AttachmentPreviewProps {
   itemClassName?: string;
 }
 
-const AttachmentItem = ({ file, onRemove, itemClassName }: { file: PreviewAttachment, onRemove?: (id: string) => void, itemClassName: string }) => {
+const AttachmentItem = ({
+  file,
+  onRemove,
+  itemClassName,
+}: {
+  file: PreviewAttachment;
+  onRemove?: (id: string) => void;
+  itemClassName: string;
+}) => {
   const [details, setDetails] = useState<PreviewAttachment>(file);
   const [imgSrc, setImgSrc] = useState<string | undefined>(file.url);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     // If metadata is missing (no type) or it's an image without source, fetch it
-    const needsFetch = !details.type || (details.type === "IMAGE" && !imgSrc && !details.url);
+    const needsFetch =
+      !details.type || (details.type === "IMAGE" && !imgSrc && !details.url);
 
     if (needsFetch && details.attachmentId) {
       setLoading(true);
@@ -74,11 +86,13 @@ const AttachmentItem = ({ file, onRemove, itemClassName }: { file: PreviewAttach
   // If loading metadata (type unknown), show loading placeholder or file card with ID?
   // Showing loading state for the whole card if type is unknown
   if (loading && !details.type) {
-      return (
-        <div className={`flex items-center justify-center p-2 bg-gray-50 rounded-lg border border-dashed border-gray-200 min-w-[60px] h-16 ${itemClassName}`}>
-          <LoadingOutlined className="text-colorPrimary" />
-        </div>
-      )
+    return (
+      <div
+        className={`flex items-center justify-center p-2 bg-gray-50 rounded-lg border border-dashed border-gray-200 min-w-[60px] h-16 ${itemClassName}`}
+      >
+        <LoadingOutlined className="text-colorPrimary" />
+      </div>
+    );
   }
 
   return (
@@ -103,7 +117,10 @@ const AttachmentItem = ({ file, onRemove, itemClassName }: { file: PreviewAttach
         <FileIcon className="fill-indigo-500" />
       </div>
       <div className="flex flex-col justify-between min-w-0 flex-1">
-        <div className="text-sm text-accent-dark font-medium text-ellipsis overflow-hidden whitespace-nowrap" title={details.name || details.attachmentId}>
+        <div
+          className="text-sm text-accent-dark font-medium text-ellipsis overflow-hidden whitespace-nowrap"
+          title={details.name || details.attachmentId}
+        >
           {details.name || "Loading..."}
         </div>
         <span className="text-xs text-accent-dark">
@@ -112,7 +129,7 @@ const AttachmentItem = ({ file, onRemove, itemClassName }: { file: PreviewAttach
       </div>
     </div>
   );
-}
+};
 
 export function AttachmentPreview({
   attachments,
@@ -124,9 +141,16 @@ export function AttachmentPreview({
   if ((!attachments || attachments.length === 0) && !isUploading) return null;
 
   return (
-    <div className={`flex items-center gap-1 overflow-x-auto scrollbar-hide ${className}`}>
-      {attachments?.map((file) => (
-        <AttachmentItem key={file.attachmentId} file={file} onRemove={onRemove} itemClassName={itemClassName} />
+    <div
+      className={`flex items-center gap-1 overflow-x-auto scrollbar-hide ${className}`}
+    >
+      {attachments?.map(file => (
+        <AttachmentItem
+          key={file.attachmentId}
+          file={file}
+          onRemove={onRemove}
+          itemClassName={itemClassName}
+        />
       ))}
       {isUploading && (
         <div className="flex items-center justify-center p-2 bg-gray-50 rounded-lg border border-dashed border-gray-200 min-w-[60px] h-16">

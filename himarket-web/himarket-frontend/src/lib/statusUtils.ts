@@ -1,22 +1,29 @@
 // 产品状态映射
-export const ProductStatusMap: Record<string, { text: string; color: string }> = {
-  PENDING: { text: "待发布", color: "orange" },
-  READY: { text: "就绪", color: "blue" },
-  PUBLISHED: { text: "已发布", color: "green" },
-  DRAFT: { text: "草稿", color: "default" },
-  DEPRECATED: { text: "已弃用", color: "red" },
-  ENABLE: { text: "活跃", color: "green" },
-  DISABLE: { text: "非活跃", color: "red" },
-};
+export const ProductStatusMap: Record<string, { text: string; color: string }> =
+  {
+    PENDING: { text: "待发布", color: "orange" },
+    READY: { text: "就绪", color: "blue" },
+    PUBLISHED: { text: "已发布", color: "green" },
+    DRAFT: { text: "草稿", color: "default" },
+    DEPRECATED: { text: "已弃用", color: "red" },
+    ENABLE: { text: "活跃", color: "green" },
+    DISABLE: { text: "非活跃", color: "red" },
+  };
 
 // 订阅状态映射
-export const SubscriptionStatusMap: Record<string, { text: string; color: string }> = {
+export const SubscriptionStatusMap: Record<
+  string,
+  { text: string; color: string }
+> = {
   PENDING: { text: "待审批", color: "orange" },
   APPROVED: { text: "已通过", color: "green" },
 };
 
 // 产品分类映射
-export const ProductCategoryMap: Record<string, { text: string; color: string }> = {
+export const ProductCategoryMap: Record<
+  string,
+  { text: string; color: string }
+> = {
   OFFICIAL: { text: "官方", color: "blue" },
   COMMUNITY: { text: "社区", color: "green" },
   CUSTOM: { text: "自定义", color: "orange" },
@@ -38,15 +45,15 @@ export const SourceMap: Record<string, string> = {
   HIGRESS: "Higress",
   NACOS: "Nacos",
   APIG_API: "API网关",
-  ADP_AI_GATEWAY: "专有云AI网关"
+  ADP_AI_GATEWAY: "专有云AI网关",
 };
 
 // 类型映射
 export const ProductTypeMap: Record<string, string> = {
-  REST_API: 'REST API',
-  MCP_SERVER: 'MCP Server',
-  AGENT_API: 'Agent API',
-  MODEL_API: 'Model API',
+  REST_API: "REST API",
+  MCP_SERVER: "MCP Server",
+  AGENT_API: "Agent API",
+  MODEL_API: "Model API",
 };
 
 // 获取状态信息
@@ -92,4 +99,4 @@ export const getSubscriptionStatusText = (status: string) => {
 // 获取订阅状态颜色
 export const getSubscriptionStatusColor = (status: string) => {
   return getSubscriptionStatusInfo(status).color;
-}; 
+};

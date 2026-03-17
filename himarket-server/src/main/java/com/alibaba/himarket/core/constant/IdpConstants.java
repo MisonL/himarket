@@ -192,4 +192,14 @@ public class IdpConstants {
      * Default CAS proxy path
      */
     public static final String CAS_PROXY_PATH = "/proxy";
+
+    /**
+     * Default authentication expiration (24 hours in milliseconds)
+     */
+    public static final long DEFAULT_EXPIRATION_MILLIS = 24 * 60 * 60 * 1000L;
+
+    /**
+     * Seconds in a full day (24 hours)
+     */
+    public static final long SECONDS_PER_DAY = 24 * 60 * 60L;
 }

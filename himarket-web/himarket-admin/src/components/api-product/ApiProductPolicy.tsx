@@ -1,21 +1,39 @@
-import { Card, Button, Table, Tag, Space, Modal, Form, Input, Select, Switch, message } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined, SettingOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
-import { useState } from 'react'
-import type { ApiProduct } from '@/types/api-product';
-import { formatDateTime } from '@/lib/utils'
+import {
+  Card,
+  Button,
+  Table,
+  Tag,
+  Space,
+  Modal,
+  Form,
+  Input,
+  Select,
+  Switch,
+  message,
+} from "antd";
+import {
+  PlusOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  SettingOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
+import { useState } from "react";
+import type { ApiProduct } from "@/types/api-product";
+import { formatDateTime } from "@/lib/utils";
 
 interface ApiProductPolicyProps {
-  apiProduct: ApiProduct
+  apiProduct: ApiProduct;
 }
 
 interface Policy {
-  id: string
-  name: string
-  type: string
-  status: string
-  description: string
-  createdAt: string
-  config: any
+  id: string;
+  name: string;
+  type: string;
+  status: string;
+  description: string;
+  createdAt: string;
+  config: any;
 }
 
 const mockPolicies: Policy[] = [
@@ -28,8 +46,8 @@ const mockPolicies: Policy[] = [
     createdAt: "2025-01-01T10:00:00Z",
     config: {
       minute: 100,
-      hour: 1000
-    }
+      hour: 1000,
+    },
   },
   {
     id: "2",
@@ -40,8 +58,8 @@ const mockPolicies: Policy[] = [
     createdAt: "2025-01-02T11:00:00Z",
     config: {
       key_names: ["apikey"],
-      hide_credentials: true
-    }
+      hide_credentials: true,
+    },
   },
   {
     id: "3",
@@ -52,73 +70,77 @@ const mockPolicies: Policy[] = [
     createdAt: "2025-01-03T12:00:00Z",
     config: {
       origins: ["*"],
-      methods: ["GET", "POST", "PUT", "DELETE"]
-    }
-  }
-]
+      methods: ["GET", "POST", "PUT", "DELETE"],
+    },
+  },
+];
 
-export function ApiProductPolicy({ }: ApiProductPolicyProps) {
-  const [policies, setPolicies] = useState<Policy[]>(mockPolicies)
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null)
-  const [form] = Form.useForm()
+export function ApiProductPolicy({}: ApiProductPolicyProps) {
+  const [policies, setPolicies] = useState<Policy[]>(mockPolicies);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [form] = Form.useForm();
 
   const columns = [
     {
-      title: '策略名称',
-      dataIndex: 'name',
-      key: 'name',
+      title: "策略名称",
+      dataIndex: "name",
+      key: "name",
     },
     {
-      title: '类型',
-      dataIndex: 'type',
-      key: 'type',
+      title: "类型",
+      dataIndex: "type",
+      key: "type",
       render: (type: string) => {
         const typeMap: { [key: string]: string } = {
-          'rate-limiting': '限流',
-          'key-auth': '认证',
-          'cors': 'CORS',
-          'acl': '访问控制'
-        }
-        return <Tag color="blue">{typeMap[type] || type}</Tag>
-      }
+          "rate-limiting": "限流",
+          "key-auth": "认证",
+          cors: "CORS",
+          acl: "访问控制",
+        };
+        return <Tag color="blue">{typeMap[type] || type}</Tag>;
+      },
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
+      title: "状态",
+      dataIndex: "status",
+      key: "status",
       render: (status: string) => (
-        <Tag color={status === 'enabled' ? 'green' : 'red'}>
-          {status === 'enabled' ? '启用' : '禁用'}
+        <Tag color={status === "enabled" ? "green" : "red"}>
+          {status === "enabled" ? "启用" : "禁用"}
         </Tag>
-      )
+      ),
     },
     {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
+      title: "描述",
+      dataIndex: "description",
+      key: "description",
       ellipsis: true,
     },
     {
-      title: '创建时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: (date: string) => formatDateTime(date)
+      title: "创建时间",
+      dataIndex: "createdAt",
+      key: "createdAt",
+      render: (date: string) => formatDateTime(date),
     },
     {
-      title: '操作',
-      key: 'action',
+      title: "操作",
+      key: "action",
       render: (_: any, record: Policy) => (
         <Space size="middle">
           <Button type="link" icon={<SettingOutlined />}>
             配置
           </Button>
-          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+          <Button
+            type="link"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
             编辑
           </Button>
-          <Button 
-            type="link" 
-            danger 
+          <Button
+            type="link"
+            danger
             icon={<DeleteOutlined />}
             onClick={() => handleDelete(record.id, record.name)}
           >
@@ -127,48 +149,48 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
         </Space>
       ),
     },
-  ]
+  ];
 
   const handleAdd = () => {
-    setEditingPolicy(null)
-    setIsModalVisible(true)
-  }
+    setEditingPolicy(null);
+    setIsModalVisible(true);
+  };
 
   const handleEdit = (policy: Policy) => {
-    setEditingPolicy(policy)
+    setEditingPolicy(policy);
     form.setFieldsValue({
       name: policy.name,
       type: policy.type,
       description: policy.description,
-      status: policy.status
-    })
-    setIsModalVisible(true)
-  }
+      status: policy.status,
+    });
+    setIsModalVisible(true);
+  };
 
   const handleDelete = (id: string, policyName: string) => {
     Modal.confirm({
-      title: '确认删除',
+      title: "确认删除",
       icon: <ExclamationCircleOutlined />,
       content: `确定要删除策略 "${policyName}" 吗？此操作不可恢复。`,
-      okText: '确认删除',
-      okType: 'danger',
-      cancelText: '取消',
+      okText: "确认删除",
+      okType: "danger",
+      cancelText: "取消",
       onOk() {
-        setPolicies(policies.filter(policy => policy.id !== id))
-        message.success('策略删除成功')
+        setPolicies(policies.filter(policy => policy.id !== id));
+        message.success("策略删除成功");
       },
-    })
-  }
+    });
+  };
 
   const handleModalOk = () => {
-    form.validateFields().then((values) => {
+    form.validateFields().then(values => {
       if (editingPolicy) {
         // 编辑现有策略
-        setPolicies(policies.map(policy => 
-          policy.id === editingPolicy.id 
-            ? { ...policy, ...values }
-            : policy
-        ))
+        setPolicies(
+          policies.map(policy =>
+            policy.id === editingPolicy.id ? { ...policy, ...values } : policy
+          )
+        );
       } else {
         // 添加新策略
         const newPolicy: Policy = {
@@ -178,21 +200,21 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
           status: values.status,
           description: values.description,
           createdAt: new Date().toISOString(),
-          config: {}
-        }
-        setPolicies([...policies, newPolicy])
+          config: {},
+        };
+        setPolicies([...policies, newPolicy]);
       }
-      setIsModalVisible(false)
-      form.resetFields()
-      setEditingPolicy(null)
-    })
-  }
+      setIsModalVisible(false);
+      form.resetFields();
+      setEditingPolicy(null);
+    });
+  };
 
   const handleModalCancel = () => {
-    setIsModalVisible(false)
-    form.resetFields()
-    setEditingPolicy(null)
-  }
+    setIsModalVisible(false);
+    form.resetFields();
+    setEditingPolicy(null);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -207,8 +229,8 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
       </div>
 
       <Card>
-        <Table 
-          columns={columns} 
+        <Table
+          columns={columns}
           dataSource={policies}
           rowKey="id"
           pagination={false}
@@ -244,14 +266,14 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
           <Form.Item
             name="name"
             label="策略名称"
-            rules={[{ required: true, message: '请输入策略名称' }]}
+            rules={[{ required: true, message: "请输入策略名称" }]}
           >
             <Input placeholder="请输入策略名称" />
           </Form.Item>
           <Form.Item
             name="type"
             label="策略类型"
-            rules={[{ required: true, message: '请选择策略类型' }]}
+            rules={[{ required: true, message: "请选择策略类型" }]}
           >
             <Select placeholder="请选择策略类型">
               <Select.Option value="rate-limiting">限流</Select.Option>
@@ -263,14 +285,14 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
           <Form.Item
             name="description"
             label="描述"
-            rules={[{ required: true, message: '请输入策略描述' }]}
+            rules={[{ required: true, message: "请输入策略描述" }]}
           >
             <Input.TextArea placeholder="请输入策略描述" rows={3} />
           </Form.Item>
           <Form.Item
             name="status"
             label="状态"
-            rules={[{ required: true, message: '请选择状态' }]}
+            rules={[{ required: true, message: "请选择状态" }]}
           >
             <Select placeholder="请选择状态">
               <Select.Option value="enabled">启用</Select.Option>
@@ -280,5 +302,5 @@ export function ApiProductPolicy({ }: ApiProductPolicyProps) {
         </Form>
       </Modal>
     </div>
-  )
-} 
+  );
+}

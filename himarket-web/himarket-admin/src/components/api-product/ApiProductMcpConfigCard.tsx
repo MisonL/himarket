@@ -1,38 +1,38 @@
-import { Button, Card, Collapse, Row, Col, Select, Tabs } from 'antd'
-import { CopyOutlined } from '@ant-design/icons'
-import type { ApiProduct } from '@/types/api-product'
+import { Button, Card, Collapse, Row, Col, Select, Tabs } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import type { ApiProduct } from "@/types/api-product";
 
 interface DomainOption {
-  value: number
-  label: string
+  value: number;
+  label: string;
 }
 
 interface ToolArgument {
-  name: string
-  description: string
-  type: string
-  required: boolean
-  position: string
-  default?: string
-  enum?: string[]
+  name: string;
+  description: string;
+  type: string;
+  required: boolean;
+  position: string;
+  default?: string;
+  enum?: string[];
 }
 
 interface ParsedTool {
-  name: string
-  description: string
-  args?: ToolArgument[]
+  name: string;
+  description: string;
+  args?: ToolArgument[];
 }
 
 interface ApiProductMcpConfigCardProps {
-  apiProduct: ApiProduct
-  domainOptions: DomainOption[]
-  httpJson: string
-  localJson: string
-  onCopy: (text: string) => void
-  onDomainChange: (value: number) => void
-  parsedTools: ParsedTool[]
-  selectedDomainIndex: number
-  sseJson: string
+  apiProduct: ApiProduct;
+  domainOptions: DomainOption[];
+  httpJson: string;
+  localJson: string;
+  onCopy: (text: string) => void;
+  onDomainChange: (value: number) => void;
+  parsedTools: ParsedTool[];
+  selectedDomainIndex: number;
+  sseJson: string;
 }
 
 function renderConfigPanel(text: string, onCopy: (text: string) => void) {
@@ -48,7 +48,7 @@ function renderConfigPanel(text: string, onCopy: (text: string) => void) {
         <pre className="whitespace-pre">{text}</pre>
       </div>
     </div>
-  )
+  );
 }
 
 function buildConnectionTabs(
@@ -57,34 +57,34 @@ function buildConnectionTabs(
   httpJson: string,
   onCopy: (text: string) => void
 ) {
-  const tabs = []
+  const tabs = [];
 
   if (localJson) {
     tabs.push({
-      key: 'local',
-      label: 'Stdio',
+      key: "local",
+      label: "Stdio",
       children: renderConfigPanel(localJson, onCopy),
-    })
-    return tabs
+    });
+    return tabs;
   }
 
   if (sseJson) {
     tabs.push({
-      key: 'sse',
-      label: 'SSE',
+      key: "sse",
+      label: "SSE",
       children: renderConfigPanel(sseJson, onCopy),
-    })
+    });
   }
 
   if (httpJson) {
     tabs.push({
-      key: 'http',
-      label: 'Streamable HTTP',
+      key: "http",
+      label: "Streamable HTTP",
       children: renderConfigPanel(httpJson, onCopy),
-    })
+    });
   }
 
-  return tabs
+  return tabs;
 }
 
 export function ApiProductMcpConfigCard({
@@ -107,7 +107,7 @@ export function ApiProductMcpConfigCard({
               defaultActiveKey="tools"
               items={[
                 {
-                  key: 'tools',
+                  key: "tools",
                   label: `Tools (${parsedTools.length})`,
                   children:
                     parsedTools.length > 0 ? (
@@ -117,8 +117,8 @@ export function ApiProductMcpConfigCard({
                             key={idx}
                             className={
                               idx < parsedTools.length - 1
-                                ? 'border-b border-gray-200'
-                                : ''
+                                ? "border-b border-gray-200"
+                                : ""
                             }
                           >
                             <Collapse
@@ -167,15 +167,20 @@ export function ApiProductMcpConfigCard({
                                                 className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"
                                                 defaultValue={
                                                   arg.default !== undefined
-                                                    ? JSON.stringify(arg.default)
-                                                    : ''
+                                                    ? JSON.stringify(
+                                                        arg.default
+                                                      )
+                                                    : ""
                                                 }
                                               />
                                               {arg.enum ? (
                                                 <div className="text-xs text-gray-500">
-                                                  可选值:{' '}
+                                                  可选值:{" "}
                                                   {arg.enum.map(value => (
-                                                    <code key={value} className="mr-1">
+                                                    <code
+                                                      key={value}
+                                                      className="mr-1"
+                                                    >
                                                       {value}
                                                     </code>
                                                   ))}
@@ -225,12 +230,15 @@ export function ApiProductMcpConfigCard({
                         size="middle"
                         variant="borderless"
                         style={{
-                          fontSize: '12px',
-                          height: '100%',
+                          fontSize: "12px",
+                          height: "100%",
                         }}
                       >
                         {domainOptions.map(option => (
-                          <Select.Option key={option.value} value={option.value}>
+                          <Select.Option
+                            key={option.value}
+                            value={option.value}
+                          >
                             <span
                               title={option.label}
                               className="text-xs text-gray-900 font-mono"
@@ -247,13 +255,20 @@ export function ApiProductMcpConfigCard({
 
               <Tabs
                 size="small"
-                defaultActiveKey={localJson ? 'local' : sseJson ? 'sse' : 'http'}
-                items={buildConnectionTabs(localJson, sseJson, httpJson, onCopy)}
+                defaultActiveKey={
+                  localJson ? "local" : sseJson ? "sse" : "http"
+                }
+                items={buildConnectionTabs(
+                  localJson,
+                  sseJson,
+                  httpJson,
+                  onCopy
+                )}
               />
             </div>
           </Card>
         </Col>
       </Row>
     </Card>
-  )
+  );
 }

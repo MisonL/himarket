@@ -10,22 +10,23 @@ function HomeMCPCard() {
       <div
         className="absolute w-full h-full z-[1] animate-[fadeIn_0.8s_ease-out_0.2s_both]"
         style={{
-          background: "linear-gradient(324deg, #C6D1FF 0%, #E1E7FF 21%, #FFFFFF 100%)",
+          background:
+            "linear-gradient(324deg, #C6D1FF 0%, #E1E7FF 21%, #FFFFFF 100%)",
         }}
       />
       <div className="h-full relative z-[3] flex flex-col justify-between p-6">
         <div className="flex flex-col gap-4">
-          <div className="font-medium animate-[fadeInLeft_0.6s_ease-out_0.3s_both]">MCP 市场</div>
+          <div className="font-medium animate-[fadeInLeft_0.6s_ease-out_0.3s_both]">
+            MCP 市场
+          </div>
           <div className="flex pl-3">
-            {[
-              "⏰", "🌦️", "🌏", "💱",
-            ].map((emoji, index) => (
+            {["⏰", "🌦️", "🌏", "💱"].map((emoji, index) => (
               <Circle
                 className="w-12 h-12 text-[20px] animate-[fadeInScale_0.5s_ease-out_both] group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300"
                 key={emoji}
                 style={{
                   marginLeft: -12,
-                  animationDelay: `${0.4 + index * 0.08}s`
+                  animationDelay: `${0.4 + index * 0.08}s`,
                 }}
               >
                 {emoji}
@@ -34,7 +35,7 @@ function HomeMCPCard() {
             <img
               style={{
                 marginLeft: -12,
-                animationDelay: '0.72s'
+                animationDelay: "0.72s",
               }}
               src={More}
               className="animate-[fadeInScale_0.5s_ease-out_both] group-hover:scale-110 group-hover:-translate-y-1 transition-all duration-300"
@@ -48,7 +49,8 @@ function HomeMCPCard() {
             data={{
               icon: "⏰",
               name: "Time",
-              description: "Time 是一个提供时间和时区转换功能的 MCP 服务，使 LLM 能够获取当前时间信息并使用 IANA 时区名称执行时区转换，自动检测系统时区。"
+              description:
+                "Time 是一个提供时间和时区转换功能的 MCP 服务，使 LLM 能够获取当前时间信息并使用 IANA 时区名称执行时区转换，自动检测系统时区。",
             }}
           />
         </div>
@@ -59,7 +61,7 @@ function HomeMCPCard() {
             data={{
               icon: "💱",
               name: "Exchange Rate Query",
-              description: "支持查询中国十大银行的外汇牌价，以及汇率查询"
+              description: "支持查询中国十大银行的外汇牌价，以及汇率查询",
             }}
           />
         </div>
@@ -73,7 +75,7 @@ function HomeMCPCard() {
         </div>
       </div>
     </CommonCard>
-  )
+  );
 }
 
 function ProductCard(props: {
@@ -83,7 +85,7 @@ function ProductCard(props: {
     name: string;
     description: string;
     icon: string;
-  }
+  };
 }) {
   const { data, isAdded, isSubscribed } = props;
   return (
@@ -101,18 +103,19 @@ function ProductCard(props: {
     >
       {/* 上部：Logo、名称和状态 */}
       <div className="flex gap-3 items-start">
-        <div className="w-14 h-14 text-[40px]">
-          {data.icon}
-        </div>
+        <div className="w-14 h-14 text-[40px]">{data.icon}</div>
         <div className="flex w-full h-full justify-between">
           <div className="flex h-full flex-col justify-between">
             <h3 className="font-medium text-base  truncate">{data.name}</h3>
             <div>
-              <span className={`text-xs px-2 py-1 rounded-lg ${isSubscribed
-                ? 'bg-colorPrimaryBgHover text-colorPrimary'
-                : 'bg-gray-100 text-gray-600'
-                }`}>
-                {isSubscribed ? '已订阅' : '未订阅'}
+              <span
+                className={`text-xs px-2 py-1 rounded-lg ${
+                  isSubscribed
+                    ? "bg-colorPrimaryBgHover text-colorPrimary"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {isSubscribed ? "已订阅" : "未订阅"}
               </span>
             </div>
           </div>
@@ -122,31 +125,24 @@ function ProductCard(props: {
       {/* 中部：描述 */}
       <div className="flex-1 overflow-hidden">
         <p className="text-sm text-colorTextSecondaryCustom line-clamp-2">
-          {data.description || '暂无描述'}
+          {data.description || "暂无描述"}
         </p>
       </div>
 
       {/* 下部：按钮区域 */}
       <div className="flex gap-2">
         {isSubscribed ? (
-          <Button
-            type={isAdded ? "default" : "primary"}
-            block
-          >
-            {isAdded ? '取消添加' : '添加'}
+          <Button type={isAdded ? "default" : "primary"} block>
+            {isAdded ? "取消添加" : "添加"}
           </Button>
         ) : (
           <div className="flex gap-2 justify-between w-full">
-            <Button
-              className="flex-1"
-            >
-              快速订阅
-            </Button>
+            <Button className="flex-1">快速订阅</Button>
           </div>
         )}
       </div>
-    </div >
-  )
+    </div>
+  );
 }
 
-export default HomeMCPCard
+export default HomeMCPCard;

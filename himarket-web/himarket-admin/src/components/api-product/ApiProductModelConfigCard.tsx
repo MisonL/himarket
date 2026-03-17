@@ -1,96 +1,100 @@
-import { Button, Card, Collapse, Select } from 'antd'
-import { CopyOutlined } from '@ant-design/icons'
-import { formatDomainWithPort } from '@/lib/utils'
+import { Button, Card, Collapse, Select } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import { formatDomainWithPort } from "@/lib/utils";
 
 interface ApiProductModelConfigCardProps {
-  modelAPIConfig: any
-  onCopy: (text: string) => void
-  selectedDomainIndex: number
-  onDomainChange: (value: number) => void
+  modelAPIConfig: any;
+  onCopy: (text: string) => void;
+  selectedDomainIndex: number;
+  onDomainChange: (value: number) => void;
 }
 
 function getMatchTypePrefix(matchType: string) {
   switch (matchType) {
-    case 'Exact':
-      return '等于'
-    case 'Prefix':
-      return '前缀是'
-    case 'Regex':
-      return '正则是'
+    case "Exact":
+      return "等于";
+    case "Prefix":
+      return "前缀是";
+    case "Regex":
+      return "正则是";
     default:
-      return '等于'
+      return "等于";
   }
 }
 
 function getModelCategoryText(category: string) {
   switch (category) {
-    case 'Text':
-      return '文本生成'
-    case 'Image':
-      return '图片生成'
-    case 'Video':
-      return '视频生成'
-    case 'Audio':
-      return '语音合成'
-    case 'Embedding':
-      return '向量化（Embedding）'
-    case 'Rerank':
-      return '文本排序（Rerank）'
-    case 'Others':
-      return '其他'
+    case "Text":
+      return "文本生成";
+    case "Image":
+      return "图片生成";
+    case "Video":
+      return "视频生成";
+    case "Audio":
+      return "语音合成";
+    case "Embedding":
+      return "向量化（Embedding）";
+    case "Rerank":
+      return "文本排序（Rerank）";
+    case "Others":
+      return "其他";
     default:
-      return category || '未知'
+      return category || "未知";
   }
 }
 
 function getUniqueDomains(routes: any[]) {
-  const domainsMap = new Map<string, { domain: string; port?: number; protocol: string }>()
+  const domainsMap = new Map<
+    string,
+    { domain: string; port?: number; protocol: string }
+  >();
   routes.forEach(route => {
     if (route.domains && route.domains.length > 0) {
       route.domains.forEach((domain: any) => {
-        const key = `${domain.protocol}://${domain.domain}${domain.port ? `:${domain.port}` : ''}`
-        domainsMap.set(key, domain)
-      })
+        const key = `${domain.protocol}://${domain.domain}${domain.port ? `:${domain.port}` : ""}`;
+        domainsMap.set(key, domain);
+      });
     }
-  })
-  return Array.from(domainsMap.values())
+  });
+  return Array.from(domainsMap.values());
 }
 
 function getRouteUrl(route: any, domains: any[], domainIndex: number) {
   if (domains.length > domainIndex) {
-    const selectedDomain = domains[domainIndex]
+    const selectedDomain = domains[domainIndex];
     const formattedDomain = formatDomainWithPort(
       selectedDomain.domain,
       selectedDomain.port,
       selectedDomain.protocol
-    )
-    const path = route.match?.path?.value || '/'
-    return `${selectedDomain.protocol.toLowerCase()}://${formattedDomain}${path}`
+    );
+    const path = route.match?.path?.value || "/";
+    return `${selectedDomain.protocol.toLowerCase()}://${formattedDomain}${path}`;
   }
   if (route.domains && route.domains.length > 0) {
-    const domain = route.domains[0]
+    const domain = route.domains[0];
     const formattedDomain = formatDomainWithPort(
       domain.domain,
       domain.port,
       domain.protocol
-    )
-    const path = route.match?.path?.value || '/'
-    return `${domain.protocol.toLowerCase()}://${formattedDomain}${path}`
+    );
+    const path = route.match?.path?.value || "/";
+    return `${domain.protocol.toLowerCase()}://${formattedDomain}${path}`;
   }
-  return ''
+  return "";
 }
 
 function getRouteLabel(route: any, domains: any[], domainIndex: number) {
   if (!route.match) {
-    return 'Unknown Route'
+    return "Unknown Route";
   }
-  const path = route.match.path?.value || '/'
-  const pathType = route.match.path?.type
-  const suffix = pathType === 'Prefix' ? '*' : pathType === 'Regex' ? '~' : ''
-  const description = route.description && route.description.trim()
-    ? ` - ${route.description}`
-    : ''
-  return `${getRouteUrl(route, domains, domainIndex)}${suffix}${description}`
+  const path = route.match.path?.value || "/";
+  const pathType = route.match.path?.type;
+  const suffix = pathType === "Prefix" ? "*" : pathType === "Regex" ? "~" : "";
+  const description =
+    route.description && route.description.trim()
+      ? ` - ${route.description}`
+      : "";
+  return `${getRouteUrl(route, domains, domainIndex)}${suffix}${description}`;
 }
 
 export function ApiProductModelConfigCard({
@@ -99,16 +103,20 @@ export function ApiProductModelConfigCard({
   selectedDomainIndex,
   onDomainChange,
 }: ApiProductModelConfigCardProps) {
-  const routes = modelAPIConfig.routes || []
-  const protocols = modelAPIConfig.aiProtocols || []
-  const domains = getUniqueDomains(routes)
+  const routes = modelAPIConfig.routes || [];
+  const protocols = modelAPIConfig.aiProtocols || [];
+  const domains = getUniqueDomains(routes);
   const domainOptions = domains.map((domain, index) => {
-    const formattedDomain = formatDomainWithPort(domain.domain, domain.port, domain.protocol)
+    const formattedDomain = formatDomainWithPort(
+      domain.domain,
+      domain.port,
+      domain.protocol
+    );
     return {
       value: index,
       label: `${domain.protocol.toLowerCase()}://${formattedDomain}`,
-    }
-  })
+    };
+  });
 
   return (
     <Card title="配置详情">
@@ -124,7 +132,7 @@ export function ApiProductModelConfigCard({
 
         <div className="text-sm">
           <span className="text-gray-700">协议: </span>
-          <span className="font-medium">{protocols.join(', ')}</span>
+          <span className="font-medium">{protocols.join(", ")}</span>
         </div>
 
         {routes.length > 0 ? (
@@ -144,7 +152,7 @@ export function ApiProductModelConfigCard({
                       placeholder="选择域名"
                       size="middle"
                       bordered={false}
-                      style={{ fontSize: '12px', height: '100%' }}
+                      style={{ fontSize: "12px", height: "100%" }}
                     >
                       {domainOptions.map(option => (
                         <Select.Option key={option.value} value={option.value}>
@@ -176,9 +184,11 @@ export function ApiProductModelConfigCard({
                             ) : null}
                           </div>
                           <div className="text-xs text-gray-500">
-                            方法:{' '}
+                            方法:{" "}
                             <span className="font-medium text-gray-700">
-                              {route.match?.methods ? route.match.methods.join(', ') : 'ANY'}
+                              {route.match?.methods
+                                ? route.match.methods.join(", ")
+                                : "ANY"}
                             </span>
                           </div>
                         </div>
@@ -186,8 +196,10 @@ export function ApiProductModelConfigCard({
                           size="small"
                           type="text"
                           onClick={e => {
-                            e.stopPropagation()
-                            onCopy(getRouteUrl(route, domains, selectedDomainIndex))
+                            e.stopPropagation();
+                            onCopy(
+                              getRouteUrl(route, domains, selectedDomainIndex)
+                            );
                           }}
                         >
                           <CopyOutlined />
@@ -196,7 +208,9 @@ export function ApiProductModelConfigCard({
                     }
                     style={{
                       borderBottom:
-                        index < routes.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        index < routes.length - 1
+                          ? "1px solid #e5e7eb"
+                          : "none",
                     }}
                   >
                     <div className="pl-4 space-y-3">
@@ -204,13 +218,17 @@ export function ApiProductModelConfigCard({
                         <div>
                           <div className="text-xs text-gray-500">路径:</div>
                           <div className="font-mono">
-                            {getMatchTypePrefix(route.match?.path?.type)}{' '}
+                            {getMatchTypePrefix(route.match?.path?.type)}{" "}
                             {route.match?.path?.value}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">方法:</div>
-                          <div>{route.match?.methods ? route.match.methods.join(', ') : 'ANY'}</div>
+                          <div>
+                            {route.match?.methods
+                              ? route.match.methods.join(", ")
+                              : "ANY"}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -222,5 +240,5 @@ export function ApiProductModelConfigCard({
         ) : null}
       </div>
     </Card>
-  )
+  );
 }

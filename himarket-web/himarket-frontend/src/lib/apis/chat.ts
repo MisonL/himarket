@@ -24,7 +24,7 @@ export interface IAttachment {
   size: number;
 }
 
-export interface IAttachmentUploadResp extends IAttachment { }
+export interface IAttachmentUploadResp extends IAttachment {}
 
 export interface IChatMessage {
   productId: string;

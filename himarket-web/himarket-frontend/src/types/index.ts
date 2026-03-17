@@ -1,11 +1,10 @@
-
 // 与 Admin 端保持一致的 API 产品配置接口
 export interface ApiProductConfig {
   spec: string;
   meta: {
     source: string;
     type: string;
-  }
+  };
 }
 
 export interface ApiProductMcpConfig {
@@ -17,7 +16,7 @@ export interface ApiProductMcpConfig {
     mcpServerConfig: Record<string, unknown>;
     fromType: string;
     protocol?: string;
-  }
+  };
   mcpServerConfig: {
     path: string;
     domains: {
@@ -25,13 +24,14 @@ export interface ApiProductMcpConfig {
       protocol: string;
     }[];
     rawConfig?: unknown;
-  }
+  };
 }
 
 export interface ApiProductAgentConfig {
   agentAPIConfig: {
-    agentProtocols: string[];  // 协议列表，包含 "a2a" 时使用 agentCard
-    routes?: Array<{           // HTTP 路由（非 A2A 协议使用）
+    agentProtocols: string[]; // 协议列表，包含 "a2a" 时使用 agentCard
+    routes?: Array<{
+      // HTTP 路由（非 A2A 协议使用）
       domains: Array<{
         domain: string;
         protocol: string;
@@ -55,7 +55,8 @@ export interface ApiProductAgentConfig {
         }> | null;
       };
     }>;
-    agentCard?: {              // Agent Card 信息（A2A 协议）
+    agentCard?: {
+      // Agent Card 信息（A2A 协议）
       name: string;
       version: string;
       description?: string;
@@ -72,16 +73,18 @@ export interface ApiProductAgentConfig {
         streaming?: boolean;
         [key: string]: unknown;
       };
-      additionalInterfaces?: Array<{  // 附加接口信息（注意：复数形式）
-        transport: string;  // 传输协议（HTTP/gRPC/JSONRPC）
+      additionalInterfaces?: Array<{
+        // 附加接口信息（注意：复数形式）
+        transport: string; // 传输协议（HTTP/gRPC/JSONRPC）
         url: string;
         [key: string]: unknown;
       }>;
-      [key: string]: unknown;      // 支持其他扩展字段
+      [key: string]: unknown; // 支持其他扩展字段
     };
   };
-  meta?: {                     // 元数据信息
-    source?: string;           // 来源：NACOS / APIG_AI / HIGRESS 等
+  meta?: {
+    // 元数据信息
+    source?: string; // 来源：NACOS / APIG_AI / HIGRESS 等
   };
 }
 
@@ -121,9 +124,9 @@ export interface ApiProduct {
   productId: string;
   name: string;
   description: string;
-  type: 'REST_API' | 'MCP_SERVER' | 'AGENT_API' | 'MODEL_API';
+  type: "REST_API" | "MCP_SERVER" | "AGENT_API" | "MODEL_API";
   category: string;
-  status: 'PENDING' | 'READY' | 'PUBLISHED' | string;
+  status: "PENDING" | "READY" | "PUBLISHED" | string;
   createAt: string;
   createdAt?: string; // 兼容字段
   enableConsumerAuth?: boolean;
@@ -140,19 +143,19 @@ export interface ApiProduct {
 }
 
 export const ProductType = {
-  REST_API: 'REST_API',
-  MCP_SERVER: 'MCP_SERVER',
-  AGENT_API: 'AGENT_API',
-  MODEL_API: 'MODEL_API',
+  REST_API: "REST_API",
+  MCP_SERVER: "MCP_SERVER",
+  AGENT_API: "AGENT_API",
+  MODEL_API: "MODEL_API",
 } as const;
-export type ProductType = typeof ProductType[keyof typeof ProductType];
+export type ProductType = (typeof ProductType)[keyof typeof ProductType];
 
 // 产品状态枚举
 export const ProductStatus = {
-  ENABLE: 'ENABLE',
-  DISABLE: 'DISABLE',
+  ENABLE: "ENABLE",
+  DISABLE: "DISABLE",
 } as const;
-export type ProductStatus = typeof ProductStatus[keyof typeof ProductStatus];
+export type ProductStatus = (typeof ProductStatus)[keyof typeof ProductStatus];
 
 // 产品类别接口
 export interface ProductCategoryData {
@@ -164,11 +167,12 @@ export interface ProductCategoryData {
 
 // 产品分类
 export const ProductCategory = {
-  OFFICIAL: 'official',
-  COMMUNITY: 'community',
-  CUSTOM: 'custom',
+  OFFICIAL: "official",
+  COMMUNITY: "community",
+  CUSTOM: "custom",
 } as const;
-export type ProductCategory = typeof ProductCategory[keyof typeof ProductCategory];
+export type ProductCategory =
+  (typeof ProductCategory)[keyof typeof ProductCategory];
 
 // 基础产品接口
 export interface BaseProduct {
@@ -206,24 +210,28 @@ export interface McpServerProduct extends BaseProduct {
 
 // Agent API 产品
 export interface AgentApiProduct extends BaseProduct {
-  type: 'AGENT_API';
+  type: "AGENT_API";
   agentConfig?: ApiProductAgentConfig;
   enabled?: boolean;
 }
 
 // Model API 产品
 export interface ModelApiProduct extends BaseProduct {
-  type: 'MODEL_API';
+  type: "MODEL_API";
   modelConfig?: ApiProductModelConfig;
   enabled?: boolean;
 }
 
 // 联合类型
-export type Product = RestApiProduct | McpServerProduct | AgentApiProduct | ModelApiProduct;
+export type Product =
+  | RestApiProduct
+  | McpServerProduct
+  | AgentApiProduct
+  | ModelApiProduct;
 
 // 产品图标类型（与 Admin 端保持一致）
 export interface ProductIcon {
-  type: 'URL' | 'BASE64';
+  type: "URL" | "BASE64";
   value: string;
 }
 
@@ -295,7 +303,6 @@ export interface McpConfig {
   };
 }
 
-
 export interface IMessageVersion {
   content: string;
   firstTokenTime?: number;
@@ -337,14 +344,14 @@ export interface IMcpToolResponse {
 }
 
 // 消息片段类型 - 用于按顺序展示消息内容和工具调用
-export type MessageChunkType = 'text' | 'tool_call' | 'tool_result';
+export type MessageChunkType = "text" | "tool_call" | "tool_result";
 
 // 消息片段 - 按 SSE 事件顺序存储
 export interface IMessageChunk {
   id: string;
   type: MessageChunkType;
-  content?: string;              // text 类型使用
-  toolCall?: IMcpToolCall;       // tool_call 类型使用
+  content?: string; // text 类型使用
+  toolCall?: IMcpToolCall; // tool_call 类型使用
   toolResult?: IMcpToolResponse; // tool_result 类型使用
 }
 
@@ -365,7 +372,7 @@ export interface IModelConversation {
       }>;
       mcpToolCalls?: IMcpToolCall[];
       mcpToolResponses?: IMcpToolResponse[];
-      messageChunks?: IMessageChunk[];  // 按顺序的消息片段
+      messageChunks?: IMessageChunk[]; // 按顺序的消息片段
       isNewQuestion?: boolean;
       answers: {
         errorMsg: string;
@@ -374,7 +381,7 @@ export interface IModelConversation {
         totalTime: number;
         inputTokens: number;
         outputTokens: number;
-      }[]
-    }[]
-  }[]
+      }[];
+    }[];
+  }[];
 }

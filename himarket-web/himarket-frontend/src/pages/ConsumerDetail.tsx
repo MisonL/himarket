@@ -9,15 +9,14 @@ import "../styles/table.css";
 import APIs, { type IConsumer, type ISubscription } from "../lib/apis";
 import api from "../lib/api";
 
-
 function ConsumerDetailPage() {
   const { consumerId } = useParams();
   const navigate = useNavigate();
   const [subscriptionsLoading, setSubscriptionsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [consumer, setConsumer] = useState<IConsumer>();
   const [subscriptions, setSubscriptions] = useState<ISubscription[]>([]);
-  const [activeTab, setActiveTab] = useState('basic');
+  const [activeTab, setActiveTab] = useState("basic");
   const [refreshIndex, setRefreshIndex] = useState(0);
 
   const fetchSubscriptions = async (consumerId: string) => {
@@ -30,7 +29,7 @@ function ConsumerDetailPage() {
         setSubscriptions(subscriptionsData);
       }
     } catch (error) {
-      console.error('获取订阅列表失败:', error);
+      console.error("获取订阅列表失败:", error);
     } finally {
       setSubscriptionsLoading(false);
     }
@@ -46,8 +45,8 @@ function ConsumerDetailPage() {
           setConsumer(response.data);
         }
       } catch (error) {
-        console.error('获取消费者详情失败:', error);
-        setError('加载失败，请稍后重试');
+        console.error("获取消费者详情失败:", error);
+        setError("加载失败，请稍后重试");
       }
     };
 
@@ -60,8 +59,6 @@ function ConsumerDetailPage() {
     }
   }, [consumerId, refreshIndex]);
 
-
-
   if (error) {
     return (
       <Layout>
@@ -70,7 +67,8 @@ function ConsumerDetailPage() {
           description={error}
           type="error"
           showIcon
-          className="my-8" />
+          className="my-8"
+        />
       </Layout>
     );
   }
@@ -84,7 +82,7 @@ function ConsumerDetailPage() {
             <div className="p-6">
               <div className="flex items-center gap-3">
                 <ArrowLeftOutlined
-                  onClick={() => navigate('/consumers')}
+                  onClick={() => navigate("/consumers")}
                   className="text-sm"
                 />
                 <h1 className="text-2xl font-semibold text-gray-900">
@@ -110,7 +108,7 @@ function ConsumerDetailPage() {
                   onRefresh={() => setRefreshIndex(v => v + 1)}
                   consumerId={consumerId!}
                   subscriptions={subscriptions}
-                  onSubscriptionsChange={async (searchParams) => {
+                  onSubscriptionsChange={async searchParams => {
                     // 重新获取订阅列表
                     if (consumerId) {
                       setSubscriptionsLoading(true);
@@ -118,23 +116,29 @@ function ConsumerDetailPage() {
                         // 构建查询参数
                         const params = new URLSearchParams();
                         if (searchParams?.productName) {
-                          params.append('productName', searchParams.productName);
+                          params.append(
+                            "productName",
+                            searchParams.productName
+                          );
                         }
                         if (searchParams?.status) {
-                          params.append('status', searchParams.status);
+                          params.append("status", searchParams.status);
                         }
 
                         const queryString = params.toString();
-                        const url = `/consumers/${consumerId}/subscriptions${queryString ? `?${queryString}` : ''}`;
+                        const url = `/consumers/${consumerId}/subscriptions${queryString ? `?${queryString}` : ""}`;
 
-                        const response: ApiResponse<{ content: ISubscription[], totalElements: number }> = await api.get(url);
+                        const response: ApiResponse<{
+                          content: ISubscription[];
+                          totalElements: number;
+                        }> = await api.get(url);
                         if (response?.code === "SUCCESS" && response?.data) {
                           // 从分页数据中提取实际的订阅数组
                           const subscriptionsData = response.data.content || [];
                           setSubscriptions(subscriptionsData);
                         }
                       } catch (error) {
-                        console.error('获取订阅列表失败:', error);
+                        console.error("获取订阅列表失败:", error);
                       } finally {
                         setSubscriptionsLoading(false);
                       }

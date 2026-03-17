@@ -1,60 +1,62 @@
-import path from "path"
-import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
+import path from "path";
+import { defineConfig, loadEnv } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
-const env = loadEnv(process.env.NODE_ENV || 'development', process.cwd(), '')
-const apiPrefix = env.VITE_API_BASE_URL
-const tempApiUrl = env.VITE_TEMP_API_URL || 'http://localhost:8080'
+const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "");
+const apiPrefix = env.VITE_API_BASE_URL;
+const tempApiUrl = env.VITE_TEMP_API_URL || "http://localhost:8080";
 
 export default defineConfig({
-  plugins: [react({
-    babel: {
-      plugins: ['babel-plugin-react-compiler']
-    }
-  })],
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
   },
   server: {
-    host: '0.0.0.0',
+    host: "0.0.0.0",
     allowedHosts: true,
     port: 5173,
     proxy: {
       [apiPrefix]: {
         target: tempApiUrl,
         changeOrigin: true,
-        rewrite: (p) => p.replace(new RegExp(`^${apiPrefix}`), ''),
+        rewrite: p => p.replace(new RegExp(`^${apiPrefix}`), ""),
       },
     },
   },
-  optimizeDeps: {
-  },
+  optimizeDeps: {},
   build: {
     chunkSizeWarningLimit: 1500,
-    minify: 'terser',
+    minify: "terser",
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('swagger-ui-react')) {
-              if (id.includes('swagger-ui-es-bundle-core')) return 'vendor-swagger-core'
-              return 'vendor-swagger-ui'
+          if (id.includes("node_modules")) {
+            if (id.includes("swagger-ui-react")) {
+              if (id.includes("swagger-ui-es-bundle-core"))
+                return "vendor-swagger-core";
+              return "vendor-swagger-ui";
             }
-            if (id.includes('antd')) return 'vendor-antd'
-            if (id.includes('@ant-design/icons')) return 'vendor-antd-icons'
-            if (id.includes('react-dom')) return 'vendor-react-dom'
-            if (id.includes('lodash')) return 'vendor-lodash'
-            if (id.includes('echarts')) return 'vendor-echarts'
-            if (id.includes('zrender')) return 'vendor-zrender'
+            if (id.includes("antd")) return "vendor-antd";
+            if (id.includes("@ant-design/icons")) return "vendor-antd-icons";
+            if (id.includes("react-dom")) return "vendor-react-dom";
+            if (id.includes("lodash")) return "vendor-lodash";
+            if (id.includes("echarts")) return "vendor-echarts";
+            if (id.includes("zrender")) return "vendor-zrender";
           }
-        }
-      }
-    }
+        },
+      },
+    },
   },
   define: {
-    'process.env': {}
-  }
-})
+    "process.env": {},
+  },
+});

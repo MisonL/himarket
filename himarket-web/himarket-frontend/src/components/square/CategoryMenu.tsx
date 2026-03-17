@@ -13,7 +13,12 @@ interface CategoryMenuProps {
   loading?: boolean;
 }
 
-export function CategoryMenu({ categories, activeCategory, onSelectCategory, loading = false }: CategoryMenuProps) {
+export function CategoryMenu({
+  categories,
+  activeCategory,
+  onSelectCategory,
+  loading = false,
+}: CategoryMenuProps) {
   return (
     <div className="w-64 backdrop-blur-xl rounded-lg flex flex-col overflow-hidden">
       {loading ? (
@@ -22,7 +27,7 @@ export function CategoryMenu({ categories, activeCategory, onSelectCategory, loa
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          {categories.map((category) => {
+          {categories.map(category => {
             const isActive = category.id === activeCategory;
             return (
               <div
@@ -31,9 +36,10 @@ export function CategoryMenu({ categories, activeCategory, onSelectCategory, loa
                 className={`
                   px-4 py-2.5 rounded-lg cursor-pointer
                   transition-all duration-300 ease-in-out
-                  ${isActive
-                    ? "bg-colorPrimaryBgHover text-mainTitle shadow-md"
-                    : "text-gray-700 hover:bg-colorPrimaryBgHover text-mainTitle"
+                  ${
+                    isActive
+                      ? "bg-colorPrimaryBgHover text-mainTitle shadow-md"
+                      : "text-gray-700 hover:bg-colorPrimaryBgHover text-mainTitle"
                   }
                 `}
               >

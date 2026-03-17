@@ -3,11 +3,13 @@
 ## 已完成功能
 
 ### 1. 环境配置
+
 - ✅ 配置临时 API 地址和 Token（`.env`）
 - ✅ 更新开发环境代理配置（`vite.config.ts`）
 - ✅ API 请求拦截器自动添加 Authorization header
 
 ### 2. Square 页面（HiChat）
+
 - ✅ 从真实 API 获取模型列表（`GET /products?type=MODEL_API`）
 - ✅ 添加加载状态和错误处理
 - ✅ 点击"立即体验"跳转到 Chat 页面并传递产品信息
@@ -15,27 +17,32 @@
 ### 3. Chat 页面（聊天功能）
 
 #### 会话管理
+
 - ✅ 首次发送消息时自动创建会话（`POST /sessions`）
 - ✅ 使用问题前 20 个字符作为会话名称
 - ✅ 自动生成符合后端要求的 UUID（24位小写字母+数字）
 
 #### 消息发送
+
 - ✅ 支持流式响应（SSE）
 - ✅ 支持非流式响应（普通 JSON）
 - ✅ 正确处理 conversationId、questionId、answerIndex
 - ✅ 自动管理会话上下文（needMemory）
 
 #### 流式响应
+
 - ✅ 实时显示 AI 回复（逐字显示）
 - ✅ 处理 SSE 事件（start、chunk、complete、error）
 - ✅ 显示统计信息（总耗时、输入/输出 tokens）
 
 #### 历史记录
+
 - ✅ 加载会话的历史聊天记录（`GET /sessions/{sessionId}/conversations`）
 - ✅ 将后端数据结构转换为前端消息格式
 - ✅ 支持多轮对话历史
 
 ### 4. Sidebar（会话列表）
+
 - ✅ 从真实 API 获取会话列表（`GET /sessions`）
 - ✅ 按时间分类显示（今天、近7天、近30天）
 - ✅ 点击会话加载历史记录
@@ -44,6 +51,7 @@
 ## 技术实现
 
 ### API 接口
+
 所有接口都在 `src/lib/api.ts` 中定义：
 
 ```typescript
@@ -67,31 +75,42 @@ getConversations(sessionId)
 ```
 
 ### 流式响应处理
+
 使用 SSE (Server-Sent Events) 处理流式响应，实现在 `src/lib/sse.ts`：
 
 ```typescript
 handleSSEStream(url, options, {
-  onStart: (chatId) => { /* 开始接收 */ },
-  onChunk: (content, chatId) => { /* 接收内容块 */ },
-  onComplete: (fullContent, chatId) => { /* 接收完成 */ },
-  onError: (error, code) => { /* 错误处理 */ }
-})
+  onStart: chatId => {
+    /* 开始接收 */
+  },
+  onChunk: (content, chatId) => {
+    /* 接收内容块 */
+  },
+  onComplete: (fullContent, chatId) => {
+    /* 接收完成 */
+  },
+  onError: (error, code) => {
+    /* 错误处理 */
+  },
+});
 ```
 
 ### UUID 生成
+
 符合后端要求的 UUID 格式（`src/lib/uuid.ts`）：
 
 ```typescript
 // conversation-{24位小写字母+数字}
-generateConversationId()
+generateConversationId();
 
 // question-{24位小写字母+数字}
-generateQuestionId()
+generateQuestionId();
 ```
 
 ## 配置说明
 
 ### 环境变量（`.env`）
+
 ```bash
 VITE_API_BASE_URL=/api/v1
 VITE_TEMP_API_URL=http://nlb-3h99tgwx37r9q3pzu1.cn-shanghai.nlb.aliyuncsslb.com
@@ -99,7 +118,9 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
 ### 代理配置（`vite.config.ts`）
+
 开发环境的请求会自动代理到临时 API 地址：
+
 - 前端：`http://0.0.0.0:5173`
 - 后端：临时地址（从环境变量读取）
 - API 前缀：`/api/v1`
@@ -107,6 +128,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ## 数据流程
 
 ### 1. 新对话流程
+
 ```
 用户输入问题
   ↓
@@ -122,6 +144,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
 ### 2. 加载历史记录流程
+
 ```
 点击 Sidebar 中的会话
   ↓
@@ -135,6 +158,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
 ### 3. 流式响应流程
+
 ```
 发送消息请求（stream: true）
   ↓
@@ -152,6 +176,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ## 后端数据结构
 
 ### 会话数据（Session）
+
 ```json
 {
   "sessionId": "session-12345",
@@ -165,6 +190,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
 ### 历史对话数据（Conversation）
+
 ```json
 {
   "conversationId": "conversation-001",
@@ -190,6 +216,7 @@ VITE_TEMP_AUTH_TOKEN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
 ```
 
 ### SSE 事件格式
+
 ```
 data: {"status":"start","chatId":"chat-001"}
 data: {"status":"chunk","chatId":"chat-001","content":"人工智能"}

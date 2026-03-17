@@ -1,76 +1,80 @@
-import { Button, Card, Collapse, Select } from 'antd'
-import { CopyOutlined } from '@ant-design/icons'
-import { formatDomainWithPort } from '@/lib/utils'
+import { Button, Card, Collapse, Select } from "antd";
+import { CopyOutlined } from "@ant-design/icons";
+import { formatDomainWithPort } from "@/lib/utils";
 
 interface ApiProductAgentConfigCardProps {
-  agentAPIConfig: any
-  onCopy: (text: string) => void
-  selectedDomainIndex: number
-  onDomainChange: (value: number) => void
+  agentAPIConfig: any;
+  onCopy: (text: string) => void;
+  selectedDomainIndex: number;
+  onDomainChange: (value: number) => void;
 }
 
 function getMatchTypePrefix(matchType: string) {
   switch (matchType) {
-    case 'Exact':
-      return '等于'
-    case 'Prefix':
-      return '前缀是'
-    case 'Regex':
-      return '正则是'
+    case "Exact":
+      return "等于";
+    case "Prefix":
+      return "前缀是";
+    case "Regex":
+      return "正则是";
     default:
-      return '等于'
+      return "等于";
   }
 }
 
 function getUniqueDomains(routes: any[]) {
-  const domainsMap = new Map<string, { domain: string; port?: number; protocol: string }>()
+  const domainsMap = new Map<
+    string,
+    { domain: string; port?: number; protocol: string }
+  >();
   routes.forEach(route => {
     if (route.domains && route.domains.length > 0) {
       route.domains.forEach((domain: any) => {
-        const key = `${domain.protocol}://${domain.domain}${domain.port ? `:${domain.port}` : ''}`
-        domainsMap.set(key, domain)
-      })
+        const key = `${domain.protocol}://${domain.domain}${domain.port ? `:${domain.port}` : ""}`;
+        domainsMap.set(key, domain);
+      });
     }
-  })
-  return Array.from(domainsMap.values())
+  });
+  return Array.from(domainsMap.values());
 }
 
 function getRouteUrl(route: any, domains: any[], domainIndex: number) {
   if (domains.length > domainIndex) {
-    const selectedDomain = domains[domainIndex]
+    const selectedDomain = domains[domainIndex];
     const formattedDomain = formatDomainWithPort(
       selectedDomain.domain,
       selectedDomain.port,
       selectedDomain.protocol
-    )
-    const path = route.match?.path?.value || '/'
-    return `${selectedDomain.protocol.toLowerCase()}://${formattedDomain}${path}`
+    );
+    const path = route.match?.path?.value || "/";
+    return `${selectedDomain.protocol.toLowerCase()}://${formattedDomain}${path}`;
   }
   if (route.domains && route.domains.length > 0) {
-    const domain = route.domains[0]
+    const domain = route.domains[0];
     const formattedDomain = formatDomainWithPort(
       domain.domain,
       domain.port,
       domain.protocol
-    )
-    const path = route.match?.path?.value || '/'
-    return `${domain.protocol.toLowerCase()}://${formattedDomain}${path}`
+    );
+    const path = route.match?.path?.value || "/";
+    return `${domain.protocol.toLowerCase()}://${formattedDomain}${path}`;
   }
-  return ''
+  return "";
 }
 
 function getRouteLabel(route: any, domains: any[], domainIndex: number) {
   if (!route.match) {
-    return 'Unknown Route'
+    return "Unknown Route";
   }
-  const path = route.match.path?.value || '/'
-  const pathType = route.match.path?.type
-  const suffix = pathType === 'Prefix' ? '*' : pathType === 'Regex' ? '~' : ''
-  const baseUrl = getRouteUrl(route, domains, domainIndex)
-  const description = route.description && route.description.trim()
-    ? ` - ${route.description.trim()}`
-    : ''
-  return `${baseUrl}${suffix}${description}`
+  const path = route.match.path?.value || "/";
+  const pathType = route.match.path?.type;
+  const suffix = pathType === "Prefix" ? "*" : pathType === "Regex" ? "~" : "";
+  const baseUrl = getRouteUrl(route, domains, domainIndex);
+  const description =
+    route.description && route.description.trim()
+      ? ` - ${route.description.trim()}`
+      : "";
+  return `${baseUrl}${suffix}${description}`;
 }
 
 export function ApiProductAgentConfigCard({
@@ -79,18 +83,22 @@ export function ApiProductAgentConfigCard({
   selectedDomainIndex,
   onDomainChange,
 }: ApiProductAgentConfigCardProps) {
-  const routes = agentAPIConfig.routes || []
-  const protocols = agentAPIConfig.agentProtocols || []
-  const isA2A = protocols.includes('a2a')
-  const agentCard = agentAPIConfig.agentCard
-  const domains = getUniqueDomains(routes)
+  const routes = agentAPIConfig.routes || [];
+  const protocols = agentAPIConfig.agentProtocols || [];
+  const isA2A = protocols.includes("a2a");
+  const agentCard = agentAPIConfig.agentCard;
+  const domains = getUniqueDomains(routes);
   const domainOptions = domains.map((domain, index) => {
-    const formattedDomain = formatDomainWithPort(domain.domain, domain.port, domain.protocol)
+    const formattedDomain = formatDomainWithPort(
+      domain.domain,
+      domain.port,
+      domain.protocol
+    );
     return {
       value: index,
       label: `${domain.protocol.toLowerCase()}://${formattedDomain}`,
-    }
-  })
+    };
+  });
 
   return (
     <Card title="配置详情">
@@ -98,7 +106,7 @@ export function ApiProductAgentConfigCard({
         {protocols.length > 0 ? (
           <div>
             <div className="text-sm text-gray-600">支持协议</div>
-            <div className="font-medium">{protocols.join(', ')}</div>
+            <div className="font-medium">{protocols.join(", ")}</div>
           </div>
         ) : null}
 
@@ -124,7 +132,7 @@ export function ApiProductAgentConfigCard({
         ) : null}
 
         {routes.length > 0 ? (
-          <div className={isA2A && agentCard ? 'border-t pt-4' : ''}>
+          <div className={isA2A && agentCard ? "border-t pt-4" : ""}>
             <div className="text-sm text-gray-600 mb-3">路由配置:</div>
             {domainOptions.length > 1 ? (
               <div className="mb-2">
@@ -140,7 +148,7 @@ export function ApiProductAgentConfigCard({
                       placeholder="选择域名"
                       size="middle"
                       bordered={false}
-                      style={{ fontSize: '12px', height: '100%' }}
+                      style={{ fontSize: "12px", height: "100%" }}
                     >
                       {domainOptions.map(option => (
                         <Select.Option key={option.value} value={option.value}>
@@ -171,8 +179,10 @@ export function ApiProductAgentConfigCard({
                           size="small"
                           type="text"
                           onClick={e => {
-                            e.stopPropagation()
-                            onCopy(getRouteUrl(route, domains, selectedDomainIndex))
+                            e.stopPropagation();
+                            onCopy(
+                              getRouteUrl(route, domains, selectedDomainIndex)
+                            );
                           }}
                         >
                           <CopyOutlined />
@@ -181,7 +191,9 @@ export function ApiProductAgentConfigCard({
                     }
                     style={{
                       borderBottom:
-                        index < routes.length - 1 ? '1px solid #e5e7eb' : 'none',
+                        index < routes.length - 1
+                          ? "1px solid #e5e7eb"
+                          : "none",
                     }}
                   >
                     <div className="pl-4 space-y-3">
@@ -189,13 +201,17 @@ export function ApiProductAgentConfigCard({
                         <div>
                           <div className="text-xs text-gray-500">路径:</div>
                           <div className="font-mono">
-                            {getMatchTypePrefix(route.match?.path?.type)}{' '}
+                            {getMatchTypePrefix(route.match?.path?.type)}{" "}
                             {route.match?.path?.value}
                           </div>
                         </div>
                         <div>
                           <div className="text-xs text-gray-500">方法:</div>
-                          <div>{route.match?.methods ? route.match.methods.join(', ') : 'ANY'}</div>
+                          <div>
+                            {route.match?.methods
+                              ? route.match.methods.join(", ")
+                              : "ANY"}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -207,5 +223,5 @@ export function ApiProductAgentConfigCard({
         ) : null}
       </div>
     </Card>
-  )
+  );
 }

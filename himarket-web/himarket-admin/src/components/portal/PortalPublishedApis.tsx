@@ -1,130 +1,160 @@
-import { useState, useEffect } from 'react'
-import { Card, Table, Modal, Button, Space, message, Empty } from 'antd'
-import { EyeOutlined, DeleteOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
-import { Portal, ApiProduct, Publication } from '@/types'
-import { apiProductApi, portalApi } from '@/lib/api'
-import { useNavigate } from 'react-router-dom'
-import { ProductTypeMap } from '@/lib/utils'
+import { useState, useEffect } from "react";
+import { Card, Table, Modal, Button, Space, message, Empty } from "antd";
+import {
+  EyeOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
+} from "@ant-design/icons";
+import { Portal, ApiProduct, Publication } from "@/types";
+import { apiProductApi, portalApi } from "@/lib/api";
+import { useNavigate } from "react-router-dom";
+import { ProductTypeMap } from "@/lib/utils";
 
 interface PortalApiProductsProps {
-  portal: Portal
+  portal: Portal;
 }
 
 export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
-  const navigate = useNavigate()
-  const [apiProducts, setApiProducts] = useState<Publication[]>([])
-  const [apiProductsOptions, setApiProductsOptions] = useState<ApiProduct[]>([])
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedApiIds, setSelectedApiIds] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-  const [modalLoading, setModalLoading] = useState(false)
+  const navigate = useNavigate();
+  const [apiProducts, setApiProducts] = useState<Publication[]>([]);
+  const [apiProductsOptions, setApiProductsOptions] = useState<ApiProduct[]>(
+    []
+  );
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedApiIds, setSelectedApiIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
 
   // 分页状态
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const [total, setTotal] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [total, setTotal] = useState(0);
 
   useEffect(() => {
     if (portal.portalId) {
-      fetchApiProducts()
+      fetchApiProducts();
     }
-  }, [portal.portalId, currentPage, pageSize])
+  }, [portal.portalId, currentPage, pageSize]);
 
   const fetchApiProducts = () => {
-    setLoading(true)
-    portalApi.getPortalPublications(portal.portalId, {
-      page: currentPage,
-      size: pageSize
-    }).then((res) => {
-      setApiProducts(res.data.content)
-      setTotal(res.data.totalElements || 0)
-    }).finally(() => {
-      setLoading(false)
-    })
-  }
+    setLoading(true);
+    portalApi
+      .getPortalPublications(portal.portalId, {
+        page: currentPage,
+        size: pageSize,
+      })
+      .then(res => {
+        setApiProducts(res.data.content);
+        setTotal(res.data.totalElements || 0);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   useEffect(() => {
     if (isModalVisible) {
-      setModalLoading(true)
-      apiProductApi.getApiProducts({
-        page: 1,
-        size: 500, // 获取所有可用的API
-        status: 'READY'
-      }).then((res) => {
-        // 过滤掉已发布在该门户里的api
-        setApiProductsOptions(res.data.content.filter((api: ApiProduct) => 
-          !apiProducts.some((publication: Publication) => publication.productId === api.productId)
-        ))
-      }).finally(() => {
-        setModalLoading(false)
-      })
+      setModalLoading(true);
+      apiProductApi
+        .getApiProducts({
+          page: 1,
+          size: 500, // 获取所有可用的API
+          status: "READY",
+        })
+        .then(res => {
+          // 过滤掉已发布在该门户里的api
+          setApiProductsOptions(
+            res.data.content.filter(
+              (api: ApiProduct) =>
+                !apiProducts.some(
+                  (publication: Publication) =>
+                    publication.productId === api.productId
+                )
+            )
+          );
+        })
+        .finally(() => {
+          setModalLoading(false);
+        });
     }
-  }, [isModalVisible]) // 移除apiProducts依赖，避免重复请求
+  }, [isModalVisible]); // 移除apiProducts依赖，避免重复请求
 
   const handlePageChange = (page: number, size?: number) => {
-    setCurrentPage(page)
+    setCurrentPage(page);
     if (size) {
-      setPageSize(size)
+      setPageSize(size);
     }
-  }
+  };
 
   const columns = [
     {
-      title: '名称/ID',
-      key: 'nameAndId',
+      title: "名称/ID",
+      key: "nameAndId",
       width: 280,
       render: (_: any, record: Publication) => (
         <div>
-          <div className="text-sm font-medium text-gray-900 truncate">{record.productName}</div>
-          <div className="text-xs text-gray-500 truncate">{record.productId}</div>
+          <div className="text-sm font-medium text-gray-900 truncate">
+            {record.productName}
+          </div>
+          <div className="text-xs text-gray-500 truncate">
+            {record.productId}
+          </div>
         </div>
       ),
     },
     {
-      title: '类型',
-      dataIndex: 'productType',
-      key: 'productType',
+      title: "类型",
+      dataIndex: "productType",
+      key: "productType",
       width: 120,
-      render: (text: string) => ProductTypeMap[text] || text
+      render: (text: string) => ProductTypeMap[text] || text,
     },
     {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
+      title: "描述",
+      dataIndex: "description",
+      key: "description",
       width: 400,
     },
     {
-      title: '操作',
-      key: 'action',
+      title: "操作",
+      key: "action",
       width: 180,
       render: (_: any, record: Publication) => (
         <Space size="middle">
           <Button
             onClick={() => {
-              navigate(`/api-products/detail?productId=${record.productId}`)
+              navigate(`/api-products/detail?productId=${record.productId}`);
             }}
-            type="link" icon={<EyeOutlined />}>
+            type="link"
+            icon={<EyeOutlined />}
+          >
             查看
           </Button>
-          
+
           <Button
             type="link"
             danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.publicationId, record.productId, record.productName)}
+            onClick={() =>
+              handleDelete(
+                record.publicationId,
+                record.productId,
+                record.productName
+              )
+            }
           >
             移除
           </Button>
         </Space>
       ),
     },
-  ]
+  ];
 
   const modalColumns = [
     {
-      title: '名称',
-      dataIndex: 'name',
-      key: 'name',
+      title: "名称",
+      dataIndex: "name",
+      key: "name",
       width: 280,
       render: (_: any, record: ApiProduct) => (
         <div>
@@ -138,67 +168,74 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
       ),
     },
     {
-      title: '类型',
-      dataIndex: 'type',
-      key: 'type',
+      title: "类型",
+      dataIndex: "type",
+      key: "type",
       width: 120,
       render: (type: string) => ProductTypeMap[type] || type,
     },
     {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
+      title: "描述",
+      dataIndex: "description",
+      key: "description",
       width: 300,
     },
-  ]
+  ];
 
-  const handleDelete = (publicationId: string, productId: string, productName: string) => {
+  const handleDelete = (
+    publicationId: string,
+    productId: string,
+    productName: string
+  ) => {
     Modal.confirm({
-      title: '确认移除',
+      title: "确认移除",
       icon: <ExclamationCircleOutlined />,
       content: `确定要从门户中移除API产品 "${productName}" 吗？此操作不可恢复。`,
-      okText: '确认移除',
-      okType: 'danger',
-      cancelText: '取消',
+      okText: "确认移除",
+      okType: "danger",
+      cancelText: "取消",
       onOk() {
-        apiProductApi.cancelPublishToPortal(productId, publicationId).then(() => {
-          message.success('移除成功')
-          fetchApiProducts()
-          setIsModalVisible(false)
-        }).catch(() => {
-          // message.error('移除失败')
-        })
+        apiProductApi
+          .cancelPublishToPortal(productId, publicationId)
+          .then(() => {
+            message.success("移除成功");
+            fetchApiProducts();
+            setIsModalVisible(false);
+          })
+          .catch(() => {
+            // message.error('移除失败')
+          });
       },
-    })
-  }
+    });
+  };
 
   const handlePublish = async () => {
     if (selectedApiIds.length === 0) {
-      message.warning('请至少选择一个API')
-      return
+      message.warning("请至少选择一个API");
+      return;
     }
 
-    setModalLoading(true)
+    setModalLoading(true);
     try {
       // 批量发布选中的API
       for (const productId of selectedApiIds) {
-        await apiProductApi.publishToPortal(productId, portal.portalId)
+        await apiProductApi.publishToPortal(productId, portal.portalId);
       }
-      message.success(`成功发布 ${selectedApiIds.length} 个API`)
-      setSelectedApiIds([])
-      fetchApiProducts()
-      setIsModalVisible(false)
+      message.success(`成功发布 ${selectedApiIds.length} 个API`);
+      setSelectedApiIds([]);
+      fetchApiProducts();
+      setIsModalVisible(false);
     } catch (error) {
       // message.error('发布失败')
     } finally {
-      setModalLoading(false)
+      setModalLoading(false);
     }
-  }
+  };
 
   const handleModalCancel = () => {
-    setIsModalVisible(false)
-    setSelectedApiIds([])
-  }
+    setIsModalVisible(false);
+    setSelectedApiIds([]);
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -224,7 +261,7 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
             total: total,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `共 ${total} 条`,
+            showTotal: total => `共 ${total} 条`,
             onChange: handlePageChange,
             onShowSizeChange: handlePageChange,
           }}
@@ -234,7 +271,7 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description="暂无已发布的API产品"
               />
-            )
+            ),
           }}
         />
       </Card>
@@ -249,7 +286,7 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
         width={800}
         confirmLoading={modalLoading}
         okButtonProps={{
-          disabled: selectedApiIds.length === 0
+          disabled: selectedApiIds.length === 0,
         }}
       >
         <Table
@@ -260,9 +297,9 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
           pagination={false}
           scroll={{ y: 400 }}
           rowSelection={{
-            type: 'checkbox',
+            type: "checkbox",
             selectedRowKeys: selectedApiIds,
-            onChange: (selectedRowKeys) => {
+            onChange: selectedRowKeys => {
               setSelectedApiIds(selectedRowKeys as string[]);
             },
             columnWidth: 60,
@@ -270,5 +307,5 @@ export function PortalPublishedApis({ portal }: PortalApiProductsProps) {
         />
       </Modal>
     </div>
-  )
+  );
 }

@@ -3,7 +3,7 @@ import {
   SendOutlined,
   FileImageOutlined,
   FileOutlined,
-  PlusOutlined
+  PlusOutlined,
 } from "@ant-design/icons";
 import { Dropdown, message, Tooltip } from "antd";
 import type { MenuProps } from "antd";
@@ -55,7 +55,14 @@ export function InputBox(props: InputBoxProps) {
           {
             key: "image",
             label: (
-              <Tooltip title={<span className="text-black-normal">最大 5MB，最多 10 个文件 </span>} placement="right">
+              <Tooltip
+                title={
+                  <span className="text-black-normal">
+                    最大 5MB，最多 10 个文件{" "}
+                  </span>
+                }
+                placement="right"
+              >
                 <span className="w-full inline-block">上传图片</span>
               </Tooltip>
             ),
@@ -69,7 +76,8 @@ export function InputBox(props: InputBoxProps) {
         <Tooltip
           title={
             <div className="text-black-normal">
-              上传文件时支持以下格式：txt、md、html、doc、docx、pdf、xls、xlsx、ppt、pptx、csv。单次最多上传 10 个文件。表格文件大小不超过 2MB。普通文档不超过 5MB。
+              上传文件时支持以下格式：txt、md、html、doc、docx、pdf、xls、xlsx、ppt、pptx、csv。单次最多上传
+              10 个文件。表格文件大小不超过 2MB。普通文档不超过 5MB。
             </div>
           }
           placement="right"
@@ -106,7 +114,9 @@ export function InputBox(props: InputBoxProps) {
     const maxSize = isTableFile ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
 
     if (file.size > maxSize) {
-      message.error(`${isTableFile ? '表格' : '文件'}大小不能超过 ${isTableFile ? '2M' : '5M'}`);
+      message.error(
+        `${isTableFile ? "表格" : "文件"}大小不能超过 ${isTableFile ? "2M" : "5M"}`
+      );
       return;
     }
 
@@ -267,8 +277,8 @@ export function InputBox(props: InputBoxProps) {
             input.trim() && !isLoading
               ? "bg-colorPrimary text-white hover:opacity-90"
               : isLoading
-              ? "bg-colorPrimary text-white hover:opacity-90"
-              : "bg-colorPrimarySecondary text-colorPrimary cursor-not-allowed"
+                ? "bg-colorPrimary text-white hover:opacity-90"
+                : "bg-colorPrimarySecondary text-colorPrimary cursor-not-allowed"
           }`}
           isLoading={isLoading}
           onClick={handleSend}

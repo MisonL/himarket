@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Select, Input, Button } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import React, { useState, useEffect } from "react";
+import { Select, Input, Button } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 
@@ -8,7 +8,7 @@ export interface SearchParam {
   label: string;
   name: string;
   placeholder: string;
-  type?: 'input' | 'select';
+  type?: "input" | "select";
   optionList?: Array<{ label: string; value: string }>;
 }
 
@@ -23,13 +23,13 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   searchParamsList,
   onSearch,
   // onClear,
-  className = ''
+  className = "",
 }) => {
   const [activeSearchName, setActiveSearchName] = useState<string>(() => {
     // Initialize with first search param if available
-    return searchParamsList.length > 0 ? searchParamsList[0].name : '';
+    return searchParamsList.length > 0 ? searchParamsList[0].name : "";
   });
-  const [activeSearchValue, setActiveSearchValue] = useState<string>('');
+  const [activeSearchValue, setActiveSearchValue] = useState<string>("");
   // const [tagList, setTagList] = useState<Array<SearchParam & { value: string; displayValue?: string }>>([]);
 
   useEffect(() => {
@@ -41,21 +41,21 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   const handleSearch = () => {
     if (activeSearchValue.trim()) {
-      const currentParam = searchParamsList.find(item => item.name === activeSearchName);
+      const currentParam = searchParamsList.find(
+        item => item.name === activeSearchName
+      );
       if (currentParam) {
         // 获取显示值（对于select类型，显示label而不是value）
         // let displayValue = activeSearchValue;
         // if (currentParam.type === 'select') {
-          // const option = currentParam.optionList?.find(opt => opt.value === activeSearchValue);
-          // displayValue = option?.label || activeSearchValue;
+        // const option = currentParam.optionList?.find(opt => opt.value === activeSearchValue);
+        // displayValue = option?.label || activeSearchValue;
         // }
-
         // const newTag = {
         //   ...currentParam,
         //   value: activeSearchValue,
         //   displayValue: displayValue
         // };
-
         // setTagList(prev => {
         //   const filtered = prev.filter(tag => tag.name !== activeSearchName);
         //   return [...filtered, newTag];
@@ -63,13 +63,13 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
       }
 
       onSearch(activeSearchName, activeSearchValue);
-      setActiveSearchValue('');
+      setActiveSearchValue("");
     }
   };
 
   const handleClearOne = (tagName: string) => {
     // setTagList(prev => prev.filter(tag => tag.name !== tagName));
-    onSearch(tagName, '');
+    onSearch(tagName, "");
   };
 
   // const handleClearAll = () => {
@@ -119,15 +119,17 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
         <div className="w-px bg-gray-300 self-stretch"></div>
 
         {/* 中间：搜索值输入框 */}
-        {currentParam?.type === 'select' ? (
+        {currentParam?.type === "select" ? (
           <>
             <Select
               placeholder={currentParam.placeholder}
               value={activeSearchValue}
-              onChange={(value) => {
+              onChange={value => {
                 // 自动触发搜索
                 if (value) {
-                  const currentParam = searchParamsList.find(item => item.name === activeSearchName);
+                  const currentParam = searchParamsList.find(
+                    item => item.name === activeSearchName
+                  );
                   if (currentParam) {
                     // const option = currentParam.optionList?.find(opt => opt.value === value);
                     // const displayValue = option?.label || value;
@@ -151,7 +153,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               }}
               allowClear
               onClear={() => {
-                setActiveSearchValue('');
+                setActiveSearchValue("");
                 handleClearOne(activeSearchName);
               }}
               className="h-8 border-0 rounded-none"
@@ -176,7 +178,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
               }}
               className="h-8 flex items-center justify-center text-gray-500"
             >
-              <SearchOutlined style={{ fontSize: '14px' }} />
+              <SearchOutlined style={{ fontSize: "14px" }} />
             </div>
           </>
         ) : (
@@ -184,13 +186,13 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             <Input
               placeholder={currentParam?.placeholder}
               value={activeSearchValue}
-              onChange={(e) => setActiveSearchValue(e.target.value)}
+              onChange={e => setActiveSearchValue(e.target.value)}
               style={{
                 width: 200,
               }}
               onPressEnter={handleSearch}
               allowClear
-              onClear={() => setActiveSearchValue('')}
+              onClear={() => setActiveSearchValue("")}
               size="middle"
               className="h-8 border-0 rounded-none"
               variant="borderless"
@@ -202,7 +204,11 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
             {/* 搜索按钮 */}
             <Button
               type="text"
-              icon={<SearchOutlined style={{ fontSize: '14px', color: '#6B7280' }} />}
+              icon={
+                <SearchOutlined
+                  style={{ fontSize: "14px", color: "#6B7280" }}
+                />
+              }
               onClick={handleSearch}
               style={{
                 width: 48,
