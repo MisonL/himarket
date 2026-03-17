@@ -567,83 +567,20 @@ expect_auth_rejected() {
 }
 
 main() {
-  require_cmd docker
-  require_cmd curl
-  require_cmd jq
-  require_cmd node
-  prepare_cas_modules
+  init_phase_selection
+  bootstrap_runtime
 
-  if ! docker compose version >/dev/null 2>&1; then
-    err "docker compose is not available"
-    exit 1
+  local admin_user="${ADMIN_USER}"
+  local admin_pass="${ADMIN_PASS}"
+  local portal_name="${PORTAL_NAME}"
+  local frontend_redirect_url="${FRONTEND_REDIRECT_URL}"
+  local cas_http_port="${CAS_HTTP_PORT}"
+  local jwk_dir="${JWK_DIR}"
+
+  if ! has_selected_non_bootstrap_phases; then
+    log "all selected phases passed"
+    return 0
   fi
-
-  mkdir -p "${DATA_DIR}"
-  if [[ ! -f "${ENV_FILE}" ]]; then
-    : > "${ENV_FILE}"
-  fi
-  start_mock_oidc
-  trap stop_mock_oidc EXIT
-
-  if [[ -f "${ENV_FILE}" ]]; then
-    set -a
-    . "${ENV_FILE}"
-    set +a
-  fi
-
-  local admin_user="${ADMIN_USERNAME:-admin}"
-  local admin_pass="${ADMIN_PASSWORD:-admin}"
-  local portal_name="${PORTAL_NAME:-demo-portal}"
-  local frontend_redirect_url="${FRONTEND_REDIRECT_URL:-http://localhost:${HIMARKET_FRONTEND_PORT:-5173}}"
-  local cas_http_port="${CAS_HTTP_PORT:-8083}"
-  local cas_ready_timeout="${CAS_READY_TIMEOUT:-900}"
-  local skip_build="${SKIP_BUILD:-0}"
-  local skip_docker_up="${SKIP_DOCKER_UP:-0}"
-
-  if [[ "${skip_build}" != "1" ]]; then
-    log "build himarket server jar"
-    local java_home="${JAVA_HOME:-}"
-    if [[ -z "${java_home}" && -x "/usr/libexec/java_home" ]]; then
-      java_home="$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
-    fi
-    if [[ -z "${java_home}" ]]; then
-      err "JAVA_HOME is not set and java_home is not available"
-      exit 1
-    fi
-
-    (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" mvn -pl himarket-bootstrap -am package -DskipTests)
-
-    require_cmd npm
-    log "build himarket frontend dist"
-    (cd "${REPO_DIR}/himarket-web/himarket-frontend" && npm run build)
-    log "build himarket admin dist"
-    (cd "${REPO_DIR}/himarket-web/himarket-admin" && npm run build)
-  else
-    log "skip build himarket server jar"
-  fi
-
-  log "prepare jwks files"
-  local jwk_dir="${DATA_DIR}/jwt-bearer"
-  node_generate_jwks "${jwk_dir}"
-
-  if [[ "${skip_docker_up}" != "1" ]]; then
-    log "start docker services"
-    cd "${DOCKER_DIR}"
-    export COMPOSE_PROFILES=builtin-mysql
-    docker compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml up -d --build mysql redis-stack-server himarket-server himarket-frontend himarket-admin cas openldap jwks-server
-  else
-    log "skip docker compose up"
-  fi
-
-  ensure_cas_modules_loaded
-  wait_http_ok "himarket-server" "http://localhost:8081/portal/swagger-ui.html" 180
-  wait_http_ok "himarket-frontend" "http://localhost:${HIMARKET_FRONTEND_PORT:-5173}/login" 120
-  wait_http_ok "himarket-admin" "http://localhost:${HIMARKET_ADMIN_PORT:-5174}/login" 120
-  wait_cas_ready "${cas_ready_timeout}"
-  wait_http_ok "jwks-server" "http://localhost:${JWKS_HTTP_PORT:-8091}/jwks.json" 60
-  wait_http_ok "mock-oidc" "http://localhost:${MOCK_OIDC_PORT}/.well-known/openid-configuration" 60
-  wait_openldap_ready 120
-  seed_openldap_users
 
   log "admin login"
   local login_result
@@ -1251,6 +1188,7 @@ main() {
     (.data.multifactorPolicy // .multifactorPolicy).forceExecution == true
   ' >/dev/null
 
+  if phase_enabled "cas-core"; then
   log "developer cas authorize flag passthrough"
   local developer_flag_headers
   developer_flag_headers="$(mktemp)"
@@ -1657,6 +1595,9 @@ main() {
   curl -fsS -X POST "${developer_cas2_service_url}" --data-urlencode "logoutRequest=${developer_cas2_logout_request}" >/dev/null
   expect_auth_rejected "developer cas2 revoked token" "http://localhost:8081/developers/profile" "${developer_cas2_token}"
 
+  fi
+
+  if phase_enabled "cas-header"; then
   log "developer cas header authorize"
   local developer_header_cookie
   local developer_header_headers
@@ -1739,6 +1680,9 @@ main() {
   curl -fsS -X POST "${developer_header_service_url}" --data-urlencode "logoutRequest=${developer_header_logout_request}" >/dev/null
   expect_auth_rejected "developer cas header revoked token" "http://localhost:8081/developers/profile" "${developer_header_token}"
 
+  fi
+
+  if phase_enabled "cas-mfa"; then
   log "developer cas mfa authorize"
   local developer_mfa_cookie
   local developer_mfa_headers
@@ -1793,6 +1737,9 @@ main() {
   curl -fsS -X POST "${developer_mfa_service_url}" --data-urlencode "logoutRequest=${developer_mfa_logout_request}" >/dev/null
   expect_auth_rejected "developer cas mfa revoked token" "http://localhost:8081/developers/profile" "${developer_mfa_token}"
 
+  fi
+
+  if phase_enabled "cas-delegated"; then
   log "developer cas delegated authorize"
   local developer_delegated_cookie
   local developer_delegated_headers
@@ -1883,6 +1830,9 @@ main() {
   curl -fsS -X POST "${developer_delegated_service_url}" --data-urlencode "logoutRequest=${developer_delegated_logout_request}" >/dev/null
   expect_auth_rejected "developer delegated revoked token" "http://localhost:8081/developers/profile" "${developer_delegated_token}"
 
+  fi
+
+  if phase_enabled "ldap"; then
   log "verify ldap login (developer)"
   curl -fsS "http://localhost:8081/developers/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
   local ldap_login
@@ -1898,6 +1848,9 @@ main() {
   fi
   echo "${ldap_login}" | jq -e '.data.access_token | length > 0' >/dev/null
 
+  fi
+
+  if phase_enabled "jwt-bearer"; then
   log "verify oauth2 jwt-bearer token exchange (standard jwks)"
   local private_jwk="${jwk_dir}/private.jwk.json"
   local assertion
@@ -1908,6 +1861,9 @@ main() {
     --data-urlencode "assertion=${assertion}")"
   echo "${oauth2_resp}" | jq -e '.data.access_token | length > 0' >/dev/null
 
+  fi
+
+  if phase_enabled "cas-core"; then
   log "verify admin cas providers"
   curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
   curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-saml1")' >/dev/null
@@ -2469,6 +2425,9 @@ main() {
   curl -fsS -X POST "${admin_cas2_service_url}" --data-urlencode "logoutRequest=${admin_cas2_logout_request}" >/dev/null
   expect_auth_rejected "admin cas2 revoked token" "http://localhost:8081/admins" "${admin_cas2_token}"
 
+  fi
+
+  if phase_enabled "cas-header"; then
   log "admin cas header authorize"
   local admin_header_cookie
   local admin_header_headers
@@ -2551,6 +2510,9 @@ main() {
   curl -fsS -X POST "${admin_header_service_url}" --data-urlencode "logoutRequest=${admin_header_logout_request}" >/dev/null
   expect_auth_rejected "admin cas header revoked token" "http://localhost:8081/admins" "${admin_header_token}"
 
+  fi
+
+  if phase_enabled "cas-mfa"; then
   log "admin cas mfa authorize"
   local admin_mfa_cookie
   local admin_mfa_headers
@@ -2605,6 +2567,9 @@ main() {
   curl -fsS -X POST "${admin_mfa_service_url}" --data-urlencode "logoutRequest=${admin_mfa_logout_request}" >/dev/null
   expect_auth_rejected "admin cas mfa revoked token" "http://localhost:8081/admins" "${admin_mfa_token}"
 
+  fi
+
+  if phase_enabled "cas-delegated"; then
   log "admin cas delegated authorize"
   local admin_delegated_cookie
   local admin_delegated_headers
@@ -2695,6 +2660,9 @@ main() {
   curl -fsS -X POST "${admin_delegated_service_url}" --data-urlencode "logoutRequest=${admin_delegated_logout_request}" >/dev/null
   expect_auth_rejected "admin delegated revoked token" "http://localhost:8081/admins" "${admin_delegated_token}"
 
+  fi
+
+  if phase_enabled "ldap"; then
   log "verify admin ldap login"
   curl -fsS "http://localhost:8081/admins/ldap/providers" | jq -e '.data[]? | select(.provider=="ldap")' >/dev/null
   local admin_ldap
@@ -2710,7 +2678,26 @@ main() {
   fi
   echo "${admin_ldap}" | jq -e '.data.access_token | length > 0' >/dev/null
 
-  log "all scenarios passed"
+  fi
+
+  log "all selected phases passed"
+}
+
+source "${SCRIPT_DIR}/lib/common.sh"
+
+phase_enabled() {
+  local phase="$1"
+  [[ " ${SELECTED_PHASES[*]} " == *" ${phase} "* ]]
+}
+
+has_selected_non_bootstrap_phases() {
+  local phase
+  for phase in "${SELECTED_PHASES[@]}"; do
+    if [[ "${phase}" != "bootstrap" ]]; then
+      return 0
+    fi
+  done
+  return 1
 }
 
 main "$@"
