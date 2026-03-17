@@ -6,7 +6,7 @@ export interface Consumer {
   description?: string;
   status?: string;
   createAt?: string;
-  createdAt?: string;  // 支持两种字段名
+  createdAt?: string; // 支持两种字段名
   enabled?: boolean;
 }
 
@@ -39,7 +39,7 @@ export interface ConsumerCredentialResult {
   apiKeyConfig?: {
     credentials?: Array<{
       apiKey?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
     source?: string;
     key?: string;
@@ -48,7 +48,7 @@ export interface ConsumerCredentialResult {
     credentials?: Array<{
       ak?: string;
       sk?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
     source?: string;
     accessKeyId?: string;
@@ -57,6 +57,6 @@ export interface ConsumerCredentialResult {
 }
 
 export interface CreateCredentialParam {
-  credentialType: 'HMAC' | 'API_KEY';
+  credentialType: "HMAC" | "API_KEY";
   apiKey?: string;
 }

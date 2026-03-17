@@ -22,8 +22,8 @@ export function buildFormFieldsFromConfig(
     const oidcConfig = config as OidcConfig & { type: AuthenticationType.OIDC };
     const hasManualEndpoints = Boolean(
       oidcConfig.authCodeConfig?.authorizationEndpoint &&
-        oidcConfig.authCodeConfig?.tokenEndpoint &&
-        oidcConfig.authCodeConfig?.userInfoEndpoint
+      oidcConfig.authCodeConfig?.tokenEndpoint &&
+      oidcConfig.authCodeConfig?.userInfoEndpoint
     );
 
     return {
@@ -85,7 +85,8 @@ export function buildFormFieldsFromConfig(
       loginRenew: casConfig.login?.renew ?? false,
       loginWarn: casConfig.login?.warn ?? false,
       loginRememberMe: casConfig.login?.rememberMe ?? false,
-      validationProtocolVersion: casConfig.validation?.protocolVersion || "CAS3",
+      validationProtocolVersion:
+        casConfig.validation?.protocolVersion || "CAS3",
       validationResponseFormat: casConfig.validation?.responseFormat || "XML",
       proxyEnabled: casConfig.proxy?.enabled ?? false,
       proxyCallbackPath: casConfig.proxy?.callbackPath,
@@ -125,11 +126,12 @@ export function buildFormFieldsFromConfig(
         casConfig.accessStrategy?.rejectedAttributes
       ),
       delegatedAllowedProviders: formatCommaSeparated(
-        casConfig.accessStrategy?.delegatedAuthenticationPolicy?.allowedProviders
+        casConfig.accessStrategy?.delegatedAuthenticationPolicy
+          ?.allowedProviders
       ),
       delegatedPermitUndefined:
-        casConfig.accessStrategy?.delegatedAuthenticationPolicy?.permitUndefined ??
-        true,
+        casConfig.accessStrategy?.delegatedAuthenticationPolicy
+          ?.permitUndefined ?? true,
       delegatedExclusive:
         casConfig.accessStrategy?.delegatedAuthenticationPolicy?.exclusive ??
         false,
@@ -143,7 +145,8 @@ export function buildFormFieldsFromConfig(
       attributeReleaseAllowedAttributes: formatCommaSeparated(
         casConfig.attributeRelease?.allowedAttributes
       ),
-      attributeReleaseMode: casConfig.attributeRelease?.mode || "RETURN_ALLOWED",
+      attributeReleaseMode:
+        casConfig.attributeRelease?.mode || "RETURN_ALLOWED",
       multifactorProviders: formatCommaSeparated(
         casConfig.multifactorPolicy?.providers
       ),

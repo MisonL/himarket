@@ -1,6 +1,6 @@
 import { Card, Button, Space, message } from 'antd'
 import { SaveOutlined, UploadOutlined, FileMarkdownOutlined, EditOutlined } from '@ant-design/icons'
-import { useState, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm';
 import MdEditor from 'react-markdown-editor-lite'
@@ -19,6 +19,13 @@ export function ApiProductUsageGuide({ apiProduct, handleRefresh }: ApiProductUs
   const [originalContent, setOriginalContent] = useState(apiProduct.document || '')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const document = apiProduct.document || ''
+    setContent(document)
+    setOriginalContent(document)
+    setIsEditing(false)
+  }, [apiProduct.document, apiProduct.productId])
 
   const handleEdit = () => {
     setIsEditing(true)
@@ -92,7 +99,12 @@ export function ApiProductUsageGuide({ apiProduct, handleRefresh }: ApiProductUs
               <Button onClick={handleCancel}>
                 取消
               </Button>
-              <Button type="primary" icon={<SaveOutlined />} onClick={handleSave}>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={saving}
+                onClick={handleSave}
+              >
                 保存
               </Button>
             </>

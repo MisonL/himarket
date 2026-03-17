@@ -19,7 +19,7 @@ const SourceMap: Record<string, string> = {
   APIG_AI: "AI网关",
   HIGRESS: "Higress",
   NACOS: "Nacos",
-  APIG_API: "API网关"
+  APIG_API: "API网关",
 };
 
 interface ApiProductApiDocsProps {
@@ -90,7 +90,7 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
       const baseUrl = `${domain.protocol}://${domain.domain}`;
       const endpoint = `${baseUrl}${path}`;
 
-      if (protocolType === 'SSE') {
+      if (protocolType === "SSE") {
         // 仅生成SSE配置，不追加/sse
         const sseConfig = `{
   "mcpServers": {
@@ -104,7 +104,7 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
         setHttpJson("");
         setLocalJson("");
         return;
-      } else if (protocolType === 'StreamableHTTP') {
+      } else if (protocolType === "StreamableHTTP") {
         // 仅生成HTTP配置
         const httpConfig = `{
   "mcpServers": {
@@ -148,7 +148,6 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
     setSseJson("");
     setLocalJson("");
   };
-
 
   useEffect(() => {
     // 设置源码内容
@@ -279,15 +278,17 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
   }, [apiProduct, selectedDomainIndex]);
 
   // 生成域名选项的函数
-  const getDomainOptions = (domains: Array<{ domain: string; protocol: string; networkType?: string }>) => {
+  const getDomainOptions = (
+    domains: Array<{ domain: string; protocol: string; networkType?: string }>
+  ) => {
     return domains.map((domain, index) => {
       return {
         value: index,
         label: `${domain.protocol}://${domain.domain}`,
-        domain: domain
-      }
-    })
-  }
+        domain: domain,
+      };
+    });
+  };
 
   const isOpenApi = useMemo(
     () => Boolean(apiProduct.apiConfig?.spec),
@@ -312,12 +313,12 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
                 method === "GET"
                   ? "green"
                   : method === "POST"
-                  ? "blue"
-                  : method === "PUT"
-                  ? "orange"
-                  : method === "DELETE"
-                  ? "red"
-                  : "default"
+                    ? "blue"
+                    : method === "PUT"
+                      ? "orange"
+                      : method === "DELETE"
+                        ? "red"
+                        : "default"
               }
             >
               {method}
@@ -384,7 +385,7 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
                     >
                       {/* 'APIG_API' | 'HIGRESS' | 'APIG_AI' */}
                       <Descriptions.Item label="API来源">
-                        {SourceMap[apiProduct.apiConfig?.meta.source || '']}
+                        {SourceMap[apiProduct.apiConfig?.meta.source || ""]}
                       </Descriptions.Item>
                       <Descriptions.Item label="API类型">
                         {apiProduct.apiConfig?.meta.type}
@@ -415,12 +416,14 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
                       </Descriptions.Item>
                       <Descriptions.Item label="来源">
                         {apiProduct.mcpConfig?.meta.source
-                          ? SourceMap[apiProduct.mcpConfig.meta.source] || apiProduct.mcpConfig.meta.source
+                          ? SourceMap[apiProduct.mcpConfig.meta.source] ||
+                            apiProduct.mcpConfig.meta.source
                           : "—"}
                       </Descriptions.Item>
                       <Descriptions.Item label="来源类型">
                         {apiProduct.mcpConfig?.meta.fromType
-                          ? FromTypeMap[apiProduct.mcpConfig.meta.fromType] || apiProduct.mcpConfig.meta.fromType
+                          ? FromTypeMap[apiProduct.mcpConfig.meta.fromType] ||
+                            apiProduct.mcpConfig.meta.fromType
                           : "—"}
                       </Descriptions.Item>
                       <Descriptions.Item label="API类型">
@@ -508,83 +511,29 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
                       <p>暂无配置</p>
                     </div>
                   </Card>
-                  )}
+                )}
               </div>
             ),
           },
-          ...(!isMcp ? [{
-            key: "source",
-            label: "OpenAPI 规范",
-            children: (
-              <div style={{ height: 460 }}>
-                <MonacoEditor
-                  language="yaml"
-                  theme="vs-light"
-                  value={content}
-                  options={{
-                    readOnly: true,
-                    minimap: { enabled: true },
-                    scrollBeyondLastLine: false,
-                    scrollbar: { vertical: "visible", horizontal: "visible" },
-                    wordWrap: "off",
-                    lineNumbers: "on",
-                    automaticLayout: true,
-                    fontSize: 14,
-                    copyWithSyntaxHighlighting: true,
-                    contextmenu: true,
-                  }}
-                  height="100%"
-                />
-              </div>
-            ),
-          }] : []),
-          ...(isMcp ? [{
-            key: "mcpServerConfig",
-            label: "MCP连接配置",
-            children: (
-              <div className="space-y-4">
-                {/* 域名选择器 */}
-                {apiProduct.mcpConfig?.mcpServerConfig?.domains && apiProduct.mcpConfig.mcpServerConfig.domains.length > 1 && (
-                  <div className="mb-2">
-                    <div className="flex items-center mb-2">
-                      <span className="text-xs text-gray-900">域名</span>
-                    </div>
-                    <Select
-                      value={selectedDomainIndex}
-                      onChange={setSelectedDomainIndex}
-                      className="w-full"
-                      placeholder="选择域名"
-                      size="middle"
-                      style={{
-                        borderRadius: '6px',
-                        fontSize: '12px'
-                      }}
-                    >
-                      {getDomainOptions(apiProduct.mcpConfig.mcpServerConfig.domains).map((option) => (
-                        <Select.Option key={option.value} value={option.value}>
-                          <span className="text-xs text-gray-900 font-mono">
-                            {option.label}
-                          </span>
-                        </Select.Option>
-                      ))}
-                    </Select>
-                  </div>
-                )}
-                
-                <div className="">
-                  {apiProduct.mcpConfig?.mcpServerConfig?.rawConfig ? (
-                    // Local Mode - 显示本地配置
-                    <div>
-                      <h3 className="text-lg font-bold mb-2">Local Config</h3>
+          ...(!isMcp
+            ? [
+                {
+                  key: "source",
+                  label: "OpenAPI 规范",
+                  children: (
+                    <div style={{ height: 460 }}>
                       <MonacoEditor
-                        language="json"
+                        language="yaml"
                         theme="vs-light"
-                        value={localJson}
+                        value={content}
                         options={{
                           readOnly: true,
                           minimap: { enabled: true },
                           scrollBeyondLastLine: false,
-                          scrollbar: { vertical: "visible", horizontal: "visible" },
+                          scrollbar: {
+                            vertical: "visible",
+                            horizontal: "visible",
+                          },
                           wordWrap: "off",
                           lineNumbers: "on",
                           automaticLayout: true,
@@ -592,64 +541,153 @@ export function ApiProductApiDocs({ apiProduct }: ApiProductApiDocsProps) {
                           copyWithSyntaxHighlighting: true,
                           contextmenu: true,
                         }}
-                        height="150px"
+                        height="100%"
                       />
                     </div>
-                  ) : (
-                    // HTTP/SSE Mode - 根据配置状态动态显示
-                    <>
-                      {httpJson && (
-                        <div className="mt-4">
-                          <h3 className="text-lg font-bold mb-2">HTTP Config</h3>
-                          <MonacoEditor
-                            language="json"
-                            theme="vs-light"
-                            value={httpJson}
-                            options={{
-                              readOnly: true,
-                              minimap: { enabled: true },
-                              scrollBeyondLastLine: false,
-                              scrollbar: { vertical: "visible", horizontal: "visible" },
-                              wordWrap: "off",
-                              lineNumbers: "on",
-                              automaticLayout: true,
-                              fontSize: 14,
-                              copyWithSyntaxHighlighting: true,
-                              contextmenu: true,
-                            }}
-                            height="150px"
-                          />
-                        </div>
-                      )}
-                      {sseJson && (
-                        <div className="mt-4">
-                          <h3 className="text-lg font-bold mb-2">SSE Config</h3>
-                          <MonacoEditor
-                            language="json"
-                            theme="vs-light"
-                            value={sseJson}
-                            options={{
-                              readOnly: true,
-                              minimap: { enabled: true },
-                              scrollBeyondLastLine: false,
-                              scrollbar: { vertical: "visible", horizontal: "visible" },
-                              wordWrap: "off",
-                              lineNumbers: "on",
-                              automaticLayout: true,
-                              fontSize: 14,
-                              copyWithSyntaxHighlighting: true,
-                              contextmenu: true,
-                            }}
-                            height="150px"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              </div>
-            ),
-          }] : [])
+                  ),
+                },
+              ]
+            : []),
+          ...(isMcp
+            ? [
+                {
+                  key: "mcpServerConfig",
+                  label: "MCP连接配置",
+                  children: (
+                    <div className="space-y-4">
+                      {/* 域名选择器 */}
+                      {apiProduct.mcpConfig?.mcpServerConfig?.domains &&
+                        apiProduct.mcpConfig.mcpServerConfig.domains.length >
+                          1 && (
+                          <div className="mb-2">
+                            <div className="flex items-center mb-2">
+                              <span className="text-xs text-gray-900">
+                                域名
+                              </span>
+                            </div>
+                            <Select
+                              value={selectedDomainIndex}
+                              onChange={setSelectedDomainIndex}
+                              className="w-full"
+                              placeholder="选择域名"
+                              size="middle"
+                              style={{
+                                borderRadius: "6px",
+                                fontSize: "12px",
+                              }}
+                            >
+                              {getDomainOptions(
+                                apiProduct.mcpConfig.mcpServerConfig.domains
+                              ).map(option => (
+                                <Select.Option
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  <span className="text-xs text-gray-900 font-mono">
+                                    {option.label}
+                                  </span>
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </div>
+                        )}
+
+                      <div className="">
+                        {apiProduct.mcpConfig?.mcpServerConfig?.rawConfig ? (
+                          // Local Mode - 显示本地配置
+                          <div>
+                            <h3 className="text-lg font-bold mb-2">
+                              Local Config
+                            </h3>
+                            <MonacoEditor
+                              language="json"
+                              theme="vs-light"
+                              value={localJson}
+                              options={{
+                                readOnly: true,
+                                minimap: { enabled: true },
+                                scrollBeyondLastLine: false,
+                                scrollbar: {
+                                  vertical: "visible",
+                                  horizontal: "visible",
+                                },
+                                wordWrap: "off",
+                                lineNumbers: "on",
+                                automaticLayout: true,
+                                fontSize: 14,
+                                copyWithSyntaxHighlighting: true,
+                                contextmenu: true,
+                              }}
+                              height="150px"
+                            />
+                          </div>
+                        ) : (
+                          // HTTP/SSE Mode - 根据配置状态动态显示
+                          <>
+                            {httpJson && (
+                              <div className="mt-4">
+                                <h3 className="text-lg font-bold mb-2">
+                                  HTTP Config
+                                </h3>
+                                <MonacoEditor
+                                  language="json"
+                                  theme="vs-light"
+                                  value={httpJson}
+                                  options={{
+                                    readOnly: true,
+                                    minimap: { enabled: true },
+                                    scrollBeyondLastLine: false,
+                                    scrollbar: {
+                                      vertical: "visible",
+                                      horizontal: "visible",
+                                    },
+                                    wordWrap: "off",
+                                    lineNumbers: "on",
+                                    automaticLayout: true,
+                                    fontSize: 14,
+                                    copyWithSyntaxHighlighting: true,
+                                    contextmenu: true,
+                                  }}
+                                  height="150px"
+                                />
+                              </div>
+                            )}
+                            {sseJson && (
+                              <div className="mt-4">
+                                <h3 className="text-lg font-bold mb-2">
+                                  SSE Config
+                                </h3>
+                                <MonacoEditor
+                                  language="json"
+                                  theme="vs-light"
+                                  value={sseJson}
+                                  options={{
+                                    readOnly: true,
+                                    minimap: { enabled: true },
+                                    scrollBeyondLastLine: false,
+                                    scrollbar: {
+                                      vertical: "visible",
+                                      horizontal: "visible",
+                                    },
+                                    wordWrap: "off",
+                                    lineNumbers: "on",
+                                    automaticLayout: true,
+                                    fontSize: 14,
+                                    copyWithSyntaxHighlighting: true,
+                                    contextmenu: true,
+                                  }}
+                                  height="150px"
+                                />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ),
+                },
+              ]
+            : []),
         ]}
       />
     </div>

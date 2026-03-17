@@ -24,7 +24,9 @@ function getRandomQuestions(count: number): string[] {
   return shuffled.slice(0, count);
 }
 
-export function SuggestedQuestions({ onSelectQuestion }: SuggestedQuestionsProps) {
+export function SuggestedQuestions({
+  onSelectQuestion,
+}: SuggestedQuestionsProps) {
   const [displayedQuestions, setDisplayedQuestions] = useState(() => {
     return getRandomQuestions(3);
   });
@@ -48,7 +50,9 @@ export function SuggestedQuestions({ onSelectQuestion }: SuggestedQuestionsProps
           className="p-1.5 text-[#737373] hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
           title="刷新推荐"
         >
-          <ReloadOutlined className={`text-xs transition-transform duration-300 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <ReloadOutlined
+            className={`text-xs transition-transform duration-300 ${isRefreshing ? "animate-spin" : ""}`}
+          />
         </button>
       </div>
 
@@ -65,10 +69,10 @@ export function SuggestedQuestions({ onSelectQuestion }: SuggestedQuestionsProps
               hover:bg-white hover:shadow-md hover:scale-[1.02] hover:border-[#C7D2FE]
               active:scale-[0.98]
               group
-              ${isRefreshing ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}
+              ${isRefreshing ? "opacity-0 translate-y-2" : "opacity-100 translate-y-0"}
             `}
             style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.6)',
+              backgroundColor: "rgba(255, 255, 255, 0.6)",
               animationDelay: `${index * 100}ms`,
             }}
           >

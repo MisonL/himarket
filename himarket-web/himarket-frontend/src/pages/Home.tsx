@@ -12,7 +12,6 @@ import TextType from "../components/TextType";
 const { Title, Paragraph } = Typography;
 
 function HomePage() {
-
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const fromCookie = params.get("fromCookie");
@@ -29,11 +28,14 @@ function HomePage() {
           {/* 标题区域 */}
           <div className="mb-10">
             <Title level={1} className="text-5xl font-bold text-gray-900 mb-8">
-              <span style={{
-                background: "linear-gradient(249deg, #8FA1FF 0%, #2B2B3B 25%)",
-                backgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}>
+              <span
+                style={{
+                  background:
+                    "linear-gradient(249deg, #8FA1FF 0%, #2B2B3B 25%)",
+                  backgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
                 HiMarket 企业级AI开放平台
               </span>
             </Title>

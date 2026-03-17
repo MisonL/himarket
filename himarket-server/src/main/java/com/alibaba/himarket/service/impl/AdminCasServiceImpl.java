@@ -153,9 +153,10 @@ public class AdminCasServiceImpl implements AdminCasService {
         // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
         java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
-        long maxSafetyExpiresIn = 86400; // Default 24h as a broad safety net
+        long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn = Math.max(0, 86400 - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn =
+                    Math.max(0, IdpConstants.SECONDS_PER_DAY - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 

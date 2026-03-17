@@ -2,7 +2,7 @@ export interface Subscription {
   subscriptionId: string;
   consumerId: string;
   productId: string;
-  status: 'PENDING' | 'APPROVED';
+  status: "PENDING" | "APPROVED";
   createAt: string;
   updatedAt: string;
   productName: string;
@@ -22,6 +22,3 @@ export interface SubscriptionModalProps {
   consumerName: string;
   onCancel: () => void;
 }
-
-
-

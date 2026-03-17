@@ -43,15 +43,24 @@ function getColorByChar(char: string) {
  * 通用的产品图标渲染组件
  * 支持：URL 图片、Base64 图片、首字母/首字、默认图标
  */
-export function ProductIconRenderer({ iconType, className = "w-4 h-4" }: ProductIconRendererProps) {
+export function ProductIconRenderer({
+  iconType,
+  className = "w-4 h-4",
+}: ProductIconRendererProps) {
   // 如果是默认图标或空值
   if (!iconType || iconType === "default") {
     return <DefaultModel className={className} />;
   }
 
   // 如果是 URL 或 base64 图片
-  if (iconType.startsWith('http') || iconType.startsWith('data:image')) {
-    return <img src={iconType} alt="icon" className={`${className} object-cover rounded`} />;
+  if (iconType.startsWith("http") || iconType.startsWith("data:image")) {
+    return (
+      <img
+        src={iconType}
+        alt="icon"
+        className={`${className} object-cover rounded`}
+      />
+    );
   }
 
   // 如果是单个字符（首字母/首字），渲染文字图标

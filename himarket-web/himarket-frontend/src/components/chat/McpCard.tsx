@@ -18,8 +18,13 @@ interface McpCardProps {
 
 function McpCard(props: McpCardProps) {
   const {
-    data, isSubscribed = false, isAdded = false,
-    onAdd, onRemove, onQuickSubscribe, onShowMore,
+    data,
+    isSubscribed = false,
+    isAdded = false,
+    onAdd,
+    onRemove,
+    onQuickSubscribe,
+    onShowMore,
   } = props;
 
   const [toolsLoading, setToolsLoading] = useState(false);
@@ -37,7 +42,7 @@ function McpCard(props: McpCardProps) {
         setTools(resp.data.tools);
       }
     } catch (error) {
-      console.error('Failed to load MCP tools:', error);
+      console.error("Failed to load MCP tools:", error);
     } finally {
       setToolsLoading(false);
     }
@@ -64,7 +69,6 @@ function McpCard(props: McpCardProps) {
     onQuickSubscribe?.(data);
   };
 
-
   return (
     <div
       className="
@@ -81,17 +85,23 @@ function McpCard(props: McpCardProps) {
       {/* 上部：Logo、名称和状态 */}
       <div className="flex gap-3 items-start">
         <div className="w-14 h-14">
-          <ProductIconRenderer className="w-full h-full object-cover" iconType={getIconString(data.icon)} />
+          <ProductIconRenderer
+            className="w-full h-full object-cover"
+            iconType={getIconString(data.icon)}
+          />
         </div>
         <div className="flex w-full h-full justify-between">
           <div className="flex h-full flex-col justify-between">
             <h3 className="font-medium text-base  truncate">{data.name}</h3>
             <div>
-              <span className={`text-xs px-2 py-1 rounded-lg ${isSubscribed
-                ? 'bg-colorPrimaryBgHover text-colorPrimary'
-                : 'bg-gray-100 text-gray-600'
-                }`}>
-                {isSubscribed ? '已订阅' : '未订阅'}
+              <span
+                className={`text-xs px-2 py-1 rounded-lg ${
+                  isSubscribed
+                    ? "bg-colorPrimaryBgHover text-colorPrimary"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {isSubscribed ? "已订阅" : "未订阅"}
               </span>
             </div>
           </div>
@@ -105,11 +115,19 @@ function McpCard(props: McpCardProps) {
                 {toolsLoading ? (
                   // 骨架屏
                   <div className="space-y-3">
-                    <Skeleton.Input active size="small" style={{ width: 100 }} />
-                    {[1, 2, 3].map((i) => (
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: 100 }}
+                    />
+                    {[1, 2, 3].map(i => (
                       <div key={i}>
-                        <Skeleton active paragraph={{ rows: 2 }} title={{ width: '60%' }} />
-                        {i < 3 && <Divider style={{ margin: '12px 0' }} />}
+                        <Skeleton
+                          active
+                          paragraph={{ rows: 2 }}
+                          title={{ width: "60%" }}
+                        />
+                        {i < 3 && <Divider style={{ margin: "12px 0" }} />}
                       </div>
                     ))}
                   </div>
@@ -132,11 +150,11 @@ function McpCard(props: McpCardProps) {
                                 {tool.name}
                               </div>
                               <div className="text-xs text-gray-500 leading-relaxed">
-                                {tool.description || '暂无描述'}
+                                {tool.description || "暂无描述"}
                               </div>
                             </div>
                             {index < tools.length - 1 && (
-                              <Divider style={{ margin: '12px 0' }} />
+                              <Divider style={{ margin: "12px 0" }} />
                             )}
                           </div>
                         ))}
@@ -147,7 +165,7 @@ function McpCard(props: McpCardProps) {
               </div>
             }
           >
-            <div onClick={(e) => e.stopPropagation()}>
+            <div onClick={e => e.stopPropagation()}>
               <More className="fill-mainTitle" />
             </div>
           </Popover>
@@ -157,7 +175,7 @@ function McpCard(props: McpCardProps) {
       {/* 中部：描述 */}
       <div className="flex-1 overflow-hidden">
         <p className="text-sm text-colorTextSecondaryCustom line-clamp-2">
-          {data.description || '暂无描述'}
+          {data.description || "暂无描述"}
         </p>
       </div>
 
@@ -169,20 +187,17 @@ function McpCard(props: McpCardProps) {
             block
             onClick={handleAdd}
           >
-            {isAdded ? '取消添加' : '添加'}
+            {isAdded ? "取消添加" : "添加"}
           </Button>
         ) : (
           <div className="flex gap-2 justify-between w-full">
-            <Button
-              className="flex-1"
-              onClick={handleQuickSubscribe}
-            >
+            <Button className="flex-1" onClick={handleQuickSubscribe}>
               快速订阅
             </Button>
           </div>
         )}
       </div>
-    </div >
+    </div>
   );
 }
 

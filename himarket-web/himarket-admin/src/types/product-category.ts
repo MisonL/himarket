@@ -1,5 +1,5 @@
 export interface ProductIcon {
-  type: 'URL' | 'BASE64';
+  type: "URL" | "BASE64";
   value: string;
 }
 

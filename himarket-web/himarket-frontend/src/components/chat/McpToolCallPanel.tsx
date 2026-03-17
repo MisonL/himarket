@@ -12,16 +12,19 @@ interface McpToolCallItemProps {
 }
 
 // 单个工具调用组件 - 用于内联展示
-export function McpToolCallItem({ 
-  toolCall, 
-  toolResponse, 
+export function McpToolCallItem({
+  toolCall,
+  toolResponse,
   panelKey = "mcp-tool-0",
   activeKey: externalActiveKey,
-  onActiveKeyChange 
+  onActiveKeyChange,
 }: McpToolCallItemProps) {
-  const [internalActiveKey, setInternalActiveKey] = useState<string | string[]>([]);
-  
-  const activeKey = externalActiveKey !== undefined ? externalActiveKey : internalActiveKey;
+  const [internalActiveKey, setInternalActiveKey] = useState<string | string[]>(
+    []
+  );
+
+  const activeKey =
+    externalActiveKey !== undefined ? externalActiveKey : internalActiveKey;
   const setActiveKey = onActiveKeyChange || setInternalActiveKey;
 
   const mcpServerName = toolCall.mcpServerName;
@@ -37,7 +40,10 @@ export function McpToolCallItem({
     parsedInput = toolCall.arguments;
   }
   try {
-    const resultString = typeof toolResponse?.result === 'string' ? toolResponse.result : JSON.stringify(toolResponse?.result || {});
+    const resultString =
+      typeof toolResponse?.result === "string"
+        ? toolResponse.result
+        : JSON.stringify(toolResponse?.result || {});
     parsedResponse = JSON.parse(resultString || "{}");
   } catch {
     parsedResponse = toolResponse?.result;
@@ -64,19 +70,29 @@ export function McpToolCallItem({
             <div className="space-y-4">
               {/* MCP Server 名称 */}
               <div>
-                <div className="text-xs font-medium text-gray-800 mb-1">MCP Server:</div>
-                <div className="text-sm p-2 border border-[#e5e5e5] rounded-lg text-gray-800">{mcpServerName}</div>
+                <div className="text-xs font-medium text-gray-800 mb-1">
+                  MCP Server:
+                </div>
+                <div className="text-sm p-2 border border-[#e5e5e5] rounded-lg text-gray-800">
+                  {mcpServerName}
+                </div>
               </div>
 
               {/* Tools 列表 */}
               <div>
-                <div className="text-xs font-medium text-gray-800 mb-1">Tool:</div>
-                <div className="text-sm text-gray-800 border border-[#e5e5e5] p-2 rounded-lg">{toolName}</div>
+                <div className="text-xs font-medium text-gray-800 mb-1">
+                  Tool:
+                </div>
+                <div className="text-sm text-gray-800 border border-[#e5e5e5] p-2 rounded-lg">
+                  {toolName}
+                </div>
               </div>
 
               {/* Parameters */}
               <div>
-                <div className="text-xs font-medium text-gray-800 mb-1">Parameters:</div>
+                <div className="text-xs font-medium text-gray-800 mb-1">
+                  Parameters:
+                </div>
                 <div className="rounded-lg p-2 overflow-x-auto border border-[#e5e5e5]">
                   <pre className="text-xs text-gray-800 whitespace-pre-wrap">
                     {typeof parsedInput === "object"
@@ -89,7 +105,9 @@ export function McpToolCallItem({
               {/* Results */}
               {toolResponse && (
                 <div>
-                  <div className="text-xs font-medium text-gray-800 mb-1">Results:</div>
+                  <div className="text-xs font-medium text-gray-800 mb-1">
+                    Results:
+                  </div>
                   <div className="bg-white rounded-lg p-2 overflow-x-auto border border-[#e5e5e5]">
                     <pre className="text-xs text-gray-800 whitespace-pre-wrap">
                       {typeof parsedResponse === "object"
@@ -102,7 +120,9 @@ export function McpToolCallItem({
 
               {/* 如果还没有响应，显示等待状态 */}
               {!toolResponse && (
-                <div className="text-sm text-gray-400 italic">等待工具响应...</div>
+                <div className="text-sm text-gray-400 italic">
+                  等待工具响应...
+                </div>
               )}
             </div>
           ),
@@ -118,7 +138,10 @@ interface McpToolCallPanelProps {
   toolResponses?: IMcpToolResponse[];
 }
 
-export function McpToolCallPanel({ toolCalls = [], toolResponses = [] }: McpToolCallPanelProps) {
+export function McpToolCallPanel({
+  toolCalls = [],
+  toolResponses = [],
+}: McpToolCallPanelProps) {
   const [activeKey, setActiveKey] = useState<string | string[]>([]);
 
   if (toolCalls.length === 0) {
@@ -126,8 +149,8 @@ export function McpToolCallPanel({ toolCalls = [], toolResponses = [] }: McpTool
   }
 
   // 合并 toolCall 和 toolResponse（通过 id 匹配）
-  const toolItems = toolCalls.map((toolCall) => {
-    const toolResponse = toolResponses?.find((resp) => resp.id === toolCall.id);
+  const toolItems = toolCalls.map(toolCall => {
+    const toolResponse = toolResponses?.find(resp => resp.id === toolCall.id);
     return { toolCall, toolResponse };
   });
 

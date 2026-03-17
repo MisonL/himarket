@@ -14,19 +14,19 @@ export type ConsumerCredential = HMACCredential | APIKeyCredential;
 export interface HMACCredential {
   ak?: string;
   sk?: string;
-  mode?: 'SYSTEM' | 'CUSTOM';
+  mode?: "SYSTEM" | "CUSTOM";
 }
 
 export interface APIKeyCredential {
   apiKey?: string;
-  mode?: 'SYSTEM' | 'CUSTOM';
+  mode?: "SYSTEM" | "CUSTOM";
 }
 
 export interface ConsumerCredentialResult {
   apiKeyConfig?: {
     credentials?: Array<{
       apiKey?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
     source?: string;
     key?: string;
@@ -35,7 +35,7 @@ export interface ConsumerCredentialResult {
     credentials?: Array<{
       ak?: string;
       sk?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
   };
   jwtConfig?: Record<string, unknown>;
@@ -44,11 +44,11 @@ export interface ConsumerCredentialResult {
 export interface Subscription {
   productId: string;
   consumerId: string;
-  status: 'PENDING' | 'APPROVED';
+  status: "PENDING" | "APPROVED";
   createAt: string;
   updatedAt: string;
   productName: string;
-  productType: 'REST_API' | 'MCP_SERVER' | 'AGENT_API' | 'MODEL_API';
+  productType: "REST_API" | "MCP_SERVER" | "AGENT_API" | "MODEL_API";
   consumerName?: string;
   product?: Product;
 }
@@ -57,7 +57,7 @@ export interface CreateCredentialParam {
   apiKeyConfig?: {
     credentials?: Array<{
       apiKey?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
     source?: string;
     key?: string;
@@ -66,8 +66,8 @@ export interface CreateCredentialParam {
     credentials?: Array<{
       ak?: string;
       sk?: string;
-      mode?: 'SYSTEM' | 'CUSTOM';
+      mode?: "SYSTEM" | "CUSTOM";
     }>;
   };
   jwtConfig?: Record<string, unknown>;
-} 
+}

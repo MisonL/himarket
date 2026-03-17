@@ -1,48 +1,48 @@
-import React, { useEffect, useState } from 'react'
-import { Card, Spin, Button, Space } from 'antd'
-import { ReloadOutlined, DashboardOutlined } from '@ant-design/icons'
-import { portalApi } from '@/lib/api'
-import type { Portal } from '@/types'
+import React, { useEffect, useState } from "react";
+import { Card, Spin, Button, Space } from "antd";
+import { ReloadOutlined, DashboardOutlined } from "@ant-design/icons";
+import { portalApi } from "@/lib/api";
+import type { Portal } from "@/types";
 
 interface PortalDashboardProps {
-  portal: Portal
+  portal: Portal;
 }
 
 export const PortalDashboard: React.FC<PortalDashboardProps> = ({ portal }) => {
-  const [dashboardUrl, setDashboardUrl] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [fallback, setFallback] = useState(false)
+  const [dashboardUrl, setDashboardUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [fallback, setFallback] = useState(false);
 
   const fetchDashboardUrl = async () => {
-    if (!portal.portalId) return
-    setLoading(true)
-    setError('')
+    if (!portal.portalId) return;
+    setLoading(true);
+    setError("");
     try {
-      const res = await portalApi.getPortalDashboard(portal.portalId, 'Portal')
+      const res = await portalApi.getPortalDashboard(portal.portalId, "Portal");
       if (!res?.data) {
-        setFallback(true)
+        setFallback(true);
       } else {
-        setDashboardUrl(res.data)
+        setDashboardUrl(res.data);
       }
     } catch (e: any) {
-      setError(e?.response?.data?.message || '获取监控面板失败')
-      setFallback(true)
+      setError(e?.response?.data?.message || "获取监控面板失败");
+      setFallback(true);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchDashboardUrl()
-  }, [portal.portalId])
+    fetchDashboardUrl();
+  }, [portal.portalId]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <Spin size="large" />
       </div>
-    )
+    );
   }
 
   if (fallback || !dashboardUrl || error) {
@@ -52,10 +52,12 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ portal }) => {
           Dashboard 发布中，敬请期待
         </div>
         <div className="mt-4 text-right">
-          <Button onClick={fetchDashboardUrl} loading={loading}>刷新</Button>
+          <Button onClick={fetchDashboardUrl} loading={loading}>
+            刷新
+          </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -66,10 +68,18 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ portal }) => {
             <DashboardOutlined className="text-blue-500" />
             Dashboard 监控面板
           </h2>
-          <p className="text-gray-500 mt-2">实时监控 {portal.name} 的访问与性能</p>
+          <p className="text-gray-500 mt-2">
+            实时监控 {portal.name} 的访问与性能
+          </p>
         </div>
         <Space>
-          <Button icon={<ReloadOutlined />} onClick={fetchDashboardUrl} loading={loading}>刷新</Button>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={fetchDashboardUrl}
+            loading={loading}
+          >
+            刷新
+          </Button>
         </Space>
       </div>
 
@@ -85,7 +95,5 @@ export const PortalDashboard: React.FC<PortalDashboardProps> = ({ portal }) => {
         </div>
       </Card>
     </div>
-  )
-}
-
-
+  );
+};

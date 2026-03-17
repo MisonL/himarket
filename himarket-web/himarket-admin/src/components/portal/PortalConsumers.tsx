@@ -1,11 +1,16 @@
-import { Card, Table, Badge, Button, Space, Avatar, Tag, Input } from 'antd'
-import { SearchOutlined, UserAddOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
-import { useState } from 'react'
-import { Portal, DeveloperStats } from '@/types'
-import { formatDateTime } from '@/lib/utils'
+import { Card, Table, Badge, Button, Space, Avatar, Tag, Input } from "antd";
+import {
+  SearchOutlined,
+  UserAddOutlined,
+  EditOutlined,
+  DeleteOutlined,
+} from "@ant-design/icons";
+import { useState } from "react";
+import { Portal, DeveloperStats } from "@/types";
+import { formatDateTime } from "@/lib/utils";
 
 interface PortalConsumersProps {
-  portal: Portal
+  portal: Portal;
 }
 
 const mockConsumers: DeveloperStats[] = [
@@ -18,7 +23,7 @@ const mockConsumers: DeveloperStats[] = [
     joinedAt: "2025-01-01T10:00:00Z",
     lastActive: "2025-01-08T15:30:00Z",
     apiCalls: 15420,
-    subscriptions: 3
+    subscriptions: 3,
   },
   {
     id: "2",
@@ -29,7 +34,7 @@ const mockConsumers: DeveloperStats[] = [
     joinedAt: "2025-01-02T11:00:00Z",
     lastActive: "2025-01-08T14:20:00Z",
     apiCalls: 8765,
-    subscriptions: 2
+    subscriptions: 2,
   },
   {
     id: "3",
@@ -40,50 +45,51 @@ const mockConsumers: DeveloperStats[] = [
     joinedAt: "2025-01-03T12:00:00Z",
     lastActive: "2025-01-05T09:15:00Z",
     apiCalls: 1200,
-    subscriptions: 1
-  }
-]
+    subscriptions: 1,
+  },
+];
 
 export function PortalConsumers({ portal }: PortalConsumersProps) {
-  const [consumers, setConsumers] = useState<DeveloperStats[]>(mockConsumers)
-  const [searchText, setSearchText] = useState('')
+  const [consumers, setConsumers] = useState<DeveloperStats[]>(mockConsumers);
+  const [searchText, setSearchText] = useState("");
 
-  const filteredConsumers = consumers.filter(consumer =>
-    consumer.name.toLowerCase().includes(searchText.toLowerCase()) ||
-    consumer.email.toLowerCase().includes(searchText.toLowerCase())
-  )
+  const filteredConsumers = consumers.filter(
+    consumer =>
+      consumer.name.toLowerCase().includes(searchText.toLowerCase()) ||
+      consumer.email.toLowerCase().includes(searchText.toLowerCase())
+  );
 
   const getPlanColor = (plan: string) => {
     switch (plan) {
-      case 'premium':
-        return 'gold'
-      case 'standard':
-        return 'blue'
-      case 'basic':
-        return 'green'
+      case "premium":
+        return "gold";
+      case "standard":
+        return "blue";
+      case "basic":
+        return "green";
       default:
-        return 'default'
+        return "default";
     }
-  }
+  };
 
   const getPlanText = (plan: string) => {
     switch (plan) {
-      case 'premium':
-        return '高级版'
-      case 'standard':
-        return '标准版'
-      case 'basic':
-        return '基础版'
+      case "premium":
+        return "高级版";
+      case "standard":
+        return "标准版";
+      case "basic":
+        return "基础版";
       default:
-        return plan
+        return plan;
     }
-  }
+  };
 
   const columns = [
     {
-      title: '消费者',
-      dataIndex: 'name',
-      key: 'name',
+      title: "消费者",
+      dataIndex: "name",
+      key: "name",
       render: (name: string, record: DeveloperStats) => (
         <div className="flex items-center space-x-3">
           <Avatar className="bg-green-500">
@@ -97,50 +103,51 @@ export function PortalConsumers({ portal }: PortalConsumersProps) {
       ),
     },
     {
-      title: '状态',
-      dataIndex: 'status',
-      key: 'status',
+      title: "状态",
+      dataIndex: "status",
+      key: "status",
       render: (status: string) => (
-        <Badge status={status === 'active' ? 'success' : 'default'} text={status === 'active' ? '活跃' : '非活跃'} />
-      )
+        <Badge
+          status={status === "active" ? "success" : "default"}
+          text={status === "active" ? "活跃" : "非活跃"}
+        />
+      ),
     },
     {
-      title: '套餐',
-      dataIndex: 'plan',
-      key: 'plan',
+      title: "套餐",
+      dataIndex: "plan",
+      key: "plan",
       render: (plan: string) => (
-        <Tag color={getPlanColor(plan)}>
-          {getPlanText(plan)}
-        </Tag>
-      )
+        <Tag color={getPlanColor(plan)}>{getPlanText(plan)}</Tag>
+      ),
     },
     {
-      title: 'API调用',
-      dataIndex: 'apiCalls',
-      key: 'apiCalls',
-      render: (calls: number) => calls.toLocaleString()
+      title: "API调用",
+      dataIndex: "apiCalls",
+      key: "apiCalls",
+      render: (calls: number) => calls.toLocaleString(),
     },
     {
-      title: '订阅数',
-      dataIndex: 'subscriptions',
-      key: 'subscriptions',
-      render: (subscriptions: number) => subscriptions.toLocaleString()
+      title: "订阅数",
+      dataIndex: "subscriptions",
+      key: "subscriptions",
+      render: (subscriptions: number) => subscriptions.toLocaleString(),
     },
     {
-      title: '加入时间',
-      dataIndex: 'joinedAt',
-      key: 'joinedAt',
-      render: (date: string) => formatDateTime(date)
+      title: "加入时间",
+      dataIndex: "joinedAt",
+      key: "joinedAt",
+      render: (date: string) => formatDateTime(date),
     },
     {
-      title: '最后活跃',
-      dataIndex: 'lastActive',
-      key: 'lastActive',
-      render: (date: string) => formatDateTime(date)
+      title: "最后活跃",
+      dataIndex: "lastActive",
+      key: "lastActive",
+      render: (date: string) => formatDateTime(date),
     },
     {
-      title: '操作',
-      key: 'action',
+      title: "操作",
+      key: "action",
       render: (_: any, record: DeveloperStats) => (
         <Space size="middle">
           <Button type="link" icon={<EditOutlined />}>
@@ -152,7 +159,7 @@ export function PortalConsumers({ portal }: PortalConsumersProps) {
         </Space>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="p-6 space-y-6">
@@ -172,12 +179,12 @@ export function PortalConsumers({ portal }: PortalConsumersProps) {
             placeholder="搜索消费者..."
             prefix={<SearchOutlined />}
             value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
+            onChange={e => setSearchText(e.target.value)}
             style={{ width: 300 }}
           />
         </div>
-        <Table 
-          columns={columns} 
+        <Table
+          columns={columns}
           dataSource={filteredConsumers}
           rowKey="id"
           pagination={false}
@@ -211,5 +218,5 @@ export function PortalConsumers({ portal }: PortalConsumersProps) {
         </div>
       </Card> */}
     </div>
-  )
-} 
+  );
+}

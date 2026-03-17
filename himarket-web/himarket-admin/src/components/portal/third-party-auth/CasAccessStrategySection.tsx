@@ -90,16 +90,10 @@ export function CasAccessStrategySection() {
       >
         <Switch />
       </Form.Item>
-      <Form.Item
-        name="httpRequestIpAddressPattern"
-        label="IP Address Regex"
-      >
+      <Form.Item name="httpRequestIpAddressPattern" label="IP Address Regex">
         <Input placeholder="如: ^127\\.0\\.0\\.1$" />
       </Form.Item>
-      <Form.Item
-        name="httpRequestUserAgentPattern"
-        label="User-Agent Regex"
-      >
+      <Form.Item name="httpRequestUserAgentPattern" label="User-Agent Regex">
         <Input placeholder="如: ^curl/.*$" />
       </Form.Item>
       <Form.Item
@@ -107,10 +101,7 @@ export function CasAccessStrategySection() {
         label="Required Headers"
         extra='JSON 对象，例如 {"X-Portal-Scope":"admin"}'
       >
-        <Input.TextArea
-          rows={4}
-          placeholder='如: {"X-Portal-Scope":"admin"}'
-        />
+        <Input.TextArea rows={4} placeholder='如: {"X-Portal-Scope":"admin"}' />
       </Form.Item>
     </div>
   );

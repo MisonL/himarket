@@ -29,9 +29,9 @@ function McpPage() {
   const [loading, setLoading] = useState(false);
   const [mcpServers, setMcpServers] = useState<IMcpServer[]>([]);
   const [allServers, setAllServers] = useState<IMcpServer[]>([]);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [categories, setCategories] = useState<ICategory[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   useEffect(() => {
     fetchMcpServers();
@@ -50,7 +50,11 @@ function McpPage() {
         return icon.value || fallback;
       case "BASE64":
         // 如果value已经包含data URL前缀，直接使用；否则添加前缀
-        return icon.value ? (icon.value.startsWith('data:') ? icon.value : `data:image/png;base64,${icon.value}`) : fallback;
+        return icon.value
+          ? icon.value.startsWith("data:")
+            ? icon.value
+            : `data:image/png;base64,${icon.value}`
+          : fallback;
       default:
         return fallback;
     }
@@ -59,40 +63,46 @@ function McpPage() {
   // 获取类别列表
   const fetchCategories = async () => {
     try {
-      const response = await APIs.getCategoriesByProductType({ productType: 'MCP_SERVER' });
+      const response = await APIs.getCategoriesByProductType({
+        productType: "MCP_SERVER",
+      });
       if (response.code === "SUCCESS" && response.data) {
         setCategories(response.data.content || []);
       }
     } catch (error) {
-      console.error('获取类别列表失败:', error);
+      console.error("获取类别列表失败:", error);
     }
   };
 
   const fetchMcpServers = async () => {
     setLoading(true);
     try {
-      const response = await APIs.getProducts({ type: 'MCP_SERVER', page: 0, size: 100 });
+      const response = await APIs.getProducts({
+        type: "MCP_SERVER",
+        page: 0,
+        size: 100,
+      });
       if (response.code === "SUCCESS" && response.data) {
         // 移除重复过滤，简化数据映射
-        const mapped = response.data.content.map((item) => ({
+        const mapped = response.data.content.map(item => ({
           key: item.productId,
           name: item.name,
           description: item.description,
-          status: item.status === ProductStatus.ENABLE ? 'active' : 'inactive',
-          version: 'v1.0.0',
+          status: item.status === ProductStatus.ENABLE ? "active" : "inactive",
+          version: "v1.0.0",
           endpoints: 0,
-          category: 'Unknown',
-          creator: 'Unknown',
+          category: "Unknown",
+          creator: "Unknown",
           icon: item.icon || undefined,
           mcpConfig: item.mcpConfig,
           categories: item.categories || [],
-          updatedAt: item.updatedAt?.slice(0, 10) || ''
+          updatedAt: item.updatedAt?.slice(0, 10) || "",
         })) as IMcpServer[];
         setAllServers(mapped);
         setMcpServers(mapped);
       }
     } catch (error) {
-      console.error('获取MCP服务器列表失败:', error);
+      console.error("获取MCP服务器列表失败:", error);
     } finally {
       setLoading(false);
     }
@@ -101,7 +111,7 @@ function McpPage() {
   // 处理类别筛选
   const handleCategoryChange = (categoryId: string) => {
     setSelectedCategory(categoryId);
-    if (categoryId === 'all') {
+    if (categoryId === "all") {
       setMcpServers(allServers);
     } else {
       const filtered = allServers.filter(server =>
@@ -112,37 +122,45 @@ function McpPage() {
   };
 
   // 获取类别图标
-  const getCategoryIcon = (icon?: IProductIcon, _isSelected?: boolean, isAll?: boolean) => {
+  const getCategoryIcon = (
+    icon?: IProductIcon,
+    _isSelected?: boolean,
+    isAll?: boolean
+  ) => {
     if (!icon || !icon.value) {
       // "全部"使用打开的文件夹图标，其他使用普通文件夹图标
       const IconComponent = isAll ? FolderOpenFilled : FolderFilled;
-      return <IconComponent style={{ fontSize: '18px', color: '#D1D5DB' }} />;
+      return <IconComponent style={{ fontSize: "18px", color: "#D1D5DB" }} />;
     }
 
-    let iconUrl = '';
-    if (icon.type === 'URL') {
+    let iconUrl = "";
+    if (icon.type === "URL") {
       iconUrl = icon.value;
-    } else if (icon.type === 'BASE64') {
+    } else if (icon.type === "BASE64") {
       // 处理BASE64数据，确保有正确的前缀
-      iconUrl = icon.value.startsWith('data:') ? icon.value : `data:image/png;base64,${icon.value}`;
+      iconUrl = icon.value.startsWith("data:")
+        ? icon.value
+        : `data:image/png;base64,${icon.value}`;
     }
 
     return (
       <img
         src={iconUrl}
         alt=""
-        style={{ width: '18px', height: '18px' }}
-        onError={(e) => {
-          e.currentTarget.style.display = 'none';
+        style={{ width: "18px", height: "18px" }}
+        onError={e => {
+          e.currentTarget.style.display = "none";
         }}
       />
     );
   };
 
   const filteredMcpServers = mcpServers.filter(server => {
-    return server.name.toLowerCase().includes(searchText.toLowerCase()) ||
+    return (
+      server.name.toLowerCase().includes(searchText.toLowerCase()) ||
       server.description.toLowerCase().includes(searchText.toLowerCase()) ||
-      server.creator.toLowerCase().includes(searchText.toLowerCase());
+      server.creator.toLowerCase().includes(searchText.toLowerCase())
+    );
   });
 
   return (
@@ -160,12 +178,15 @@ function McpPage() {
       {/* Search Section */}
       <div className="flex justify-center mb-8">
         <div className="relative w-full max-w-lg">
-          <div className="border border-gray-300 rounded-md overflow-hidden hover:border-blue-500 focus-within:border-blue-500 focus-within:shadow-sm" style={{ width: '100%', maxWidth: '500px' }}>
+          <div
+            className="border border-gray-300 rounded-md overflow-hidden hover:border-blue-500 focus-within:border-blue-500 focus-within:shadow-sm"
+            style={{ width: "100%", maxWidth: "500px" }}
+          >
             <Input.Search
               placeholder="请输入内容"
               size="large"
               value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={e => setSearchText(e.target.value)}
               className="border-0 rounded-none"
               variant="borderless"
             />
@@ -178,48 +199,78 @@ function McpPage() {
         <div className="py-3 px-4 border border-gray-200 rounded-lg bg-[#f4f4f6]">
           <div className="flex flex-wrap items-center gap-4">
             <div
-              className={`cursor-pointer transition-all duration-200 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm border ${selectedCategory === 'all'
-                  ? 'bg-white shadow-sm text-blue-600 border-blue-200'
-                  : 'text-gray-600 border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200'
-                }`}
-              onClick={() => handleCategoryChange('all')}
+              className={`cursor-pointer transition-all duration-200 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm border ${
+                selectedCategory === "all"
+                  ? "bg-white shadow-sm text-blue-600 border-blue-200"
+                  : "text-gray-600 border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200"
+              }`}
+              onClick={() => handleCategoryChange("all")}
             >
-              <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCategory === 'all' ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'
-                }`}>
-                {selectedCategory === 'all' && (
-                  <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <div
+                className={`w-4 h-4 rounded border flex items-center justify-center ${
+                  selectedCategory === "all"
+                    ? "border-blue-500 bg-blue-500"
+                    : "border-gray-300 bg-white"
+                }`}
+              >
+                {selectedCategory === "all" && (
+                  <svg
+                    className="w-2.5 h-2.5 text-white"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                 )}
               </div>
-              {getCategoryIcon(undefined, selectedCategory === 'all', true)}
+              {getCategoryIcon(undefined, selectedCategory === "all", true)}
               <span>全部</span>
             </div>
             {categories.map(category => (
               <div
                 key={category.categoryId}
-                className={`cursor-pointer transition-all duration-200 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm border ${selectedCategory === category.categoryId
-                    ? 'bg-white shadow-sm text-blue-600 border-blue-200'
-                    : 'text-gray-600 border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200'
-                  }`}
+                className={`cursor-pointer transition-all duration-200 px-3 py-1.5 rounded-md flex items-center gap-2 text-sm border ${
+                  selectedCategory === category.categoryId
+                    ? "bg-white shadow-sm text-blue-600 border-blue-200"
+                    : "text-gray-600 border-transparent hover:bg-white hover:shadow-sm hover:border-gray-200"
+                }`}
                 onClick={() => handleCategoryChange(category.categoryId)}
               >
-                <div className={`w-4 h-4 rounded border flex items-center justify-center ${selectedCategory === category.categoryId ? 'border-blue-500 bg-blue-500' : 'border-gray-300 bg-white'
-                  }`}>
+                <div
+                  className={`w-4 h-4 rounded border flex items-center justify-center ${
+                    selectedCategory === category.categoryId
+                      ? "border-blue-500 bg-blue-500"
+                      : "border-gray-300 bg-white"
+                  }`}
+                >
                   {selectedCategory === category.categoryId && (
-                    <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    <svg
+                      className="w-2.5 h-2.5 text-white"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                   )}
                 </div>
-                {getCategoryIcon(category.icon, selectedCategory === category.categoryId)}
+                {getCategoryIcon(
+                  category.icon,
+                  selectedCategory === category.categoryId
+                )}
                 <span>{category.name}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-
 
       {/* Servers Grid */}
       {loading ? (
@@ -230,9 +281,21 @@ function McpPage() {
                 <div className="flex items-start space-x-4 mb-2">
                   <Skeleton.Avatar size={48} active />
                   <div className="flex-1 min-w-0">
-                    <Skeleton.Input active size="small" style={{ width: '80%', marginBottom: 8 }} />
-                    <Skeleton.Input active size="small" style={{ width: '100%', marginBottom: 12 }} />
-                    <Skeleton.Input active size="small" style={{ width: '60%' }} />
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: "80%", marginBottom: 8 }}
+                    />
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: "100%", marginBottom: 12 }}
+                    />
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: "60%" }}
+                    />
                   </div>
                 </div>
               </Skeleton>
@@ -241,7 +304,7 @@ function McpPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {filteredMcpServers.map((server) => (
+          {filteredMcpServers.map(server => (
             <Link key={server.key} to={`/mcp/${server.key}`} className="block">
               <Card
                 hoverable
@@ -250,10 +313,7 @@ function McpPage() {
                 <div className="flex items-start space-x-4 mb-2">
                   {/* Server Icon */}
                   {server.icon ? (
-                    <Avatar
-                      size={48}
-                      src={getIconUrl(server.icon)}
-                    />
+                    <Avatar size={48} src={getIconUrl(server.icon)} />
                   ) : (
                     <Avatar
                       size={48}
@@ -271,7 +331,8 @@ function McpPage() {
                         {server.name}
                       </Title>
                       <Tag className="text-xs text-gray-500 border-0 bg-transparent px-0">
-                        {server.mcpConfig?.mcpServerConfig?.transportMode || 'remote'}
+                        {server.mcpConfig?.mcpServerConfig?.transportMode ||
+                          "remote"}
                       </Tag>
                     </div>
 
@@ -302,4 +363,4 @@ function McpPage() {
   );
 }
 
-export default McpPage; 
+export default McpPage;

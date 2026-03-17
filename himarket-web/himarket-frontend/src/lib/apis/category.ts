@@ -39,7 +39,7 @@ interface GetCategoriesResp {
  */
 export function getCategoriesByProductType(params: GetCategoriesParams) {
   return request.get<RespI<GetCategoriesResp>, RespI<GetCategoriesResp>>(
-    '/product-categories',
+    "/product-categories",
     {
       params: {
         productType: params.productType,

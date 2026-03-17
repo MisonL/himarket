@@ -88,7 +88,8 @@ export function parseServiceContacts(value?: string) {
       type: typeof item.type === "string" ? item.type : undefined,
     }))
     .filter(
-      item => item.name || item.email || item.phone || item.department || item.type
+      item =>
+        item.name || item.email || item.phone || item.department || item.type
     );
 }
 

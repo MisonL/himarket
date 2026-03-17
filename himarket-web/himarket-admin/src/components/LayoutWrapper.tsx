@@ -1,17 +1,17 @@
-import React from 'react';
-import { Outlet, useLocation, Navigate } from 'react-router-dom';
-import Layout from './Layout';
+import React from "react";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
+import Layout from "./Layout";
 
 const LayoutWrapper: React.FC = () => {
   const location = useLocation();
 
   // 权限验证
   const isAuthenticated = () => {
-    return localStorage.getItem('access_token') !== null;
+    return localStorage.getItem("access_token") !== null;
   };
 
   // 当前是否是登录页面
-  const isLoginPage = location.pathname === '/login';
+  const isLoginPage = location.pathname === "/login";
 
   // 未登录且不是登录页面 → 跳转到 /login
   if (!isAuthenticated() && !isLoginPage) {

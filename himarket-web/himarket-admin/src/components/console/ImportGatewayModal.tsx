@@ -1,147 +1,155 @@
-import { useState } from 'react'
-import { Button, Table, Modal, Form, Input, message, Select } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
-import { gatewayApi } from '@/lib/api'
-import { Gateway, ApigConfig } from '@/types'
-import { getGatewayTypeLabel } from '@/lib/constant'
+import { useState } from "react";
+import { Button, Table, Modal, Form, Input, message, Select } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
+import { gatewayApi } from "@/lib/api";
+import { Gateway, ApigConfig } from "@/types";
+import { getGatewayTypeLabel } from "@/lib/constant";
 
 interface ImportGatewayModalProps {
-  visible: boolean
-  gatewayType: 'APIG_API' | 'APIG_AI' | 'ADP_AI_GATEWAY' | 'APSARA_GATEWAY'
-  onCancel: () => void
-  onSuccess: () => void
+  visible: boolean;
+  gatewayType: "APIG_API" | "APIG_AI" | "ADP_AI_GATEWAY" | "APSARA_GATEWAY";
+  onCancel: () => void;
+  onSuccess: () => void;
 }
 
-export default function ImportGatewayModal({ visible, gatewayType, onCancel, onSuccess }: ImportGatewayModalProps) {
-  const [importForm] = Form.useForm()
+export default function ImportGatewayModal({
+  visible,
+  gatewayType,
+  onCancel,
+  onSuccess,
+}: ImportGatewayModalProps) {
+  const [importForm] = Form.useForm();
 
-  const [gatewayLoading, setGatewayLoading] = useState(false)
-  const [gatewayList, setGatewayList] = useState<Gateway[]>([])
-  const [selectedGateway, setSelectedGateway] = useState<Gateway | null>(null)
+  const [gatewayLoading, setGatewayLoading] = useState(false);
+  const [gatewayList, setGatewayList] = useState<Gateway[]>([]);
+  const [selectedGateway, setSelectedGateway] = useState<Gateway | null>(null);
 
   const [apigConfig, setApigConfig] = useState<ApigConfig>({
-    region: '',
-    accessKey: '',
-    secretKey: '',
-  })
+    region: "",
+    accessKey: "",
+    secretKey: "",
+  });
 
   const [gatewayPagination, setGatewayPagination] = useState({
     current: 1,
     pageSize: 10,
     total: 0,
-  })
+  });
 
   // 监听表单中的认证方式，确保切换时联动渲染
-  const authType = Form.useWatch('authType', importForm)
+  const authType = Form.useWatch("authType", importForm);
 
   // 获取网关列表
   const fetchGateways = async (values: any, page = 1, size = 10) => {
-    setGatewayLoading(true)
+    setGatewayLoading(true);
     try {
       const res = await gatewayApi.getApigGateway({
         ...values,
         page,
         size,
-      })
-      
-      setGatewayList(res.data?.content || [])
+      });
+
+      setGatewayList(res.data?.content || []);
       setGatewayPagination({
         current: page,
         pageSize: size,
         total: res.data?.totalElements || 0,
-      })
+      });
     } catch {
       // message.error('获取网关列表失败')
     } finally {
-      setGatewayLoading(false)
+      setGatewayLoading(false);
     }
-  }
+  };
 
   const fetchAdpGateways = async (values: any, page = 1, size = 50) => {
-    setGatewayLoading(true)
+    setGatewayLoading(true);
     try {
-      const res = await gatewayApi.getAdpGateways({...values, page, size})
-      setGatewayList(res.data?.content || [])
+      const res = await gatewayApi.getAdpGateways({ ...values, page, size });
+      setGatewayList(res.data?.content || []);
       setGatewayPagination({
         current: page,
         pageSize: size,
         total: res.data?.totalElements || 0,
-      })
+      });
     } catch {
       // message.error('获取网关列表失败')
     } finally {
-      setGatewayLoading(false)
+      setGatewayLoading(false);
     }
-  }
+  };
 
   const fetchApsaraGateways = async (values: any, page = 1, size = 50) => {
-    setGatewayLoading(true)
+    setGatewayLoading(true);
     try {
-      const res = await gatewayApi.getApsaraGateways({...values, page, size})
-      setGatewayList(res.data?.content || [])
+      const res = await gatewayApi.getApsaraGateways({ ...values, page, size });
+      setGatewayList(res.data?.content || []);
       setGatewayPagination({
         current: page,
         pageSize: size,
         total: res.data?.totalElements || 0,
-      })
+      });
     } finally {
-      setGatewayLoading(false)
+      setGatewayLoading(false);
     }
-  }
+  };
 
   // 处理网关选择
   const handleGatewaySelect = (gateway: Gateway) => {
-    setSelectedGateway(gateway)
-  }
+    setSelectedGateway(gateway);
+  };
 
   // 处理网关分页变化
   const handleGatewayPaginationChange = (page: number, pageSize: number) => {
-    const values = importForm.getFieldsValue()
-    const data = JSON.parse(sessionStorage.getItem('importFormConfig') || '{}');
-    const config = JSON.stringify(values) === '{}' ? data : values;
-    if (gatewayType === 'APSARA_GATEWAY') {
-      fetchApsaraGateways({...config, gatewayType}, page, pageSize)
-    } else if (gatewayType === 'ADP_AI_GATEWAY') {
-      fetchAdpGateways({...config, gatewayType}, page, pageSize)
+    const values = importForm.getFieldsValue();
+    const data = JSON.parse(sessionStorage.getItem("importFormConfig") || "{}");
+    const config = JSON.stringify(values) === "{}" ? data : values;
+    if (gatewayType === "APSARA_GATEWAY") {
+      fetchApsaraGateways({ ...config, gatewayType }, page, pageSize);
+    } else if (gatewayType === "ADP_AI_GATEWAY") {
+      fetchAdpGateways({ ...config, gatewayType }, page, pageSize);
     } else {
-      fetchGateways({...config, gatewayType}, page, pageSize)
+      fetchGateways({ ...config, gatewayType }, page, pageSize);
     }
-  }
+  };
 
   // 处理导入
   const handleImport = () => {
     if (!selectedGateway) {
-      message.warning('请选择一个Gateway')
-      return
+      message.warning("请选择一个Gateway");
+      return;
     }
     const payload: any = {
       ...selectedGateway,
       gatewayType: gatewayType,
-    }
-    if (gatewayType === 'ADP_AI_GATEWAY') {
-      payload.adpAIGatewayConfig = apigConfig
-    } else if (gatewayType === 'APSARA_GATEWAY') {
-      payload.apsaraGatewayConfig = apigConfig
+    };
+    if (gatewayType === "ADP_AI_GATEWAY") {
+      payload.adpAIGatewayConfig = apigConfig;
+    } else if (gatewayType === "APSARA_GATEWAY") {
+      payload.apsaraGatewayConfig = apigConfig;
     } else {
-      payload.apigConfig = apigConfig
+      payload.apigConfig = apigConfig;
     }
-    gatewayApi.importGateway(payload).then(() => {
-      message.success('导入成功！')
-      handleCancel()
-      onSuccess()
-    }).catch(() => {
-      // message.error(error.response?.data?.message || '导入失败！')
-    })
-  }
+    gatewayApi
+      .importGateway(payload)
+      .then(() => {
+        message.success("导入成功！");
+        handleCancel();
+        onSuccess();
+      })
+      .catch(() => {
+        // message.error(error.response?.data?.message || '导入失败！')
+      });
+  };
 
   // 重置弹窗状态
   const handleCancel = () => {
-    setSelectedGateway(null)
-    setGatewayList([])
-    setGatewayPagination({ current: 1, pageSize: 10, total: 0 })
-    importForm.resetFields()
-    onCancel()
-  }
+    setSelectedGateway(null);
+    setGatewayList([]);
+    setGatewayPagination({ current: 1, pageSize: 10, total: 0 });
+    importForm.resetFields();
+    onCancel();
+  };
 
   return (
     <Modal
@@ -152,179 +160,274 @@ export default function ImportGatewayModal({ visible, gatewayType, onCancel, onS
       width={600}
     >
       <Form form={importForm} layout="vertical" preserve={false}>
-        {gatewayList.length === 0 && ['APIG_API', 'APIG_AI'].includes(gatewayType) && (
-          <div className="mb-4">
-            <h3 className="text-lg font-medium mb-3">认证信息</h3>
-            <Form.Item label="Region" name="region" rules={[{ required: true, message: '请输入region' }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Access Key" name="accessKey" rules={[{ required: true, message: '请输入accessKey' }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="Secret Key" name="secretKey" rules={[{ required: true, message: '请输入secretKey' }]}>
-              <Input.Password />
-            </Form.Item>
-            <Button 
-              type="primary" 
-              onClick={() => {
-                importForm.validateFields().then((values) => {
-                  setApigConfig(values)
-                  sessionStorage.setItem('importFormConfig', JSON.stringify(values))
-                  fetchGateways({...values, gatewayType: gatewayType})
-                })
-              }}
-              loading={gatewayLoading}
-            >
-              获取网关列表
-            </Button>
-          </div>
-        )}
+        {gatewayList.length === 0 &&
+          ["APIG_API", "APIG_AI"].includes(gatewayType) && (
+            <div className="mb-4">
+              <h3 className="text-lg font-medium mb-3">认证信息</h3>
+              <Form.Item
+                label="Region"
+                name="region"
+                rules={[{ required: true, message: "请输入region" }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Access Key"
+                name="accessKey"
+                rules={[{ required: true, message: "请输入accessKey" }]}
+              >
+                <Input />
+              </Form.Item>
+              <Form.Item
+                label="Secret Key"
+                name="secretKey"
+                rules={[{ required: true, message: "请输入secretKey" }]}
+              >
+                <Input.Password />
+              </Form.Item>
+              <Button
+                type="primary"
+                onClick={() => {
+                  importForm.validateFields().then(values => {
+                    setApigConfig(values);
+                    sessionStorage.setItem(
+                      "importFormConfig",
+                      JSON.stringify(values)
+                    );
+                    fetchGateways({ ...values, gatewayType: gatewayType });
+                  });
+                }}
+                loading={gatewayLoading}
+              >
+                获取网关列表
+              </Button>
+            </div>
+          )}
 
-        {['ADP_AI_GATEWAY'].includes(gatewayType) && gatewayList.length === 0 && (
+        {["ADP_AI_GATEWAY"].includes(gatewayType) &&
+          gatewayList.length === 0 && (
+            <div className="mb-4">
+              <h3 className="text-lg font-medium mb-3">认证信息</h3>
+              <Form.Item
+                label="服务地址"
+                name="baseUrl"
+                rules={[
+                  { required: true, message: "请输入服务地址" },
+                  {
+                    pattern: /^https?:\/\//i,
+                    message: "必须以 http:// 或 https:// 开头",
+                  },
+                ]}
+              >
+                <Input placeholder="如：http://apigateway.example.com 或者 http://10.236.6.144" />
+              </Form.Item>
+              <Form.Item
+                label="端口"
+                name="port"
+                initialValue={80}
+                rules={[
+                  { required: true, message: "请输入端口号" },
+                  {
+                    validator: (_, value) => {
+                      if (value === undefined || value === null || value === "")
+                        return Promise.resolve();
+                      const n = Number(value);
+                      return n >= 1 && n <= 65535
+                        ? Promise.resolve()
+                        : Promise.reject(new Error("端口范围需在 1-65535"));
+                    },
+                  },
+                ]}
+              >
+                <Input type="text" placeholder="如：8080" />
+              </Form.Item>
+              <Form.Item
+                label="认证方式"
+                name="authType"
+                initialValue="Seed"
+                rules={[{ required: true, message: "请选择认证方式" }]}
+              >
+                <Select>
+                  <Select.Option value="Seed">Seed</Select.Option>
+                  <Select.Option value="Header">固定Header</Select.Option>
+                </Select>
+              </Form.Item>
+              {authType === "Seed" && (
+                <Form.Item
+                  label="Seed"
+                  name="authSeed"
+                  rules={[{ required: true, message: "请输入Seed" }]}
+                >
+                  <Input placeholder="通过configmap获取" />
+                </Form.Item>
+              )}
+              {authType === "Header" && (
+                <Form.Item label="Headers">
+                  <Form.List
+                    name="authHeaders"
+                    initialValue={[{ key: "", value: "" }]}
+                  >
+                    {(fields, { add, remove }) => (
+                      <>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <div
+                            key={key}
+                            style={{
+                              display: "flex",
+                              marginBottom: 8,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Form.Item
+                              {...restField}
+                              name={[name, "key"]}
+                              rules={[
+                                { required: true, message: "请输入Header名称" },
+                              ]}
+                              style={{
+                                flex: 1,
+                                marginRight: 8,
+                                marginBottom: 0,
+                              }}
+                            >
+                              <Input placeholder="Header名称，如：X-Auth-Token" />
+                            </Form.Item>
+                            <Form.Item
+                              {...restField}
+                              name={[name, "value"]}
+                              rules={[
+                                { required: true, message: "请输入Header值" },
+                              ]}
+                              style={{
+                                flex: 1,
+                                marginRight: 8,
+                                marginBottom: 0,
+                              }}
+                            >
+                              <Input placeholder="Header值" />
+                            </Form.Item>
+                            {fields.length > 1 && (
+                              <Button
+                                type="text"
+                                danger
+                                onClick={() => remove(name)}
+                                style={{ marginBottom: 0 }}
+                              >
+                                删除
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                        <Form.Item style={{ marginBottom: 0 }}>
+                          <Button
+                            type="dashed"
+                            onClick={() => add({ key: "", value: "" })}
+                            block
+                            icon={<PlusOutlined />}
+                          >
+                            添加Header
+                          </Button>
+                        </Form.Item>
+                      </>
+                    )}
+                  </Form.List>
+                </Form.Item>
+              )}
+              <Button
+                type="primary"
+                onClick={() => {
+                  importForm.validateFields().then(values => {
+                    // 处理认证参数
+                    const processedValues = { ...values };
+
+                    // 根据认证方式设置相应的参数
+                    if (values.authType === "Seed") {
+                      processedValues.authSeed = values.authSeed;
+                      delete processedValues.authHeaders;
+                    } else if (values.authType === "Header") {
+                      processedValues.authHeaders = values.authHeaders;
+                      delete processedValues.authSeed;
+                    }
+
+                    setApigConfig(processedValues);
+                    sessionStorage.setItem(
+                      "importFormConfig",
+                      JSON.stringify(processedValues)
+                    );
+                    fetchAdpGateways({
+                      ...processedValues,
+                      gatewayType: gatewayType,
+                    });
+                  });
+                }}
+                loading={gatewayLoading}
+              >
+                获取网关列表
+              </Button>
+            </div>
+          )}
+
+        {gatewayList.length === 0 && gatewayType === "APSARA_GATEWAY" && (
           <div className="mb-4">
             <h3 className="text-lg font-medium mb-3">认证信息</h3>
-            <Form.Item label="服务地址" name="baseUrl" rules={[{ required: true, message: '请输入服务地址' }, { pattern: /^https?:\/\//i, message: '必须以 http:// 或 https:// 开头' }]}> 
-              <Input placeholder="如：http://apigateway.example.com 或者 http://10.236.6.144" />
-            </Form.Item>
-            <Form.Item 
-              label="端口" 
-              name="port" 
-              initialValue={80} 
-              rules={[
-                { required: true, message: '请输入端口号' }, 
-                { 
-                  validator: (_, value) => {
-                    if (value === undefined || value === null || value === '') return Promise.resolve()
-                    const n = Number(value)
-                    return n >= 1 && n <= 65535 ? Promise.resolve() : Promise.reject(new Error('端口范围需在 1-65535'))
-                  }
-                }
-              ]}
-            > 
-              <Input type="text" placeholder="如：8080" />
+            <Form.Item
+              label="RegionId"
+              name="regionId"
+              rules={[{ required: true, message: "请输入RegionId" }]}
+            >
+              <Input />
             </Form.Item>
             <Form.Item
-              label="认证方式"
-              name="authType"
-              initialValue="Seed"
-              rules={[{ required: true, message: '请选择认证方式' }]}
+              label="AccessKeyId"
+              name="accessKeyId"
+              rules={[{ required: true, message: "请输入AccessKeyId" }]}
             >
-              <Select>
-                <Select.Option value="Seed">Seed</Select.Option>
-                <Select.Option value="Header">固定Header</Select.Option>
-              </Select>
-            </Form.Item>
-            {authType === 'Seed' && (
-              <Form.Item label="Seed" name="authSeed" rules={[{ required: true, message: '请输入Seed' }]}>
-                <Input placeholder="通过configmap获取" />
-              </Form.Item>
-            )}
-            {authType === 'Header' && (
-              <Form.Item label="Headers">
-                <Form.List name="authHeaders" initialValue={[{ key: '', value: '' }]}>
-                  {(fields, { add, remove }) => (
-                    <>
-                      {fields.map(({ key, name, ...restField }) => (
-                        <div key={key} style={{ display: 'flex', marginBottom: 8, alignItems: 'center' }}>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'key']}
-                            rules={[{ required: true, message: '请输入Header名称' }]}
-                            style={{ flex: 1, marginRight: 8, marginBottom: 0 }}
-                          >
-                            <Input placeholder="Header名称，如：X-Auth-Token" />
-                          </Form.Item>
-                          <Form.Item
-                            {...restField}
-                            name={[name, 'value']}
-                            rules={[{ required: true, message: '请输入Header值' }]}
-                            style={{ flex: 1, marginRight: 8, marginBottom: 0 }}
-                          >
-                            <Input placeholder="Header值" />
-                          </Form.Item>
-                          {fields.length > 1 && (
-                            <Button 
-                              type="text" 
-                              danger 
-                              onClick={() => remove(name)}
-                              style={{ marginBottom: 0 }}
-                            >
-                              删除
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Form.Item style={{ marginBottom: 0 }}>
-                        <Button 
-                          type="dashed" 
-                          onClick={() => add({ key: '', value: '' })} 
-                          block 
-                          icon={<PlusOutlined />}
-                        >
-                          添加Header
-                        </Button>
-                      </Form.Item>
-                    </>
-                  )}
-                </Form.List>
-              </Form.Item>
-            )}
-            <Button 
-              type="primary" 
-              onClick={() => {
-                importForm.validateFields().then((values) => {
-                  // 处理认证参数
-                  const processedValues = { ...values };
-                  
-                  // 根据认证方式设置相应的参数
-                  if (values.authType === 'Seed') {
-                    processedValues.authSeed = values.authSeed;
-                    delete processedValues.authHeaders;
-                  } else if (values.authType === 'Header') {
-                    processedValues.authHeaders = values.authHeaders;
-                    delete processedValues.authSeed;
-                  }
-                  
-                  setApigConfig(processedValues)
-                  sessionStorage.setItem('importFormConfig', JSON.stringify(processedValues))
-                  fetchAdpGateways({...processedValues, gatewayType: gatewayType})
-                })
-              }}
-              loading={gatewayLoading}
-            >
-              获取网关列表
-            </Button>
-          </div>
-        )}
-
-        {gatewayList.length === 0 && gatewayType === 'APSARA_GATEWAY' && (
-          <div className="mb-4">
-            <h3 className="text-lg font-medium mb-3">认证信息</h3>
-            <Form.Item label="RegionId" name="regionId" rules={[{ required: true, message: '请输入RegionId' }]}>
               <Input />
             </Form.Item>
-            <Form.Item label="AccessKeyId" name="accessKeyId" rules={[{ required: true, message: '请输入AccessKeyId' }]}>
-              <Input />
-            </Form.Item>
-            <Form.Item label="AccessKeySecret" name="accessKeySecret" rules={[{ required: true, message: '请输入AccessKeySecret' }]}>
+            <Form.Item
+              label="AccessKeySecret"
+              name="accessKeySecret"
+              rules={[{ required: true, message: "请输入AccessKeySecret" }]}
+            >
               <Input.Password />
             </Form.Item>
             <Form.Item label="SecurityToken" name="securityToken">
               <Input />
             </Form.Item>
-            <Form.Item label="Domain" name="domain" rules={[{ required: true, message: '请输入Domain' }]}>
+            <Form.Item
+              label="Domain"
+              name="domain"
+              rules={[{ required: true, message: "请输入Domain" }]}
+            >
               <Input placeholder="csb-cop-api-biz.inter.envXX.example.com" />
             </Form.Item>
-            <Form.Item label="Product" name="product" rules={[{ required: true, message: '请输入Product' }]} initialValue="csb2">
+            <Form.Item
+              label="Product"
+              name="product"
+              rules={[{ required: true, message: "请输入Product" }]}
+              initialValue="csb2"
+            >
               <Input />
             </Form.Item>
-            <Form.Item label="Version" name="version" rules={[{ required: true, message: '请输入Version' }]} initialValue="2023-02-06">
+            <Form.Item
+              label="Version"
+              name="version"
+              rules={[{ required: true, message: "请输入Version" }]}
+              initialValue="2023-02-06"
+            >
               <Input />
             </Form.Item>
-            <Form.Item label="x-acs-organizationid" name="xAcsOrganizationId" rules={[{ message: '请输入组织ID' }]}>
+            <Form.Item
+              label="x-acs-organizationid"
+              name="xAcsOrganizationId"
+              rules={[{ message: "请输入组织ID" }]}
+            >
               <Input />
             </Form.Item>
-            <Form.Item label="x-acs-caller-sdk-source" name="xAcsCallerSdkSource">
+            <Form.Item
+              label="x-acs-caller-sdk-source"
+              name="xAcsCallerSdkSource"
+            >
               <Input />
             </Form.Item>
             <Form.Item label="x-acs-resourcegroupid" name="xAcsResourceGroupId">
@@ -334,34 +437,43 @@ export default function ImportGatewayModal({ visible, gatewayType, onCancel, onS
               <Input />
             </Form.Item>
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={() => {
                   try {
-                    const raw = localStorage.getItem('apsaraImportConfig')
+                    const raw = localStorage.getItem("apsaraImportConfig");
                     if (!raw) {
-                      message.info('暂无历史参数')
-                      return
+                      message.info("暂无历史参数");
+                      return;
                     }
-                    const data = JSON.parse(raw)
-                    importForm.setFieldsValue(data)
-                    message.success('已填充上次参数')
+                    const data = JSON.parse(raw);
+                    importForm.setFieldsValue(data);
+                    message.success("已填充上次参数");
                   } catch {
-                    message.error('读取历史参数失败')
+                    message.error("读取历史参数失败");
                   }
                 }}
               >
                 使用上次配置
               </Button>
-              <Button 
+              <Button
                 type="primary"
                 onClick={() => {
-                  importForm.validateFields().then((values) => {
-                    setApigConfig(values)
-                    sessionStorage.setItem('importFormConfig', JSON.stringify(values))
-                    localStorage.setItem('apsaraImportConfig', JSON.stringify(values))
+                  importForm.validateFields().then(values => {
+                    setApigConfig(values);
+                    sessionStorage.setItem(
+                      "importFormConfig",
+                      JSON.stringify(values)
+                    );
+                    localStorage.setItem(
+                      "apsaraImportConfig",
+                      JSON.stringify(values)
+                    );
                     // APSARA 需要远程拉取列表
-                    fetchApsaraGateways({...values, gatewayType: 'APSARA_GATEWAY'})
-                  })
+                    fetchApsaraGateways({
+                      ...values,
+                      gatewayType: "APSARA_GATEWAY",
+                    });
+                  });
                 }}
               >
                 获取网关列表
@@ -376,20 +488,23 @@ export default function ImportGatewayModal({ visible, gatewayType, onCancel, onS
             <Table
               rowKey="gatewayId"
               columns={[
-                { title: 'ID', dataIndex: 'gatewayId' },
-                { 
-                  title: '类型', 
-                  dataIndex: 'gatewayType',
-                  render: (gatewayType: string) => getGatewayTypeLabel(gatewayType as any)
+                { title: "ID", dataIndex: "gatewayId" },
+                {
+                  title: "类型",
+                  dataIndex: "gatewayType",
+                  render: (gatewayType: string) =>
+                    getGatewayTypeLabel(gatewayType as any),
                 },
-                { title: '名称', dataIndex: 'gatewayName' },
+                { title: "名称", dataIndex: "gatewayName" },
               ]}
               dataSource={gatewayList}
               rowSelection={{
-                type: 'radio',
-                selectedRowKeys: selectedGateway ? [selectedGateway.gatewayId] : [],
+                type: "radio",
+                selectedRowKeys: selectedGateway
+                  ? [selectedGateway.gatewayId]
+                  : [],
                 onChange: (_selectedRowKeys, selectedRows) => {
-                  handleGatewaySelect(selectedRows[0])
+                  handleGatewaySelect(selectedRows[0]);
                 },
               }}
               pagination={{
@@ -399,7 +514,7 @@ export default function ImportGatewayModal({ visible, gatewayType, onCancel, onS
                 onChange: handleGatewayPaginationChange,
                 showSizeChanger: true,
                 showQuickJumper: true,
-                showTotal: (total) => `共 ${total} 条`,
+                showTotal: total => `共 ${total} 条`,
               }}
               size="small"
             />
@@ -415,5 +530,5 @@ export default function ImportGatewayModal({ visible, gatewayType, onCancel, onS
         )}
       </Form>
     </Modal>
-  )
-} 
+  );
+}

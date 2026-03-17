@@ -38,9 +38,9 @@ const categorizeSessionsByTime = (sessions: ChatSession[]) => {
   const last7Days: ChatSession[] = [];
   const last30Days: ChatSession[] = [];
 
-  sessions.forEach((session) => {
+  sessions.forEach(session => {
     const diffInDays = Math.floor(
-      (now.getTime() - session.timestamp.getTime()) / (1000 * 60 * 60 * 24),
+      (now.getTime() - session.timestamp.getTime()) / (1000 * 60 * 60 * 24)
     );
 
     if (diffInDays === 0) {
@@ -90,7 +90,7 @@ export function Sidebar({
               title: session.name || "未命名会话",
               timestamp: new Date(session.updateAt || session.createAt),
               productIds: session.products || [],
-            }),
+            })
           );
           setSessions(sessionList);
         }
@@ -131,7 +131,7 @@ export function Sidebar({
   }, [isMac, onNewChat]);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({
+    setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section],
     }));
@@ -165,12 +165,12 @@ export function Sidebar({
       });
       if (response.code === "SUCCESS") {
         // 更新本地状态
-        setSessions((prev) =>
-          prev.map((session) =>
+        setSessions(prev =>
+          prev.map(session =>
             session.id === sessionId
               ? { ...session, title: trimmedName }
-              : session,
-          ),
+              : session
+          )
         );
         antdMessage.success("重命名成功");
         setEditingSessionId(null);
@@ -216,8 +216,8 @@ export function Sidebar({
           const response = await APIs.deleteSession(sessionId);
           if (response.code === "SUCCESS") {
             // 从本地状态中移除
-            setSessions((prev) =>
-              prev.filter((session) => session.id !== sessionId),
+            setSessions(prev =>
+              prev.filter(session => session.id !== sessionId)
             );
             antdMessage.success("删除成功");
 
@@ -264,7 +264,7 @@ export function Sidebar({
   const renderSessionGroup = (
     title: string,
     sessions: ChatSession[],
-    sectionKey: keyof typeof expandedSections,
+    sectionKey: keyof typeof expandedSections
   ) => {
     if (sessions.length === 0) return null;
 
@@ -315,13 +315,13 @@ export function Sidebar({
                   /* 编辑模式 */
                   <div
                     className="flex items-center gap-2"
-                    onClick={(e) => e.stopPropagation()}
+                    onClick={e => e.stopPropagation()}
                   >
                     <input
                       type="text"
                       value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
-                      onKeyDown={(e) => handleEditKeyDown(e, session.id)}
+                      onChange={e => setEditingName(e.target.value)}
+                      onKeyDown={e => handleEditKeyDown(e, session.id)}
                       onBlur={() => {
                         handleCancelEdit();
                       }}
@@ -329,11 +329,11 @@ export function Sidebar({
                       autoFocus
                     />
                     <button
-                      onMouseDown={(e) => {
+                      onMouseDown={e => {
                         e.preventDefault(); // 防止触发 input 的 blur
                         e.stopPropagation();
                       }}
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         handleSaveEdit(session.id);
                       }}
@@ -343,11 +343,11 @@ export function Sidebar({
                       <CheckOutlined className="text-sm" />
                     </button>
                     <button
-                      onMouseDown={(e) => {
+                      onMouseDown={e => {
                         e.preventDefault(); // 防止触发 input 的 blur
                         e.stopPropagation();
                       }}
-                      onClick={(e) => {
+                      onClick={e => {
                         e.stopPropagation();
                         handleCancelEdit();
                       }}
@@ -371,16 +371,16 @@ export function Sidebar({
                       trigger={["click"]}
                       placement="bottomRight"
                       classNames={{
-                        root: "session-menu-dropdown"
+                        root: "session-menu-dropdown",
                       }}
-                      popupRender={(menu) => (
+                      popupRender={menu => (
                         <div className="bg-white/80 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 overflow-hidden">
                           {menu}
                         </div>
                       )}
                     >
                       <button
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
                         }}
                         className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-colorPrimary hover:bg-gray-200 rounded transition-all"

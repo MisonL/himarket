@@ -17,7 +17,7 @@ import { PlusOutlined, MoreOutlined, LinkOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { portalApi } from "../lib/api";
 
-import { Portal } from '@/types'
+import { Portal } from "@/types";
 
 // 优化的Portal卡片组件
 const PortalCard = memo(
@@ -39,12 +39,11 @@ const PortalCard = memo(
     }, []);
 
     const dropdownItems: MenuProps["items"] = [
-
       {
         key: "delete",
         label: "删除",
         danger: true,
-        onClick: (e) => {
+        onClick: e => {
           e?.domEvent?.stopPropagation(); // 阻止事件冒泡
           Modal.confirm({
             title: "删除Portal",
@@ -57,15 +56,23 @@ const PortalCard = memo(
       },
     ];
 
-    const handleDeletePortal = useCallback((portalId: string) => {
-      return portalApi.deletePortal(portalId).then(() => {
-        message.success("Portal删除成功");
-        fetchPortals();
-      }).catch((error) => {
-        message.error(error?.response?.data?.message || "删除失败，请稍后重试");
-        throw error;
-      });
-    }, [fetchPortals]);
+    const handleDeletePortal = useCallback(
+      (portalId: string) => {
+        return portalApi
+          .deletePortal(portalId)
+          .then(() => {
+            message.success("Portal删除成功");
+            fetchPortals();
+          })
+          .catch(error => {
+            message.error(
+              error?.response?.data?.message || "删除失败，请稍后重试"
+            );
+            throw error;
+          });
+      },
+      [fetchPortals]
+    );
 
     return (
       <Card
@@ -102,7 +109,7 @@ const PortalCard = memo(
             <Button
               type="text"
               icon={<MoreOutlined />}
-              onClick={(e) => e.stopPropagation()}
+              onClick={e => e.stopPropagation()}
               className="hover:bg-gray-100 rounded-full"
             />
           </Dropdown>
@@ -112,7 +119,11 @@ const PortalCard = memo(
           <div className="flex items-center space-x-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
             <LinkOutlined className="h-4 w-4 text-colorPrimary" />
             <Tooltip
-              title={portal.portalDomainConfig?.[portal.portalDomainConfig.length - 1]?.domain}
+              title={
+                portal.portalDomainConfig?.[
+                  portal.portalDomainConfig.length - 1
+                ]?.domain
+              }
               placement="top"
               color="#000"
             >
@@ -132,7 +143,11 @@ const PortalCard = memo(
                   cursor: "pointer",
                 }}
               >
-                {portal.portalDomainConfig?.[portal.portalDomainConfig.length - 1]?.domain}
+                {
+                  portal.portalDomainConfig?.[
+                    portal.portalDomainConfig.length - 1
+                  ]?.domain
+                }
               </a>
             </Tooltip>
           </div>
@@ -204,7 +219,6 @@ const PortalCard = memo(
               </div>
             </div>
           </div>
-
         </div>
       </Card>
     );
@@ -228,29 +242,33 @@ export default function Portals() {
 
   const fetchPortals = useCallback((page = 1, size = 12) => {
     setLoading(true);
-    portalApi.getPortals({ page, size }).then((res: any) => {
-      const list = res?.data?.content || [];
-      const portals: Portal[] = list.map((item: any) => ({
-        portalId: item.portalId,
-        name: item.name,
-        title: item.name,
-        description: item.description,
-        adminId: item.adminId,
-        portalSettingConfig: item.portalSettingConfig,
-        portalUiConfig: item.portalUiConfig,
-        portalDomainConfig: item.portalDomainConfig || [],
-      }));
-      setPortals(portals);
-      setPagination({
-        current: page,
-        pageSize: size,
-        total: res?.data?.totalElements || 0,
+    portalApi
+      .getPortals({ page, size })
+      .then((res: any) => {
+        const list = res?.data?.content || [];
+        const portals: Portal[] = list.map((item: any) => ({
+          portalId: item.portalId,
+          name: item.name,
+          title: item.name,
+          description: item.description,
+          adminId: item.adminId,
+          portalSettingConfig: item.portalSettingConfig,
+          portalUiConfig: item.portalUiConfig,
+          portalDomainConfig: item.portalDomainConfig || [],
+        }));
+        setPortals(portals);
+        setPagination({
+          current: page,
+          pageSize: size,
+          total: res?.data?.totalElements || 0,
+        });
+      })
+      .catch((err: any) => {
+        setError(err?.message || "加载失败");
+      })
+      .finally(() => {
+        setLoading(false);
       });
-    }).catch((err: any) => {
-      setError(err?.message || "加载失败");
-    }).finally(() => {
-      setLoading(false);
-    });
   }, []);
 
   useEffect(() => {
@@ -283,7 +301,7 @@ export default function Portals() {
       setIsModalVisible(false);
       form.resetFields();
 
-      fetchPortals()
+      fetchPortals();
     } catch (error: any) {
       // message.error(error?.message || "创建失败");
     } finally {
@@ -323,16 +341,31 @@ export default function Portals() {
       {loading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: pagination.pageSize || 12 }).map((_, index) => (
-            <div key={index} className="h-full rounded-lg shadow-lg bg-white p-4">
+            <div
+              key={index}
+              className="h-full rounded-lg shadow-lg bg-white p-4"
+            >
               <div className="flex items-start space-x-4">
                 <Skeleton.Avatar size={48} active />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-2">
-                    <Skeleton.Input active size="small" style={{ width: 120 }} />
+                    <Skeleton.Input
+                      active
+                      size="small"
+                      style={{ width: 120 }}
+                    />
                     <Skeleton.Input active size="small" style={{ width: 60 }} />
                   </div>
-                  <Skeleton.Input active size="small" style={{ width: '100%', marginBottom: 12 }} />
-                  <Skeleton.Input active size="small" style={{ width: '80%', marginBottom: 8 }} />
+                  <Skeleton.Input
+                    active
+                    size="small"
+                    style={{ width: "100%", marginBottom: 12 }}
+                  />
+                  <Skeleton.Input
+                    active
+                    size="small"
+                    style={{ width: "80%", marginBottom: 8 }}
+                  />
                   <div className="flex items-center justify-between">
                     <Skeleton.Input active size="small" style={{ width: 60 }} />
                     <Skeleton.Input active size="small" style={{ width: 80 }} />
@@ -345,12 +378,14 @@ export default function Portals() {
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {portals.map((portal) => (
+            {portals.map(portal => (
               <PortalCard
                 key={portal.portalId}
                 portal={portal}
                 onNavigate={handlePortalClick}
-                fetchPortals={() => fetchPortals(pagination.current, pagination.pageSize)}
+                fetchPortals={() =>
+                  fetchPortals(pagination.current, pagination.pageSize)
+                }
               />
             ))}
           </div>
@@ -364,8 +399,8 @@ export default function Portals() {
                 onChange={handlePaginationChange}
                 showSizeChanger
                 showQuickJumper
-                showTotal={(total) => `共 ${total} 条`}
-                pageSizeOptions={['6', '12', '24', '48']}
+                showTotal={total => `共 ${total} 条`}
+                pageSizeOptions={["6", "12", "24", "48"]}
               />
             </div>
           )}

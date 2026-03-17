@@ -2,7 +2,11 @@ import { ArrowUpOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 import { useCallback, useEffect, useState } from "react";
 
-export default function BackToTopButton({ container }: { container?: HTMLDivElement }) {
+export default function BackToTopButton({
+  container,
+}: {
+  container?: HTMLDivElement;
+}) {
   const [isVisible, setIsVisible] = useState(false);
 
   // Show button when page is scrolled down
@@ -40,8 +44,7 @@ export default function BackToTopButton({ container }: { container?: HTMLDivElem
       type="primary"
       className={`fixed bottom-8 right-2 rounded-full h-10 w-10 shadow-lg transition-opacity duration-300 ease-in-out z-50
         hover:scale-110 active:scale-95 
-        ${isVisible ? "opacity-100" : "opacity-0 pointer-events-none"
-        }
+        ${isVisible ? "opacity-100" : "opacity-0 pointer-events-none"}
       )`}
       onClick={scrollToTop}
       aria-label="Scroll to top"

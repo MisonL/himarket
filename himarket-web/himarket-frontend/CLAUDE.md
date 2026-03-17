@@ -83,17 +83,20 @@ The portal manages 4 product types (defined in `src/types/index.ts`):
 ### Key Components
 
 **Layout Components**:
+
 - `src/components/Layout.tsx`: Main layout wrapper with loading skeleton
 - `src/components/Navigation.tsx`: Top navigation bar with user info
 - `src/components/ProductHeader.tsx`: Product detail page header
 
 **Consumer Components** (in `src/components/consumer/`):
+
 - `ConsumerBasicInfo.tsx`: Display consumer details
 - `CredentialManager.tsx`: Manage API credentials
 - `SubscriptionManager.tsx`: Subscribe/unsubscribe from products with advanced search
 - `AuthConfig.tsx`: Authentication configuration
 
 **Common Components**:
+
 - `src/components/common/AdvancedSearch.tsx`: Reusable search component with filters
 
 ### Pages
@@ -110,6 +113,7 @@ The portal manages 4 product types (defined in `src/types/index.ts`):
 ### API Proxy Configuration
 
 Development proxy configured in `vite.config.ts`:
+
 - Frontend: `http://0.0.0.0:5173`
 - Backend: `http://localhost:8080`
 - API prefix: `/api/v1` (from `.env`)
@@ -133,6 +137,7 @@ Development proxy configured in `vite.config.ts`:
 ### Product Icon Handling
 
 Product icons support two types (defined in `ProductIcon` interface):
+
 - `URL`: Direct image URL
 - `BASE64`: Base64-encoded image data
 
@@ -141,9 +146,9 @@ Product icons support two types (defined in `ProductIcon` interface):
 The codebase uses discriminated unions for product types. When working with products, check the `type` field to access type-specific configs:
 
 ```typescript
-if (product.type === 'REST_API') {
+if (product.type === "REST_API") {
   // Access product.apiConfig
-} else if (product.type === 'MCP_SERVER') {
+} else if (product.type === "MCP_SERVER") {
   // Access product.mcpConfig
 }
 ```
@@ -151,6 +156,7 @@ if (product.type === 'REST_API') {
 ### API Response Structure
 
 All API responses follow this pattern:
+
 ```typescript
 {
   code: string;
@@ -168,6 +174,7 @@ The response interceptor in `src/lib/api.ts` has commented-out error handling fo
 ## Docker Deployment
 
 Build platform-specific image:
+
 ```bash
 docker buildx build --platform linux/amd64 -t api-portal-frontend:latest .
 ```

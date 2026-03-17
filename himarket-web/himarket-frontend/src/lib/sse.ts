@@ -1,6 +1,6 @@
 // SSE stream response handler
 
-import type { IToolCall, IToolResponse, IChatUsage } from './apis/chat';
+import type { IToolCall, IToolResponse, IChatUsage } from "./apis/chat";
 
 // @chat-legacy: Legacy type definitions, can be removed after full migration
 /*
@@ -29,14 +29,14 @@ export interface SSENewMessage {
 */
 
 // Chat Event Type
-export type ChatEventType = 
-  | 'START'        // Stream started
-  | 'ASSISTANT'    // Assistant response
-  | 'THINKING'     // Thinking process
-  | 'TOOL_CALL'    // Tool call request
-  | 'TOOL_RESULT'  // Tool execution result
-  | 'DONE'         // Stream completed
-  | 'ERROR';       // Error occurred
+export type ChatEventType =
+  | "START" // Stream started
+  | "ASSISTANT" // Assistant response
+  | "THINKING" // Thinking process
+  | "TOOL_CALL" // Tool call request
+  | "TOOL_RESULT" // Tool execution result
+  | "DONE" // Stream completed
+  | "ERROR"; // Error occurred
 
 // Chat Event Structure
 export interface ChatEvent {
@@ -76,9 +76,21 @@ export interface OpenAIChunk {
 export interface SSEOptions {
   onStart?: (chatId: string) => void;
   onChunk?: (content: string, chatId: string) => void;
-  onToolCall?: (toolCall: IToolCall, chatId: string, usage?: IChatUsage) => void;
-  onToolResponse?: (toolResponse: IToolResponse, chatId: string, usage?: IChatUsage) => void;
-  onComplete?: (fullContent: string, chatId: string, usage?: IChatUsage) => void;
+  onToolCall?: (
+    toolCall: IToolCall,
+    chatId: string,
+    usage?: IChatUsage
+  ) => void;
+  onToolResponse?: (
+    toolResponse: IToolResponse,
+    chatId: string,
+    usage?: IChatUsage
+  ) => void;
+  onComplete?: (
+    fullContent: string,
+    chatId: string,
+    usage?: IChatUsage
+  ) => void;
   onError?: (error: string, code?: string, httpStatus?: number) => void;
 }
 
@@ -92,7 +104,7 @@ export async function handleSSEStream(
     ...options,
     headers: {
       ...options.headers,
-      'Accept': 'text/event-stream',
+      Accept: "text/event-stream",
     },
     signal,
   });
@@ -102,9 +114,9 @@ export async function handleSSEStream(
 
     // Handle 403 error: clear token and redirect to login
     if (status === 403) {
-      localStorage.removeItem('access_token');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      localStorage.removeItem("access_token");
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
       }
       return;
     }
@@ -117,13 +129,13 @@ export async function handleSSEStream(
 
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error('Response body is null');
+    throw new Error("Response body is null");
   }
 
   const decoder = new TextDecoder();
-  let buffer = '';
-  let chatId = '';
-  let fullContent = '';
+  let buffer = "";
+  let chatId = "";
+  let fullContent = "";
   let usage: IChatUsage | undefined;
 
   try {
@@ -135,15 +147,15 @@ export async function handleSSEStream(
       }
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith('data:')) {
+        if (line.startsWith("data:")) {
           const data = line.slice(5).trim();
 
           // Check if it's the end marker
-          if (data === '[DONE]') {
+          if (data === "[DONE]") {
             // Stream ended, call onComplete
             if (fullContent && chatId) {
               callbacks.onComplete?.(fullContent, chatId, usage);
@@ -155,7 +167,7 @@ export async function handleSSEStream(
             const message = JSON.parse(data);
 
             // Check if it's the new format (has type field, not msgType)
-            if ('type' in message && !('msgType' in message)) {
+            if ("type" in message && !("msgType" in message)) {
               const event = message as ChatEvent;
 
               // Update chatId
@@ -164,26 +176,26 @@ export async function handleSSEStream(
               }
 
               switch (event.type) {
-                case 'START':
+                case "START":
                   // Corresponds to legacy USER
                   callbacks.onStart?.(event.chatId);
                   break;
 
-                case 'ASSISTANT':
+                case "ASSISTANT":
                   // Corresponds to legacy ANSWER
-                  if (typeof event.content === 'string' && event.chatId) {
+                  if (typeof event.content === "string" && event.chatId) {
                     fullContent += event.content;
                     callbacks.onChunk?.(event.content, event.chatId);
                   }
                   break;
 
-                case 'THINKING':
+                case "THINKING":
                   // Thinking process - temporarily ignored
                   break;
 
-                case 'TOOL_CALL':
+                case "TOOL_CALL":
                   // Tool call
-                  if (event.content && typeof event.content === 'object') {
+                  if (event.content && typeof event.content === "object") {
                     callbacks.onToolCall?.(
                       event.content as IToolCall,
                       event.chatId,
@@ -192,9 +204,9 @@ export async function handleSSEStream(
                   }
                   break;
 
-                case 'TOOL_RESULT':
+                case "TOOL_RESULT":
                   // Corresponds to legacy TOOL_RESPONSE
-                  if (event.content && typeof event.content === 'object') {
+                  if (event.content && typeof event.content === "object") {
                     callbacks.onToolResponse?.(
                       event.content as IToolResponse,
                       event.chatId,
@@ -203,14 +215,18 @@ export async function handleSSEStream(
                   }
                   break;
 
-                case 'DONE':
+                case "DONE":
                   // Corresponds to legacy STOP
                   if (event.chatId) {
-                    callbacks.onComplete?.(fullContent, event.chatId, event.usage);
+                    callbacks.onComplete?.(
+                      fullContent,
+                      event.chatId,
+                      event.usage
+                    );
                   }
                   break;
 
-                case 'ERROR':
+                case "ERROR":
                   // Error event
                   callbacks.onError?.(
                     event.message || "Network error, please retry",
@@ -343,7 +359,7 @@ export async function handleSSEStream(
             }
             */
           } catch (error) {
-            console.error('Failed to parse SSE message:', error, 'Data:', data);
+            console.error("Failed to parse SSE message:", error, "Data:", data);
           }
         }
       }
