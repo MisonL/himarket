@@ -65,12 +65,32 @@ public class AuthSessionConfig {
 
         private Duration loginCodeTtl = Duration.ofSeconds(60);
 
+        private int maxSessionsPerUser = 10;
+
+        private Duration sessionLeaseBuffer = Duration.ofMinutes(5);
+
         public Duration getLoginCodeTtl() {
             return loginCodeTtl;
         }
 
         public void setLoginCodeTtl(Duration loginCodeTtl) {
             this.loginCodeTtl = loginCodeTtl;
+        }
+
+        public int getMaxSessionsPerUser() {
+            return maxSessionsPerUser;
+        }
+
+        public void setMaxSessionsPerUser(int maxSessionsPerUser) {
+            this.maxSessionsPerUser = maxSessionsPerUser;
+        }
+
+        public Duration getSessionLeaseBuffer() {
+            return sessionLeaseBuffer;
+        }
+
+        public void setSessionLeaseBuffer(Duration sessionLeaseBuffer) {
+            this.sessionLeaseBuffer = sessionLeaseBuffer;
         }
     }
 }

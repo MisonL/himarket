@@ -174,11 +174,19 @@ public interface ConsumerService {
     ConsumerResult getPrimaryConsumer();
 
     /**
-     * Obtain primary consumer for the specified developer (used in async contexts
-     * where SecurityContext is not available).
+     * Obtain primary consumer for the specified developer (used in async contexts where
+     * SecurityContext is not available).
      *
      * @param developerId developer ID
      * @return ConsumerResult
      */
     ConsumerResult getPrimaryConsumer(String developerId);
+
+    /**
+     * Check if a subscription exists for a consumer and product
+     *
+     * @param consumerId Consumer ID
+     * @param productId Product ID
+     */
+    void existsSubscription(String consumerId, String productId);
 }

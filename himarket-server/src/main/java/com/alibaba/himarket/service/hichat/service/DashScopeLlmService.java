@@ -68,19 +68,21 @@ public class DashScopeLlmService extends AbstractLlmService {
 
         ModelFeature modelFeature = getOrDefaultModelFeature(request.getProduct());
 
-        // TODO set dashscope request uri
-
         // Build DashScopeChatModel using Builder pattern
         return DashScopeChatModel.builder()
                 .apiKey(request.getApiKey())
                 .modelName(modelFeature.getModel())
                 .enableSearch(modelFeature.getWebSearch())
+                .baseUrl(request.getUri() != null ? request.getUri().toString() : null)
                 .stream(true)
                 .defaultOptions(options)
                 .build();
     }
 
     private URI getUri(ModelConfigResult modelConfig, List<URI> gatewayUris) {
+        if (gatewayUris != null && !gatewayUris.isEmpty()) {
+            return gatewayUris.get(0);
+        }
         return null;
     }
 

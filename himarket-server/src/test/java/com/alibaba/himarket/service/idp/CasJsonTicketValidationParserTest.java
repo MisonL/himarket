@@ -53,7 +53,7 @@ class CasJsonTicketValidationParserTest {
 
         assertEquals("alice", attributes.get("user"));
         assertEquals("alice@example.com", attributes.get("mail"));
-        assertEquals("dev,admin", attributes.get("groups"));
+        assertEquals(java.util.List.of("dev", "admin"), attributes.get("groups"));
         assertEquals("PGTIOU-1", attributes.get(IdpConstants.PROXY_GRANTING_TICKET));
     }
 
