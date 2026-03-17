@@ -1,18 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Form,
-  DatePicker,
-  Select,
-  Button,
-  Card,
-  Row,
-  Col,
-  Table,
-  message,
-} from "antd";
+import { Form, message } from "antd";
 import * as echarts from "echarts";
 import { Dayjs } from "dayjs";
+import { ModelDashboardCharts } from "@/components/model-dashboard/ModelDashboardCharts";
+import { ModelDashboardFilters } from "@/components/model-dashboard/ModelDashboardFilters";
+import { ModelDashboardKpiCards } from "@/components/model-dashboard/ModelDashboardKpiCards";
+import { ModelDashboardTables } from "@/components/model-dashboard/ModelDashboardTables";
 import slsApi from "../lib/slsApi";
 import {
   SlsQueryRequest,
@@ -25,16 +19,18 @@ import {
   rangePresets,
   getTimeRangeLabel,
   formatNumber,
-  DATETIME_FORMAT,
 } from "../utils/dateTimeUtils";
 import {
   generateMultiLineChartOption,
   generateLineChartOption,
   generateEmptyChartOption,
-  generateTableColumns,
 } from "../utils/chartUtils";
-
-const { RangePicker } = DatePicker;
+import type {
+  FilterOptionsState,
+  KpiDataState,
+  TableDataState,
+  TableValue,
+} from "@/components/model-dashboard/types";
 
 /**
  * 模型监控页面
@@ -45,17 +41,17 @@ const ModelDashboard: React.FC = () => {
   const [timeRangeLabel, setTimeRangeLabel] = useState("");
 
   // 过滤选项状态
-  const [filterOptions, setFilterOptions] = useState({
-    clusterIds: [] as string[],
-    apis: [] as string[],
-    models: [] as string[],
-    routes: [] as string[],
-    services: [] as string[],
-    consumers: [] as string[],
+  const [filterOptions, setFilterOptions] = useState<FilterOptionsState>({
+    clusterIds: [],
+    apis: [],
+    models: [],
+    routes: [],
+    services: [],
+    consumers: [],
   });
 
   // KPI数据状态
-  const [kpiData, setKpiData] = useState({
+  const [kpiData, setKpiData] = useState<KpiDataState>({
     pv: "-",
     uv: "-",
     fallbackCount: "-",
@@ -64,18 +60,15 @@ const ModelDashboard: React.FC = () => {
     totalToken: "-",
   });
 
-  // 定义表格数据值的联合类型，避免使用 any
-  type TableValue = string | number | boolean | null | undefined;
-
   // 表格数据状态
-  const [tableData, setTableData] = useState({
-    modelToken: [] as Record<string, TableValue>[],
-    consumerToken: [] as Record<string, TableValue>[],
-    serviceToken: [] as Record<string, TableValue>[],
-    errorRequests: [] as Record<string, TableValue>[],
-    ratelimitedConsumer: [] as Record<string, TableValue>[],
-    riskLabel: [] as Record<string, TableValue>[],
-    riskConsumer: [] as Record<string, TableValue>[],
+  const [tableData, setTableData] = useState<TableDataState>({
+    modelToken: [],
+    consumerToken: [],
+    serviceToken: [],
+    errorRequests: [],
+    ratelimitedConsumer: [],
+    riskLabel: [],
+    riskConsumer: [],
   });
 
   // ECharts实例引用
@@ -540,441 +533,34 @@ const ModelDashboard: React.FC = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">模型监控</h1>
+      <ModelDashboardFilters
+        filterOptions={filterOptions}
+        form={form}
+        loading={loading}
+        onQuery={handleQuery}
+        onReset={handleReset}
+        onTimeRangeChange={handleTimeRangeChange}
+      />
 
-      {/* 查询表单 */}
-      <Card className="mb-6" title="过滤条件">
-        <Form form={form} layout="vertical">
-          <Row gutter={16}>
-            <Col flex="350px">
-              <Form.Item
-                name="timeRange"
-                label="时间范围"
-                rules={[{ required: true, message: "请选择时间范围" }]}
-              >
-                <RangePicker
-                  showTime
-                  format={DATETIME_FORMAT}
-                  presets={rangePresets}
-                  onChange={handleTimeRangeChange}
-                  style={{ width: "100%" }}
-                />
-              </Form.Item>
-            </Col>
-            <Col flex="180px">
-              <Form.Item name="interval" label="查询粒度">
-                <Select style={{ width: "100%" }}>
-                  <Select.Option value={1}>1秒</Select.Option>
-                  <Select.Option value={15}>15秒</Select.Option>
-                  <Select.Option value={60}>60秒</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
+      <ModelDashboardKpiCards
+        kpiData={kpiData}
+        timeRangeLabel={timeRangeLabel}
+      />
 
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item name="cluster_id" label="实例ID">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.clusterIds.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="api" label="API">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.apis.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="model" label="模型">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.models.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+      <ModelDashboardCharts
+        cacheChartRef={cacheChartRef}
+        qpsChartRef={qpsChartRef}
+        ratelimitedChartRef={ratelimitedChartRef}
+        rtChartRef={rtChartRef}
+        successRateChartRef={successRateChartRef}
+        timeRangeLabel={timeRangeLabel}
+        tokenPerSecChartRef={tokenPerSecChartRef}
+      />
 
-          <Row gutter={16}>
-            <Col span={8}>
-              <Form.Item name="consumer" label="消费者">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.consumers.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="route" label="路由">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.routes.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item name="service" label="服务">
-                <Select
-                  mode="tags"
-                  placeholder="请选择"
-                  style={{ width: "100%" }}
-                  options={filterOptions.services.map(v => ({
-                    label: v,
-                    value: v,
-                  }))}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row>
-            <Col span={24}>
-              <Form.Item>
-                <Button type="primary" onClick={handleQuery} loading={loading}>
-                  查询
-                </Button>
-                <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                  重置
-                </Button>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-      </Card>
-
-      {/* KPI统计卡片 */}
-      <Row gutter={16} className="mb-6">
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">PV</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">{kpiData.pv}</div>
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">UV</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">{kpiData.uv}</div>
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">Fallback请求数</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">
-              {kpiData.fallbackCount}
-            </div>
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">输入Token数</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">
-              {kpiData.inputToken}
-            </div>
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">输出Token数</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">
-              {kpiData.outputToken}
-            </div>
-          </Card>
-        </Col>
-        <Col span={4}>
-          <Card>
-            <div className="flex justify-between items-center mb-2">
-              <div className="text-sm text-gray-500">Token总数</div>
-              {timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )}
-            </div>
-            <div className="text-center text-2xl font-medium">
-              {kpiData.totalToken}
-            </div>
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 时序图表 */}
-      <Row gutter={16} className="mb-6">
-        <Col span={12}>
-          <Card
-            title={<span>QPS</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={qpsChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title={<span>请求成功率</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={successRateChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16} className="mb-6">
-        <Col span={12}>
-          <Card
-            title={<span>token消耗数/s</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={tokenPerSecChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title={<span>请求平均RT/ms</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={rtChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16} className="mb-6">
-        <Col span={12}>
-          <Card
-            title={<span>限流请求数/s</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={ratelimitedChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title={<span>缓存命中情况/s</span>}
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <div ref={cacheChartRef} style={{ height: 300 }} />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 统计表格 */}
-      {/* 第一行：模型token使用统计、消费者token使用统计 */}
-      <Row gutter={16} className="mb-4">
-        <Col span={12}>
-          <Card
-            title="模型token使用统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.modelToken}
-              columns={generateTableColumns(tableData.modelToken)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title="消费者token使用统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.consumerToken}
-              columns={generateTableColumns(tableData.consumerToken)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 第二行：服务token使用统计、错误请求统计 */}
-      <Row gutter={16} className="mb-4">
-        <Col span={12}>
-          <Card
-            title="服务token使用统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.serviceToken}
-              columns={generateTableColumns(tableData.serviceToken)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card
-            title="错误请求统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.errorRequests}
-              columns={generateTableColumns(tableData.errorRequests)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* 第三行：限流消费者统计、风险类型统计、风险消费者统计 */}
-      <Row gutter={16} className="mb-4">
-        <Col span={8}>
-          <Card
-            title="限流消费者统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.ratelimitedConsumer}
-              columns={generateTableColumns(tableData.ratelimitedConsumer)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card
-            title="风险类型统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.riskLabel}
-              columns={generateTableColumns(tableData.riskLabel)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card
-            title="风险消费者统计"
-            extra={
-              timeRangeLabel && (
-                <span className="text-xs text-gray-400">{timeRangeLabel}</span>
-              )
-            }
-          >
-            <Table
-              dataSource={tableData.riskConsumer}
-              columns={generateTableColumns(tableData.riskConsumer)}
-              pagination={false}
-              rowKey={(_, index) => index?.toString() || "0"}
-              scroll={{ x: "max-content" }}
-              size="small"
-            />
-          </Card>
-        </Col>
-      </Row>
+      <ModelDashboardTables
+        tableData={tableData}
+        timeRangeLabel={timeRangeLabel}
+      />
     </div>
   );
 };
