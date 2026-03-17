@@ -38,6 +38,10 @@ import {
   LdapConfig,
 } from "@/types";
 import { portalApi } from "@/lib/api";
+import { CasCoreSection } from "./third-party-auth/CasCoreSection";
+import { CasIdentityMappingSection } from "./third-party-auth/CasIdentityMappingSection";
+import { CasLoginBehaviorSection } from "./third-party-auth/CasLoginBehaviorSection";
+import { CasValidationSection } from "./third-party-auth/CasValidationSection";
 
 interface ThirdPartyAuthManagerProps {
   portalId?: string;
@@ -144,11 +148,7 @@ export function ThirdPartyAuthManager({
       }))
       .filter(
         item =>
-          item.name ||
-          item.email ||
-          item.phone ||
-          item.department ||
-          item.type
+          item.name || item.email || item.phone || item.department || item.type
       );
   };
 
@@ -584,8 +584,7 @@ export function ThirdPartyAuthManager({
             callbackPath: values.proxyCallbackPath || undefined,
             callbackUrlPattern: values.proxyCallbackUrlPattern || undefined,
             proxyEndpoint: values.proxyEndpoint || undefined,
-            targetServicePattern:
-              values.proxyTargetServicePattern || undefined,
+            targetServicePattern: values.proxyTargetServicePattern || undefined,
             policyMode: values.proxyPolicyMode || "REGEX",
             useServiceId: values.proxyUseServiceId ?? false,
             exactMatch: values.proxyExactMatch ?? false,
@@ -654,8 +653,7 @@ export function ThirdPartyAuthManager({
             forceExecution: values.multifactorForceExecution ?? false,
           },
           authenticationPolicy: {
-            criteriaMode:
-              values.authenticationPolicyCriteriaMode || "ALLOWED",
+            criteriaMode: values.authenticationPolicyCriteriaMode || "ALLOWED",
             requiredAuthenticationHandlers: parseCommaSeparated(
               values.authenticationPolicyRequiredHandlers
             ),
@@ -1530,7 +1528,9 @@ export function ThirdPartyAuthManager({
                       label="MFA Failure Mode"
                     >
                       <Select>
-                        <Select.Option value="UNDEFINED">UNDEFINED</Select.Option>
+                        <Select.Option value="UNDEFINED">
+                          UNDEFINED
+                        </Select.Option>
                         <Select.Option value="OPEN">OPEN</Select.Option>
                         <Select.Option value="CLOSED">CLOSED</Select.Option>
                         <Select.Option value="PHANTOM">PHANTOM</Select.Option>
@@ -2044,160 +2044,10 @@ export function ThirdPartyAuthManager({
 
   const renderCasForm = () => (
     <div className="space-y-6">
-      <Form.Item
-        name="serverUrl"
-        label="CAS 服务地址"
-        rules={[
-          { required: true, message: "请输入CAS服务地址" },
-          { type: "url", message: "请输入有效的URL" },
-        ]}
-      >
-        <Input placeholder="如: https://cas.example.com/cas" />
-      </Form.Item>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Form.Item name="loginEndpoint" label="登录地址">
-          <Input placeholder="可选，默认由服务地址推导 /login" />
-        </Form.Item>
-        <Form.Item name="validateEndpoint" label="票据校验地址">
-          <Input placeholder="可选，默认由服务地址推导 /p3/serviceValidate" />
-        </Form.Item>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Form.Item
-          name="validationProtocolVersion"
-          label="校验协议版本"
-          initialValue="CAS3"
-        >
-          <Select>
-            <Select.Option value="CAS1">CAS 1.0</Select.Option>
-            <Select.Option value="CAS2">CAS 2.0</Select.Option>
-            <Select.Option value="CAS3">CAS 3.0</Select.Option>
-            <Select.Option value="SAML1">SAML 1.1</Select.Option>
-          </Select>
-        </Form.Item>
-        <Form.Item
-          name="validationResponseFormat"
-          label="校验响应格式"
-          initialValue="XML"
-        >
-          <Select>
-            <Select.Option value="XML">XML</Select.Option>
-            <Select.Option value="JSON">JSON</Select.Option>
-          </Select>
-        </Form.Item>
-      </div>
-
-      <Form.Item name="logoutEndpoint" label="登出地址">
-        <Input placeholder="可选，默认由服务地址推导 /logout" />
-      </Form.Item>
-
-      <Form.Item
-        name="sloEnabled"
-        label="单点登出"
-        valuePropName="checked"
-        extra="启用后，前端退出登录将跳转到 CAS 登出地址。"
-      >
-        <Switch />
-      </Form.Item>
-
-      <div className="grid grid-cols-4 gap-4">
-        <Form.Item
-          name="loginGateway"
-          label="Gateway"
-          valuePropName="checked"
-          extra="启用无交互网关登录。"
-        >
-          <Switch />
-        </Form.Item>
-        <Form.Item
-          name="loginRenew"
-          label="Renew"
-          valuePropName="checked"
-          extra="强制重新认证。"
-        >
-          <Switch />
-        </Form.Item>
-        <Form.Item
-          name="loginWarn"
-          label="Warn"
-          valuePropName="checked"
-          extra="切换到 CAS 前要求确认。"
-        >
-          <Switch />
-        </Form.Item>
-        <Form.Item
-          name="loginRememberMe"
-          label="Remember Me"
-          valuePropName="checked"
-          extra="请求 CAS 记住登录状态。"
-        >
-          <Switch />
-        </Form.Item>
-      </div>
-
-      <div className="-ml-3">
-        <Collapse
-          size="small"
-          ghost
-          expandIcon={({ isActive }) => (
-            <svg
-              className={`w-4 h-4 transition-transform ${isActive ? "rotate-90" : ""}`}
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          )}
-          items={[
-            {
-              key: "advanced",
-              label: (
-                <div className="flex items-center text-gray-600">
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947z"
-                      clipRule="evenodd"
-                    />
-                    <path
-                      fillRule="evenodd"
-                      d="M10 13a3 3 0 100-6 3 3 0 000 6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  <span className="ml-2">高级配置</span>
-                  <span className="text-xs text-gray-400 ml-2">身份映射</span>
-                </div>
-              ),
-              children: (
-                <div className="space-y-4 pt-2 ml-3">
-                  <div className="grid grid-cols-3 gap-4">
-                    <Form.Item name="userIdField" label="开发者ID">
-                      <Input placeholder="默认: user" />
-                    </Form.Item>
-                    <Form.Item name="userNameField" label="开发者名称">
-                      <Input placeholder="默认: user" />
-                    </Form.Item>
-                    <Form.Item name="emailField" label="邮箱">
-                      <Input placeholder="默认: mail" />
-                    </Form.Item>
-                  </div>
-                </div>
-              ),
-            },
-          ]}
-        />
-      </div>
+      <CasCoreSection />
+      <CasValidationSection />
+      <CasLoginBehaviorSection />
+      <CasIdentityMappingSection />
     </div>
   );
 
