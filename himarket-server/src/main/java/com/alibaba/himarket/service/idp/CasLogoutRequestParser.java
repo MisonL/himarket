@@ -46,7 +46,12 @@ public class CasLogoutRequestParser {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing logoutRequest");
         }
         Document document = parseXml(resolveLogoutRequestXml(logoutRequest));
-        Element sessionIndex = findFirstElement(document, "SessionIndex");
+        Element rootElement = document.getDocumentElement();
+        if (rootElement == null || !"LogoutRequest".equals(resolveElementName(rootElement))) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Invalid CAS logoutRequest root element");
+        }
+        Element sessionIndex = findFirstElement(rootElement, "SessionIndex");
         if (sessionIndex == null || StrUtil.isBlank(sessionIndex.getTextContent())) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Missing CAS SessionIndex");
         }
