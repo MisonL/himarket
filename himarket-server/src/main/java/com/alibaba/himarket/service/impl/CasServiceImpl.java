@@ -299,26 +299,30 @@ public class CasServiceImpl implements CasService {
                     ErrorCode.INVALID_PARAMETER,
                     "CAS authorize request cannot enable gateway and renew together");
         }
-        String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                        .queryParam(IdpConstants.SERVICE, encodedServiceUrl);
+        StringBuilder builder = new StringBuilder(buildLoginUrl(config));
+        builder.append("?")
+                .append(IdpConstants.SERVICE)
+                .append("=")
+                .append(UriUtils.encode(serviceUrl, StandardCharsets.UTF_8));
         if (gateway) {
-            builder.queryParam(IdpConstants.GATEWAY, true);
+            builder.append("&").append(IdpConstants.GATEWAY).append("=true");
         }
         if (renew) {
-            builder.queryParam(IdpConstants.RENEW, true);
+            builder.append("&").append(IdpConstants.RENEW).append("=true");
         }
         if (warn) {
-            builder.queryParam(IdpConstants.WARN, true);
+            builder.append("&").append(IdpConstants.WARN).append("=true");
         }
         if (rememberMe) {
-            builder.queryParam(IdpConstants.REMEMBER_ME, true);
+            builder.append("&").append(IdpConstants.REMEMBER_ME).append("=true");
         }
         if (resolveResponseType(config) == CasServiceResponseType.HEADER) {
-            builder.queryParam(IdpConstants.METHOD, CasServiceResponseType.HEADER.name());
+            builder.append("&")
+                    .append(IdpConstants.METHOD)
+                    .append("=")
+                    .append(CasServiceResponseType.HEADER.name());
         }
-        return builder.build(true).toUriString();
+        return builder.toString();
     }
 
     private boolean resolveLoginFlag(
@@ -336,11 +340,15 @@ public class CasServiceImpl implements CasService {
                         portalFrontendUrlResolver.getFrontendBaseUrl(),
                         apiPrefix,
                         "/developers/cas/callback");
-        return UriComponentsBuilder.fromUriString(callbackUrl)
-                .queryParam(IdpConstants.PROVIDER, provider)
-                .queryParam(IdpConstants.STATE, state)
-                .build()
-                .toUriString();
+        return callbackUrl
+                + "?"
+                + IdpConstants.PROVIDER
+                + "="
+                + provider
+                + "&"
+                + IdpConstants.STATE
+                + "="
+                + state;
     }
 
     private boolean isSingleLogoutEnabled(CasConfig config) {

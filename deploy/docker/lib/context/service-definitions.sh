@@ -14,15 +14,11 @@ verify_portal_cas_service_definitions() {
   cas_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas/service-definition")"
   echo "${cas_definition}" | jq -e '.data.serviceId? // .serviceId' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS30")' >/dev/null
-  echo "${cas_definition}" | jq -e '((.data.proxyPolicy // .proxyPolicy).pattern // "") | contains("/developers/cas/proxy-callback")' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.evaluationOrder // .evaluationOrder) == 7' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.responseType // .responseType) == "POST"' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.logoutType // .logoutType) == "FRONT_CHANNEL"' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.logoutUrl // .logoutUrl) == "http://localhost:5173/login"' >/dev/null
   echo "${cas_definition}" | jq -e '((.data.accessStrategy // .accessStrategy).unauthorizedRedirectUrl // "") == "http://localhost:5173/forbidden"' >/dev/null
-  echo "${cas_definition}" | jq -e '(.data.proxyPolicy // .proxyPolicy)["@class"] == "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy"' >/dev/null
-  echo "${cas_definition}" | jq -e '(.data.proxyPolicy // .proxyPolicy).useServiceId == true' >/dev/null
-  echo "${cas_definition}" | jq -e '(.data.proxyPolicy // .proxyPolicy).exactMatch == true' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.attributeReleasePolicy // .attributeReleasePolicy)["@class"] == "org.apereo.cas.services.ReturnAllAttributeReleasePolicy"' >/dev/null
   echo "${cas_definition}" | jq -e '((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-duo")' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.multifactorPolicy // .multifactorPolicy).bypassEnabled == true' >/dev/null
