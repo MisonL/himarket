@@ -48,6 +48,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+/**
+ * Implementation of LDAP authentication service.
+ * Handles provider discovery, interactive login, and developer provisioning.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j

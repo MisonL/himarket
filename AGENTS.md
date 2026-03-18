@@ -204,3 +204,11 @@ ln -s /Users/xujingfeng/AIProjects/nacos nacos
 ## 创建 Pull Request
 
 创建 PR 前先检查 `.github/PULL_REQUEST_TEMPLATE.md` 是否存在，如存在则按模板格式填写 PR body。
+
+### LDAP Configuration Reference
+LDAP settings can be managed via the Admin UI or `application.yml`:
+- `serverUrl`: LDAP server address (e.g., `ldap://localhost:389`).
+- `baseDn`: The root DN for user searches (e.g., `dc=example,dc=org`).
+- `bindDn/bindPassword`: Optional manager credentials for searching.
+- `userSearchFilter`: Filter pattern, e.g., `(uid={0})` or `(sAMAccountName={0})`.
+- `identityMapping`: Maps LDAP attributes (`uid`, `cn`, `mail`) to HiMarket fields.
