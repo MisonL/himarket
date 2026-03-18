@@ -361,4 +361,34 @@ public class DeveloperServiceImpl implements DeveloperService {
                         .build(),
                 developerId);
     }
+
+    @Override
+    public void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email) {
+        externalRepository
+                .findByProviderAndSubject(provider, subject)
+                .ifPresent(
+                        externalIdentity -> {
+                            boolean changed = false;
+                            Developer developer = externalIdentity.getDeveloper();
+                            if (!StrUtil.equals(developer.getEmail(), email)) {
+                                developer.setEmail(email);
+                                changed = true;
+                            }
+                            if (!StrUtil.equals(externalIdentity.getDisplayName(), displayName)) {
+                                externalIdentity.setDisplayName(displayName);
+                                changed = true;
+                                // Also update developer username if it was based on display name
+                                if (developer
+                                        .getUsername()
+                                        .equals(buildExternalName(provider, displayName))) {
+                                    developer.setUsername(buildExternalName(provider, displayName));
+                                }
+                            }
+                            if (changed) {
+                                developerRepository.save(developer);
+                                externalRepository.save(externalIdentity);
+                            }
+                        });
+    }
 }

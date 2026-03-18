@@ -153,4 +153,15 @@ public interface DeveloperService {
      * @return 是否成功
      */
     boolean changeCurrentDeveloperPassword(String oldPassword, String newPassword);
+
+    /**
+     * Update external developer profile
+     *
+     * @param provider
+     * @param subject
+     * @param displayName
+     * @param email
+     */
+    void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email);
 }

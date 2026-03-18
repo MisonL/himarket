@@ -24,6 +24,20 @@
     }
   },
   "name": "HiMarket Local Delegated",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy",
+    "allowedAttributes": [
+      "java.util.ArrayList",
+      [
+        "cn",
+        "mail",
+        "displayName",
+        "user",
+        "email",
+        "name"
+      ]
+    ]
+  },
   "id": 850,
   "evaluationOrder": 0
 }
