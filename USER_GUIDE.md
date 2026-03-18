@@ -128,6 +128,7 @@ User login configuration:
 + Username/Password Login: Traditional username and password method (enabled by default)
 + OIDC / CAS Login: Supports third-party identity authentication (such as enterprise SSO)
 + LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
++ **CAS Attribute Synchronization**: Supports automatic synchronization of developer `email` and `display_name` attributes from the CAS Server to ensure real-time identity consistency.
 
 Approval process configuration:
 
