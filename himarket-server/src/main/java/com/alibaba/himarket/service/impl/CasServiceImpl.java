@@ -168,11 +168,14 @@ public class CasServiceImpl implements CasService {
 
         // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
-        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
+        if (loginContext.getTokenExpiresIn() != null) {
+            maxSafetyExpiresIn = loginContext.getTokenExpiresIn();
+        }
+
+        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn =
-                    Math.max(0, IdpConstants.SECONDS_PER_DAY - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn = Math.max(0, maxSafetyExpiresIn - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 
@@ -424,6 +427,7 @@ public class CasServiceImpl implements CasService {
         context.setUserId(developerId);
         context.setSessionIndex(sessionIndex);
         context.setProxyGrantingTicketIou(proxyGrantingTicketIou);
+        context.setTokenExpiresIn(lease.toSeconds());
 
         authSessionStore.saveCasLoginContext(code, context, lease);
         return code;
@@ -494,21 +498,24 @@ public class CasServiceImpl implements CasService {
         String userName = getRequiredField(userInfo, userNameField, "CAS user name");
         String email = getFirstStringValue(userInfo.get(emailField));
 
-        return Optional.ofNullable(
-                        developerService.getExternalDeveloper(config.getProvider(), userId))
-                .map(DeveloperResult::getDeveloperId)
-                .orElseGet(
-                        () -> {
-                            CreateExternalDeveloperParam param =
-                                    CreateExternalDeveloperParam.builder()
-                                            .provider(config.getProvider())
-                                            .subject(userId)
-                                            .displayName(userName)
-                                            .email(email)
-                                            .authType(DeveloperAuthType.CAS)
-                                            .build();
-                            return developerService.createExternalDeveloper(param).getDeveloperId();
-                        });
+        DeveloperResult existingDeveloper =
+                developerService.getExternalDeveloper(config.getProvider(), userId);
+        if (existingDeveloper != null) {
+            // Task 2 [Data Face]: Sync developer attributes upon each login
+            developerService.updateExternalDeveloperProfile(
+                    config.getProvider(), userId, userName, email);
+            return existingDeveloper.getDeveloperId();
+        }
+
+        CreateExternalDeveloperParam param =
+                CreateExternalDeveloperParam.builder()
+                        .provider(config.getProvider())
+                        .subject(userId)
+                        .displayName(userName)
+                        .email(email)
+                        .authType(DeveloperAuthType.CAS)
+                        .build();
+        return developerService.createExternalDeveloper(param).getDeveloperId();
     }
 
     private String getRequiredField(Map<String, Object> userInfo, String field, String label) {
