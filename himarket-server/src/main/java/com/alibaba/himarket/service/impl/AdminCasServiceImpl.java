@@ -121,13 +121,20 @@ public class AdminCasServiceImpl implements AdminCasService {
                         ticket,
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
+        long expirationPolicy = IdpConstants.DEFAULT_EXPIRATION_MILLIS;
+        if (cn.hutool.core.convert.Convert.toBool(
+                userInfo.get("longTermAuthenticationRequestTokenUsed"), false)) {
+            expirationPolicy = 14 * IdpConstants.DEFAULT_EXPIRATION_MILLIS;
+        }
+
         String adminId = getAdminId(userInfo, config);
         String code =
                 issueLoginCode(
                         config.getProvider(),
                         adminId,
                         ticket,
-                        resolveProxyGrantingTicketIou(config, userInfo));
+                        resolveProxyGrantingTicketIou(config, userInfo),
+                        expirationPolicy);
         IdpStateCookie.clearAdminCasStateCookie(request, response);
         return buildFrontendRedirectUrl(code);
     }
@@ -152,11 +159,14 @@ public class AdminCasServiceImpl implements AdminCasService {
 
         // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
-        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
+        if (loginContext.getTokenExpiresIn() != null) {
+            maxSafetyExpiresIn = loginContext.getTokenExpiresIn();
+        }
+
+        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn =
-                    Math.max(0, IdpConstants.SECONDS_PER_DAY - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn = Math.max(0, maxSafetyExpiresIn - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 
@@ -389,7 +399,11 @@ public class AdminCasServiceImpl implements AdminCasService {
     }
 
     private String issueLoginCode(
-            String provider, String userId, String sessionIndex, String proxyGrantingTicketIou) {
+            String provider,
+            String userId,
+            String sessionIndex,
+            String proxyGrantingTicketIou,
+            long expirationPolicyMillis) {
         String code = IdUtil.fastSimpleUUID();
         authSessionStore.saveCasLoginContext(
                 code,
@@ -398,7 +412,8 @@ public class AdminCasServiceImpl implements AdminCasService {
                         provider,
                         userId,
                         sessionIndex,
-                        proxyGrantingTicketIou),
+                        proxyGrantingTicketIou,
+                        expirationPolicyMillis / 1000),
                 authSessionConfig.getCas().getLoginCodeTtl());
         return code;
     }
