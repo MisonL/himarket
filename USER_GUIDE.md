@@ -127,9 +127,13 @@ User login configuration:
 
 + Username/Password Login: Traditional username and password method (enabled by default)
 + OIDC / CAS Login: Supports third-party identity authentication (such as enterprise SSO)
+    - **Remember Me Support**: Automatically hooks into CAS long-term authentication tickets, aligning local token TTL with IdP policies.
+    - **Attribute Dynamic Sync**: Automatically synchronizes developer attributes (`displayName`, `email`) from ticket validation results.
+    - **Multi-value Attribute Parsing**: Robust support for multi-value attributes in SAML and JSON responses.
+    - **Single Logout (SLO)**: Supports SAML LogoutRequest to ensure prompt local logout when IdP sessions terminate.
 + **Zero-Touch Config**: Supports one-click configuration via `.env` file for faster deployment.
-+ **Advanced UX**: Integrated live search in security settings to quickly filter parameters.+ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
-+ **CAS Attribute Synchronization**: Supports automatic synchronization of developer `email` and `display_name` attributes from the CAS Server to ensure real-time identity consistency.
++ **Advanced UX**: Integrated live search in security settings to quickly filter parameters.
++ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
 
 Approval process configuration:
 
