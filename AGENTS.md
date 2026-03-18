@@ -38,6 +38,14 @@
 - Read `CONTRIBUTING.md` and `CONTRIBUTING_zh.md` before broad changes.
 - Treat `deploy/docker/scripts/auth-harness.sh` and CAS-related config as production-like gates, not disposable demo code.
 
+### LDAP Configuration Reference
+LDAP settings can be managed via the Admin UI or `application.yml`:
+- `serverUrl`: LDAP server address (e.g., `ldap://localhost:389`).
+- `baseDn`: The root DN for user searches (e.g., `dc=example,dc=org`).
+- `bindDn/bindPassword`: Optional manager credentials for searching.
+- `userSearchFilter`: Filter pattern, e.g., `(uid={0})` or `(sAMAccountName={0})`.
+- `identityMapping`: Maps LDAP attributes (`uid`, `cn`, `mail`) to HiMarket fields.
+
 ---
 
 **ALWAYS RESPOND IN CHINESE-SIMPLIFIED**
