@@ -126,7 +126,8 @@ After creating a portal, click the portal card to enter the detailed configurati
 User login configuration:
 
 + Username/Password Login: Traditional username and password method (enabled by default)
-+ OIDC Login: Supports third-party identity authentication (such as enterprise SSO)
++ OIDC / CAS Login: Supports third-party identity authentication (such as enterprise SSO)
++ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
 
 Approval process configuration:
 
