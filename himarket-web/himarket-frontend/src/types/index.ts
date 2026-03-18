@@ -120,11 +120,16 @@ export interface ApiProductModelConfig {
   };
 }
 
+export interface ApiProductSkillConfig {
+  skillTags?: string[];
+  downloadCount?: number;
+}
+
 export interface ApiProduct {
   productId: string;
   name: string;
   description: string;
-  type: "REST_API" | "MCP_SERVER" | "AGENT_API" | "MODEL_API";
+  type: "REST_API" | "MCP_SERVER" | "AGENT_API" | "MODEL_API" | "AGENT_SKILL";
   category: string;
   status: "PENDING" | "READY" | "PUBLISHED" | string;
   createAt: string;
@@ -135,6 +140,7 @@ export interface ApiProduct {
   mcpConfig?: ApiProductMcpConfig;
   agentConfig?: ApiProductAgentConfig;
   modelConfig?: ApiProductModelConfig;
+  skillConfig?: ApiProductSkillConfig;
   document?: string;
   icon?: ProductIcon | null;
   categories?: ProductCategoryData[];
@@ -147,6 +153,7 @@ export const ProductType = {
   MCP_SERVER: "MCP_SERVER",
   AGENT_API: "AGENT_API",
   MODEL_API: "MODEL_API",
+  AGENT_SKILL: "AGENT_SKILL",
 } as const;
 export type ProductType = (typeof ProductType)[keyof typeof ProductType];
 

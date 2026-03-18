@@ -107,7 +107,11 @@ public class SecurityConfig {
                     "/**/developers/ldap/providers",
                     "/**/developers/ldap/login",
                     "/developers/oauth2/token",
-                    "/**/developers/oauth2/token");
+                    "/**/developers/oauth2/token",
+                    "/ws/acp",
+                    "/ws/terminal",
+                    "/cli-providers",
+                    "/skills/*/download");
 
     // Swagger endpoints
     private static final RequestMatcher[] SWAGGER_WHITELIST =

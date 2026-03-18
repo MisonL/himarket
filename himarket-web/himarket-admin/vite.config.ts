@@ -1,7 +1,10 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import monacoEditorModule from "vite-plugin-monaco-editor";
 import path from "path";
 import { fileURLToPath } from "url";
+
+const monacoEditor = (monacoEditorModule as any).default || monacoEditorModule;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const env = loadEnv(process.env.NODE_ENV || "development", process.cwd(), "");
@@ -116,7 +119,7 @@ function manualChunks(id: string) {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), monacoEditor({})],
   server: {
     host: "0.0.0.0",
     port: 5174,

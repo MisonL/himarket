@@ -10,6 +10,7 @@ import type {
   IMCPConfig,
   IModelConfig,
   IProductIcon,
+  ISkillConfig,
 } from "./typing";
 
 export interface IProductDetail {
@@ -39,6 +40,7 @@ export interface IProductDetail {
   agentConfig: IAgentConfig;
   mcpConfig: IMCPConfig;
   modelConfig?: IModelConfig;
+  skillConfig?: ISkillConfig;
   enabled: boolean;
   feature?: {
     modelFeature: {

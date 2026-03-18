@@ -15,7 +15,7 @@ export function Layout({
   loading = false,
 }: LayoutProps) {
   return (
-    <div className={`min-h-screen ${className}`}>
+    <div className={`min-h-screen flex flex-col ${className}`}>
       <div
         className={`min-h-screen  fixed w-full h-full z-[1]`}
         style={{
@@ -32,9 +32,9 @@ export function Layout({
         style={{ backdropFilter: "blur(204px)" }}
       ></div>
       <Header />
-      <div className="h-full relative z-10">
+      <div className="flex-1 min-h-0 relative z-10">
         <main className="h-full">
-          <div className="w-full mx-auto px-8">
+          <div className="w-full mx-auto px-8 h-full">
             {loading ? (
               <div className="space-y-8 py-8">
                 {/* 页面标题骨架屏 */}

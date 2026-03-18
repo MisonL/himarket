@@ -1,4 +1,4 @@
-FROM dragonwell-registry.cn-hangzhou.cr.aliyuncs.com/dragonwell/dragonwell:17-standard-ga-anolis
+FROM opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/dragonwell:17-standard-ga-anolis
 WORKDIR /app
 
 COPY target/*.jar app.jar

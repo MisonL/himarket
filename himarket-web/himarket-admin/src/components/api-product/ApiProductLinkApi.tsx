@@ -384,6 +384,9 @@ export function ApiProductLinkApi({
             item.gatewayType === "ADP_AI_GATEWAY" ||
             item.gatewayType === "APSARA_GATEWAY"
         );
+      } else if (apiProduct.type === "AGENT_SKILL") {
+        // Agent Skill 不需要关联网关
+        result = [];
       } else {
         // MCP Server 支持 HIGRESS、APIG_AI、ADP AI 网关、APSARA 网关
         result = res.data?.content?.filter?.(
