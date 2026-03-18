@@ -59,9 +59,11 @@ public class CasSamlTicketValidationParser {
             Node node = attributeNodes.item(i);
             if (node instanceof Element attribute) {
                 String name = StrUtil.blankToDefault(attribute.getAttribute("AttributeName"), null);
-                String value = extractAttributeValue(attribute);
-                if (StrUtil.isNotBlank(name) && StrUtil.isNotBlank(value)) {
-                    attributes.put(name, value);
+                if (StrUtil.isNotBlank(name)) {
+                    Object value = extractAttributeValue(attribute);
+                    if (value != null) {
+                        attributes.put(name, value);
+                    }
                 }
             }
         }
@@ -82,12 +84,23 @@ public class CasSamlTicketValidationParser {
                         "CAS SAML ticket validation failed"));
     }
 
-    private String extractAttributeValue(Element attribute) {
-        Element attributeValue = findFirstElement(attribute, "AttributeValue");
-        if (attributeValue == null) {
+    private Object extractAttributeValue(Element attribute) {
+        NodeList children = attribute.getChildNodes();
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node node = children.item(i);
+            if (node instanceof Element element
+                    && "AttributeValue".equals(resolveElementName(element))) {
+                String val = StrUtil.trim(element.getTextContent());
+                if (StrUtil.isNotBlank(val)) {
+                    values.add(val);
+                }
+            }
+        }
+        if (values.isEmpty()) {
             return null;
         }
-        return StrUtil.trim(attributeValue.getTextContent());
+        return values.size() == 1 ? values.get(0) : values;
     }
 
     private Document parseXml(String responseBody) {
