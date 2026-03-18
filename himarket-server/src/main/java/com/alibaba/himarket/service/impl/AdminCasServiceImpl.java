@@ -66,7 +66,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 @Slf4j
@@ -240,10 +239,11 @@ public class AdminCasServiceImpl implements AdminCasService {
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        return UriComponentsBuilder.fromUriString(logoutUrl)
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .build()
-                .toUriString();
+        return logoutUrl
+                + "?"
+                + IdpConstants.SERVICE
+                + "="
+                + UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
     }
 
     private CasConfig findCasConfig(String provider) {
@@ -281,26 +281,33 @@ public class AdminCasServiceImpl implements AdminCasService {
                     ErrorCode.INVALID_PARAMETER,
                     "CAS authorize request cannot enable gateway and renew together");
         }
+
         String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                        .queryParam(IdpConstants.SERVICE, encodedServiceUrl);
+        StringBuilder builder =
+                new StringBuilder(buildLoginUrl(config))
+                        .append("?")
+                        .append(IdpConstants.SERVICE)
+                        .append("=")
+                        .append(encodedServiceUrl);
         if (gateway) {
-            builder.queryParam(IdpConstants.GATEWAY, true);
+            builder.append("&").append(IdpConstants.GATEWAY).append("=true");
         }
         if (renew) {
-            builder.queryParam(IdpConstants.RENEW, true);
+            builder.append("&").append(IdpConstants.RENEW).append("=true");
         }
         if (warn) {
-            builder.queryParam(IdpConstants.WARN, true);
+            builder.append("&").append(IdpConstants.WARN).append("=true");
         }
         if (rememberMe) {
-            builder.queryParam(IdpConstants.REMEMBER_ME, true);
+            builder.append("&").append(IdpConstants.REMEMBER_ME).append("=true");
         }
         if (resolveResponseType(config) == CasServiceResponseType.HEADER) {
-            builder.queryParam(IdpConstants.METHOD, CasServiceResponseType.HEADER.name());
+            builder.append("&")
+                    .append(IdpConstants.METHOD)
+                    .append("=")
+                    .append(CasServiceResponseType.HEADER.name());
         }
-        return builder.build(true).toUriString();
+        return builder.toString();
     }
 
     private boolean resolveLoginFlag(
@@ -318,11 +325,15 @@ public class AdminCasServiceImpl implements AdminCasService {
                         adminFrontendUrlResolver.getFrontendBaseUrl(),
                         apiPrefix,
                         "/admins/cas/callback");
-        return UriComponentsBuilder.fromUriString(callbackUrl)
-                .queryParam(IdpConstants.PROVIDER, provider)
-                .queryParam(IdpConstants.STATE, state)
-                .build()
-                .toUriString();
+        return callbackUrl
+                + "?"
+                + IdpConstants.PROVIDER
+                + "="
+                + provider
+                + "&"
+                + IdpConstants.STATE
+                + "="
+                + state;
     }
 
     private boolean isSingleLogoutEnabled(CasConfig config) {
@@ -349,11 +360,11 @@ public class AdminCasServiceImpl implements AdminCasService {
     }
 
     private String buildFrontendRedirectUrl(String code) {
-        return UriComponentsBuilder.fromUriString(
-                        adminFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
-                .queryParam(IdpConstants.CODE, code)
-                .build()
-                .toUriString();
+        return adminFrontendUrlResolver.buildCallbackUrl("/cas/callback")
+                + "?"
+                + IdpConstants.CODE
+                + "="
+                + code;
     }
 
     private String resolveProxyCallbackUrl(CasConfig config, String apiPrefix) {

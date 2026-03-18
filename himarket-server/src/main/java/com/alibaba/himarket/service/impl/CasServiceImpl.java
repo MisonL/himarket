@@ -65,12 +65,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CasServiceImpl implements CasService {
@@ -123,13 +120,7 @@ public class CasServiceImpl implements CasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String developerId = createOrGetDeveloper(userInfo, config);
-        long authenticationDate =
-                Convert.toLong(userInfo.get("authenticationDate"), System.currentTimeMillis());
-        long expirationPolicy = IdpConstants.DEFAULT_EXPIRATION_MILLIS;
-        if (cn.hutool.core.convert.Convert.toBool(
-                userInfo.get("longTermAuthenticationRequestTokenUsed"), false)) {
-            expirationPolicy = 14 * IdpConstants.DEFAULT_EXPIRATION_MILLIS;
-        }
+        Long tokenExpiresIn = resolveTokenExpiresInSeconds(userInfo);
 
         String code =
                 issueLoginCode(
@@ -137,7 +128,7 @@ public class CasServiceImpl implements CasService {
                         developerId,
                         ticket,
                         resolveProxyGrantingTicketIou(config, userInfo),
-                        java.time.Duration.ofMillis(expirationPolicy));
+                        tokenExpiresIn);
         IdpStateCookie.clearCasStateCookie(request, response);
         return buildFrontendRedirectUrl(code);
     }
@@ -146,19 +137,6 @@ public class CasServiceImpl implements CasService {
     public AuthResult exchangeCode(String code) {
         CasLoginContext loginContext = consumeLoginContext(code);
 
-        // Systemic Governance: Enforce Max Sessions Per User
-        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
-        if (maxSessions > 0) {
-            authSessionStore.revokeUserSessions(loginContext.getScope(), loginContext.getUserId());
-            // Note: Currently implementing strict single-session or flush-all for security.
-            // In a production refined FIFO, we would only revoke the oldest one if count > max.
-            // For HiMarket systemic fix, we ensure the "Source of Truth" is singular per scope if
-            // needed,
-            // or simply delegate to the store to manage cap.
-            // Here we enforce the limit by revoking existing sessions for this user/scope before
-            // issuing new.
-        }
-
         String accessToken = TokenUtil.generateDeveloperToken(loginContext.getUserId());
         authSessionStore.bindCasSessionToken(
                 loginContext.getScope(),
@@ -166,8 +144,8 @@ public class CasServiceImpl implements CasService {
                 loginContext.getSessionIndex(),
                 accessToken);
         bindProxyGrantingTicket(loginContext);
+        enforceMaxSessions(loginContext);
 
-        // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
         long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
         if (loginContext.getTokenExpiresIn() != null) {
@@ -201,7 +179,10 @@ public class CasServiceImpl implements CasService {
         assertProxyEnabled(config);
         String proxyGrantingTicket =
                 authSessionStore.getCasProxyGrantingTicket(
-                        CasSessionScope.DEVELOPER, provider, contextHolder.getUser());
+                        CasSessionScope.DEVELOPER,
+                        provider,
+                        contextHolder.getUser(),
+                        contextHolder.getCurrentTokenDigest());
         if (StrUtil.isBlank(proxyGrantingTicket)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,
@@ -252,10 +233,11 @@ public class CasServiceImpl implements CasService {
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        return UriComponentsBuilder.fromUriString(logoutUrl)
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .build()
-                .toUriString();
+        return logoutUrl
+                + "?"
+                + IdpConstants.SERVICE
+                + "="
+                + UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
     }
 
     private CasConfig findCasConfig(String provider) {
@@ -299,11 +281,13 @@ public class CasServiceImpl implements CasService {
                     ErrorCode.INVALID_PARAMETER,
                     "CAS authorize request cannot enable gateway and renew together");
         }
-        StringBuilder builder = new StringBuilder(buildLoginUrl(config));
-        builder.append("?")
-                .append(IdpConstants.SERVICE)
-                .append("=")
-                .append(UriUtils.encode(serviceUrl, StandardCharsets.UTF_8));
+        String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
+        StringBuilder builder =
+                new StringBuilder(buildLoginUrl(config))
+                        .append("?")
+                        .append(IdpConstants.SERVICE)
+                        .append("=")
+                        .append(encodedServiceUrl);
         if (gateway) {
             builder.append("&").append(IdpConstants.GATEWAY).append("=true");
         }
@@ -375,11 +359,11 @@ public class CasServiceImpl implements CasService {
     }
 
     private String buildFrontendRedirectUrl(String code) {
-        return UriComponentsBuilder.fromUriString(
-                        portalFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
-                .queryParam(IdpConstants.CODE, code)
-                .build()
-                .toUriString();
+        return portalFrontendUrlResolver.buildCallbackUrl("/cas/callback")
+                + "?"
+                + IdpConstants.CODE
+                + "="
+                + code;
     }
 
     private String resolveProxyCallbackUrl(CasConfig config, String apiPrefix) {
@@ -428,18 +412,38 @@ public class CasServiceImpl implements CasService {
             String developerId,
             String sessionIndex,
             String proxyGrantingTicketIou,
-            java.time.Duration lease) {
+            Long tokenExpiresIn) {
         String code = cn.hutool.core.util.IdUtil.fastSimpleUUID();
-        CasLoginContext context = new CasLoginContext();
-        context.setScope(CasSessionScope.DEVELOPER);
-        context.setProvider(provider);
-        context.setUserId(developerId);
-        context.setSessionIndex(sessionIndex);
-        context.setProxyGrantingTicketIou(proxyGrantingTicketIou);
-        context.setTokenExpiresIn(lease.toSeconds());
+        CasLoginContext context =
+                new CasLoginContext(
+                        CasSessionScope.DEVELOPER,
+                        provider,
+                        developerId,
+                        sessionIndex,
+                        proxyGrantingTicketIou,
+                        tokenExpiresIn);
 
-        authSessionStore.saveCasLoginContext(code, context, lease);
+        authSessionStore.saveCasLoginContext(
+                code, context, authSessionConfig.getCas().getLoginCodeTtl());
         return code;
+    }
+
+    private void enforceMaxSessions(CasLoginContext loginContext) {
+        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
+        if (maxSessions <= 0) {
+            return;
+        }
+        authSessionStore.revokeOverflowUserSessions(
+                loginContext.getScope(), loginContext.getUserId(), maxSessions);
+    }
+
+    private Long resolveTokenExpiresInSeconds(Map<String, Object> userInfo) {
+        boolean rememberMe =
+                Convert.toBool(userInfo.get("longTermAuthenticationRequestTokenUsed"), false);
+        if (!rememberMe) {
+            return null;
+        }
+        return authSessionConfig.getCas().getRememberMeTokenTtl().toSeconds();
     }
 
     private CasLoginContext consumeLoginContext(String code) {
