@@ -38,6 +38,13 @@
 - Read `CONTRIBUTING.md` and `CONTRIBUTING_zh.md` before broad changes.
 - Treat `deploy/docker/scripts/auth-harness.sh` and CAS-related config as production-like gates, not disposable demo code.
 
+### CAS Configuration Reference
+CAS behavior can be tuned via `application.yml` or environment variables:
+- `auth.cas.login-code-ttl`: Expiration for the temporary login code (default `60s`).
+- `auth.cas.session-lease-buffer`: Buffer subtracted from CAS ticket expiration to set local token TTL (default `5m`). Ensure this is aligned with CAS server session expiration policies.
+- `auth.cas.max-sessions-per-user`: Maximum active CAS sessions allowed per developer (default `10`).
+- Remember Me: Enabled when `longTermAuthenticationRequestTokenUsed=true` is present in the CAS ticket validation response.
+
 ---
 
 **ALWAYS RESPOND IN CHINESE-SIMPLIFIED**

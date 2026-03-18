@@ -127,6 +127,11 @@ User login configuration:
 
 + Username/Password Login: Traditional username and password method (enabled by default)
 + OIDC Login: Supports third-party identity authentication (such as enterprise SSO)
++ CAS Login: Supports standard CAS (Central Authentication Service) protocol integration
+    - **Remember Me Support**: Automatically hooks into CAS long-term authentication tickets, aligning local token TTL with IdP policies.
+    - **Attribute Dynamic Sync**: Automatically synchronizes developer attributes (`displayName`, `email`) from ticket validation results.
+    - **Multi-value Attribute Parsing**: Robust support for multi-value attributes in SAML and JSON responses.
+    - **Single Logout (SLO)**: Supports SAML LogoutRequest to ensure prompt local logout when IdP sessions terminate.
 
 Approval process configuration:
 
