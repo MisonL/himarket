@@ -35,9 +35,14 @@ import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
+import javax.naming.NamingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+/**
+ * LDAP Authenticator for handling user authentication against LDAP/AD servers.
+ * Complies with Alibaba Java Coding Guidelines (P3C).
+ */
 @Component
 @Slf4j
 public class LdapAuthenticator {
@@ -46,6 +51,14 @@ public class LdapAuthenticator {
 
     private static final String READ_TIMEOUT_MS = "5000";
 
+    /**
+     * Authenticates a user against the LDAP server.
+     *
+     * @param config   LDAP configuration
+     * @param username User name (e.g., uid)
+     * @param password User password
+     * @return Map of LDAP attributes for the authenticated user
+     */
     public Map<String, Object> authenticate(LdapConfig config, String username, String password) {
         if (StrUtil.isBlank(username) || StrUtil.isBlank(password)) {
             throw new BusinessException(
@@ -61,7 +74,7 @@ public class LdapAuthenticator {
     }
 
     private SearchResult findUniqueUser(LdapConfig config, String username) {
-        Hashtable<String, String> env = createBaseEnv(config.getServerUrl());
+        Hashtable<String, Object> env = createBaseEnv(config.getServerUrl());
         if (StrUtil.isNotBlank(config.getBindDn())) {
             env.put(Context.SECURITY_PRINCIPAL, config.getBindDn());
             env.put(Context.SECURITY_CREDENTIALS, config.getBindPassword());
@@ -99,7 +112,7 @@ public class LdapAuthenticator {
     }
 
     private void verifyBind(LdapConfig config, String userDn, String password) {
-        Hashtable<String, String> env = createBaseEnv(config.getServerUrl());
+        Hashtable<String, Object> env = createBaseEnv(config.getServerUrl());
         env.put(Context.SECURITY_PRINCIPAL, userDn);
         env.put(Context.SECURITY_CREDENTIALS, password);
         env.put(Context.SECURITY_AUTHENTICATION, "simple");
@@ -108,15 +121,17 @@ public class LdapAuthenticator {
         try {
             ctx = new InitialDirContext(env);
             // Bind success means password is correct.
-        } catch (Exception e) {
+        } catch (NamingException e) {
             throw invalidCredentials();
         } finally {
             closeQuietly(ctx);
         }
     }
 
-    private Hashtable<String, String> createBaseEnv(String serverUrl) {
-        Hashtable<String, String> env = new Hashtable<>();
+    private Hashtable<String, Object> createBaseEnv(String serverUrl) {
+        // Note: Using Hashtable is mandated by JNDI InitialDirContext constructor.
+        // We use specifically typed Hashtable to comply with JNDI requirements while reducing generic warnings.
+        Hashtable<String, Object> env = new Hashtable<>();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.PROVIDER_URL, serverUrl);
         env.put("com.sun.jndi.ldap.connect.timeout", CONNECT_TIMEOUT_MS);
