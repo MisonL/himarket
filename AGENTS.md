@@ -45,6 +45,14 @@ CAS behavior can be tuned via `application.yml` or environment variables:
 - `auth.cas.max-sessions-per-user`: Maximum active CAS sessions allowed per developer (default `10`).
 - Remember Me: Enabled when `longTermAuthenticationRequestTokenUsed=true` is present in the CAS ticket validation response.
 
+### LDAP Configuration Reference
+LDAP settings can be managed via the Admin UI or `application.yml`:
+- `serverUrl`: LDAP server address (e.g., `ldap://localhost:389`).
+- `baseDn`: The root DN for user searches (e.g., `dc=example,dc=org`).
+- `bindDn/bindPassword`: Optional manager credentials for searching.
+- `userSearchFilter`: Filter pattern, e.g., `(uid={0})` or `(sAMAccountName={0})`.
+- `identityMapping`: Maps LDAP attributes (`uid`, `cn`, `mail`) to HiMarket fields.
+
 ---
 
 **ALWAYS RESPOND IN CHINESE-SIMPLIFIED**
