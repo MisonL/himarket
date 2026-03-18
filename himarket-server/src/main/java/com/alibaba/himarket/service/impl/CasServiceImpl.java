@@ -67,7 +67,6 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
 @Slf4j
@@ -247,10 +246,11 @@ public class CasServiceImpl implements CasService {
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        return UriComponentsBuilder.fromUriString(logoutUrl)
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .build()
-                .toUriString();
+        return logoutUrl
+                + "?"
+                + IdpConstants.SERVICE
+                + "="
+                + UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
     }
 
     private CasConfig findCasConfig(String provider) {
@@ -295,25 +295,31 @@ public class CasServiceImpl implements CasService {
                     "CAS authorize request cannot enable gateway and renew together");
         }
         String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
-        UriComponentsBuilder builder =
-                UriComponentsBuilder.fromUriString(buildLoginUrl(config))
-                        .queryParam(IdpConstants.SERVICE, encodedServiceUrl);
+        StringBuilder builder =
+                new StringBuilder(buildLoginUrl(config))
+                        .append("?")
+                        .append(IdpConstants.SERVICE)
+                        .append("=")
+                        .append(encodedServiceUrl);
         if (gateway) {
-            builder.queryParam(IdpConstants.GATEWAY, true);
+            builder.append("&").append(IdpConstants.GATEWAY).append("=true");
         }
         if (renew) {
-            builder.queryParam(IdpConstants.RENEW, true);
+            builder.append("&").append(IdpConstants.RENEW).append("=true");
         }
         if (warn) {
-            builder.queryParam(IdpConstants.WARN, true);
+            builder.append("&").append(IdpConstants.WARN).append("=true");
         }
         if (rememberMe) {
-            builder.queryParam(IdpConstants.REMEMBER_ME, true);
+            builder.append("&").append(IdpConstants.REMEMBER_ME).append("=true");
         }
         if (resolveResponseType(config) == CasServiceResponseType.HEADER) {
-            builder.queryParam(IdpConstants.METHOD, CasServiceResponseType.HEADER.name());
+            builder.append("&")
+                    .append(IdpConstants.METHOD)
+                    .append("=")
+                    .append(CasServiceResponseType.HEADER.name());
         }
-        return builder.build(true).toUriString();
+        return builder.toString();
     }
 
     private boolean resolveLoginFlag(
@@ -331,11 +337,15 @@ public class CasServiceImpl implements CasService {
                         portalFrontendUrlResolver.getFrontendBaseUrl(),
                         apiPrefix,
                         "/developers/cas/callback");
-        return UriComponentsBuilder.fromUriString(callbackUrl)
-                .queryParam(IdpConstants.PROVIDER, provider)
-                .queryParam(IdpConstants.STATE, state)
-                .build()
-                .toUriString();
+        return callbackUrl
+                + "?"
+                + IdpConstants.PROVIDER
+                + "="
+                + provider
+                + "&"
+                + IdpConstants.STATE
+                + "="
+                + state;
     }
 
     private boolean isSingleLogoutEnabled(CasConfig config) {
@@ -362,11 +372,11 @@ public class CasServiceImpl implements CasService {
     }
 
     private String buildFrontendRedirectUrl(String code) {
-        return UriComponentsBuilder.fromUriString(
-                        portalFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
-                .queryParam(IdpConstants.CODE, code)
-                .build()
-                .toUriString();
+        return portalFrontendUrlResolver.buildCallbackUrl("/cas/callback")
+                + "?"
+                + IdpConstants.CODE
+                + "="
+                + code;
     }
 
     private String resolveProxyCallbackUrl(CasConfig config, String apiPrefix) {
@@ -493,21 +503,24 @@ public class CasServiceImpl implements CasService {
         String userName = getRequiredField(userInfo, userNameField, "CAS user name");
         String email = getFirstStringValue(userInfo.get(emailField));
 
-        return Optional.ofNullable(
-                        developerService.getExternalDeveloper(config.getProvider(), userId))
-                .map(DeveloperResult::getDeveloperId)
-                .orElseGet(
-                        () -> {
-                            CreateExternalDeveloperParam param =
-                                    CreateExternalDeveloperParam.builder()
-                                            .provider(config.getProvider())
-                                            .subject(userId)
-                                            .displayName(userName)
-                                            .email(email)
-                                            .authType(DeveloperAuthType.CAS)
-                                            .build();
-                            return developerService.createExternalDeveloper(param).getDeveloperId();
-                        });
+        DeveloperResult existingDeveloper =
+                developerService.getExternalDeveloper(config.getProvider(), userId);
+        if (existingDeveloper != null) {
+            // Task 2 [Data Face]: Sync developer attributes upon each login
+            developerService.updateExternalDeveloperProfile(
+                    config.getProvider(), userId, userName, email);
+            return existingDeveloper.getDeveloperId();
+        }
+
+        CreateExternalDeveloperParam param =
+                CreateExternalDeveloperParam.builder()
+                        .provider(config.getProvider())
+                        .subject(userId)
+                        .displayName(userName)
+                        .email(email)
+                        .authType(DeveloperAuthType.CAS)
+                        .build();
+        return developerService.createExternalDeveloper(param).getDeveloperId();
     }
 
     private String getRequiredField(Map<String, Object> userInfo, String field, String label) {
