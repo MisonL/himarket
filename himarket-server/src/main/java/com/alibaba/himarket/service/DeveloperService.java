@@ -161,4 +161,15 @@ public interface DeveloperService {
      * @param newPassword 新密码
      */
     void resetDeveloperPassword(String oldPassword, String newPassword);
+
+    /**
+     * Update external developer profile
+     *
+     * @param provider
+     * @param subject
+     * @param displayName
+     * @param email
+     */
+    void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email);
 }

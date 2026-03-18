@@ -37,4 +37,6 @@ public class CasLoginContext {
     private String sessionIndex;
 
     private String proxyGrantingTicketIou;
+
+    private Long tokenExpiresIn;
 }
