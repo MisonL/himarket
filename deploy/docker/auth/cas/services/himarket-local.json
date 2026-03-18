@@ -27,6 +27,20 @@
     ]
   ],
   "name": "HiMarket Local",
+  "attributeReleasePolicy": {
+    "@class": "org.apereo.cas.services.ReturnAllowedAttributeReleasePolicy",
+    "allowedAttributes": [
+      "java.util.ArrayList",
+      [
+        "cn",
+        "mail",
+        "displayName",
+        "user",
+        "email",
+        "name"
+      ]
+    ]
+  },
   "id": 1000,
   "evaluationOrder": 1
 }

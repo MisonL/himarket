@@ -29,13 +29,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.naming.Context;
 import javax.naming.NamingEnumeration;
+import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.DirContext;
 import javax.naming.directory.InitialDirContext;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
-import javax.naming.NamingException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -130,7 +130,8 @@ public class LdapAuthenticator {
 
     private Hashtable<String, Object> createBaseEnv(String serverUrl) {
         // Note: Using Hashtable is mandated by JNDI InitialDirContext constructor.
-        // We use specifically typed Hashtable to comply with JNDI requirements while reducing generic warnings.
+        // We use specifically typed Hashtable to comply with JNDI requirements while reducing
+        // generic warnings.
         Hashtable<String, Object> env = new Hashtable<>();
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
         env.put(Context.PROVIDER_URL, serverUrl);

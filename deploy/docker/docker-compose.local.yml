@@ -10,7 +10,7 @@ services:
       - DB_PORT=${DB_PORT:-3306}
       - DB_NAME=${DB_NAME:-portal_db}
       - DB_USERNAME=${DB_USERNAME:-portal_user}
-      - DB_PASSWORD=${DB_PASSWORD:-portal_pass}
+      - DB_PASSWORD=${DB_PASSWORD:-himarket_app_2024}
       - AUTH_SESSION_STORE_TYPE=${AUTH_SESSION_STORE_TYPE:-REDIS}
       - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis-stack-server}
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
