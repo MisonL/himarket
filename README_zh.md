@@ -86,12 +86,12 @@ HiMarket 系统架构分为三层：
 
 <br/>
 
-**环境依赖：** JDK 17、Node.js 18+、Maven 3.6+、MySQL 8.0+
+**环境依赖：** JDK 17、Node.js 18+、MySQL 8.0+；Maven 使用仓库自带 Wrapper（`./mvnw`，3.8.3）
 
 **启动后端：**
 ```bash
 # 构建项目
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
 # 启动后端服务
 java --add-opens java.base/java.util=ALL-UNNAMED \
@@ -232,4 +232,3 @@ cd himarket/deploy/helm
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=higress-group/himarket&type=Date)](https://star-history.com/#higress-group/himarket&Date)
-

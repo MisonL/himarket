@@ -30,6 +30,8 @@ set -o pipefail
 # 切换到项目根目录（脚本可从任意位置调用）
 cd "$(dirname "$0")/.."
 
+source "$(dirname "$0")/lib/dev-env.sh"
+
 # --- 检查必要的环境变量 ---
 check_env_var() {
     local var_name="$1"
@@ -53,26 +55,20 @@ NAMESPACE="$HIMARKET_NAMESPACE"
 # --- 准备工作: 检查依赖和配置 ---
 echo "=== Pre-flight Checks ==="
 
-# 检查 Java 版本
-JAVA_VERSION_OUTPUT=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
-JAVA_MAJOR=$(echo "$JAVA_VERSION_OUTPUT" | cut -d'.' -f1)
-if [ "$JAVA_MAJOR" = "1" ]; then
-    JAVA_MAJOR=$(echo "$JAVA_VERSION_OUTPUT" | cut -d'.' -f2)
-fi
-if [ "$JAVA_MAJOR" != "17" ]; then
-    echo "❌ Error: Java 17 is required, but found Java $JAVA_VERSION_OUTPUT"
-    exit 1
-fi
+ensure_java17
+ensure_maven_wrapper
+ensure_node18
 echo "✅ Java 17 detected."
+echo "✅ Node.js version is compatible."
 
 # 检查必要的命令是否存在
-for cmd in docker mvn npm; do
+for cmd in docker npm; do
     if ! command -v $cmd &> /dev/null; then
         echo "❌ Error: Command not found: $cmd. Please install it and make sure it's in your PATH."
         exit 1
     fi
 done
-echo "✅ Dependencies (docker, mvn, npm) are present."
+echo "✅ Dependencies (docker, npm, mvnw) are present."
 
 
 # 确保 Docker buildx 构建器已准备就绪
@@ -95,7 +91,7 @@ echo "✅ Login successful."
 # --- 步骤 2: 构建并推送 Backend Server ---
 echo "\n=== Step 2: Building and pushing backend server ==="
 echo "Building with Maven..."
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
 SERVER_IMAGE_TAG="$REPOSITORY/$NAMESPACE/himarket-server:$VERSION"
 
