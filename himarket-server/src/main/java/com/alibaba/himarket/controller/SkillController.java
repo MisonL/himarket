@@ -18,7 +18,6 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,7 +25,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Skill Management", description = "Skill CRUD and file operations via productId")
 @RestController
 @RequestMapping("/skills")
-@Slf4j
 @RequiredArgsConstructor
 public class SkillController {
 

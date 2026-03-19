@@ -18,11 +18,9 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class OpenAILlmService extends AbstractLlmService {
 
     public OpenAILlmService(GatewayService gatewayService, ChatBotManager chatBotManager) {

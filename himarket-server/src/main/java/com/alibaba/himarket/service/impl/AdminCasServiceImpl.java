@@ -64,14 +64,16 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminCasServiceImpl implements AdminCasService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminCasServiceImpl.class);
 
     private final AdminAuthConfig adminAuthConfig;
 
@@ -109,6 +111,18 @@ public class AdminCasServiceImpl implements AdminCasService {
     @Override
     public String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response) {
+        log.info(
+                "[CAS-CALLBACK] Processing callback. URL: {}, State: {}",
+                request.getRequestURL(),
+                state);
+        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (jakarta.servlet.http.Cookie c : cookies) {
+                log.info("[CAS-CALLBACK] Found Cookie: {}={}", c.getName(), c.getValue());
+            }
+        } else {
+            log.warn("[CAS-CALLBACK] No cookies received in callback request!");
+        }
         IdpStateCookie.assertAdminCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());

@@ -8,10 +8,8 @@ import java.util.List;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 @Builder
-@Slf4j
 @Data
 public class LlmChatRequest {
 

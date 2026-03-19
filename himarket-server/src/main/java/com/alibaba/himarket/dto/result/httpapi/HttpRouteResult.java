@@ -28,8 +28,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRoute> {
@@ -218,6 +220,8 @@ public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRou
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteMatchResult {
         private List<String> methods;
         private RouteMatchPath path;
@@ -230,6 +234,8 @@ public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRou
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteMatchPath {
         private String value;
         private String type;
@@ -238,6 +244,8 @@ public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRou
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteMatchHeader {
         private String name;
         private String type;
@@ -247,6 +255,8 @@ public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRou
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteMatchQuery {
         private String name;
         private String type;
@@ -256,6 +266,8 @@ public class HttpRouteResult implements OutputConverter<HttpRouteResult, HttpRou
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class ModelMatch {
         private String name;
         private String type;
