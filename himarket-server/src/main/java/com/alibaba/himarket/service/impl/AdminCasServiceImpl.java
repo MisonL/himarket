@@ -64,16 +64,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
 @Service
 @RequiredArgsConstructor
 public class AdminCasServiceImpl implements AdminCasService {
-
-    private static final Logger log = LoggerFactory.getLogger(AdminCasServiceImpl.class);
 
     private final AdminAuthConfig adminAuthConfig;
 
