@@ -33,8 +33,7 @@ const Login: React.FC = () => {
         if (!needInit) {
           await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
         }
-<<<<<<< HEAD
-      } catch (err) {
+      } catch {
         setIsRegister(false);
         await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
       }
@@ -109,6 +108,7 @@ const Login: React.FC = () => {
             : (() => {
                 throw new Error("未知登录方式");
               })();
+
       const accessToken = response.data.access_token;
       localStorage.setItem("access_token", accessToken);
       localStorage.setItem("userInfo", JSON.stringify(response.data));
@@ -277,19 +277,34 @@ const Login: React.FC = () => {
                 name="username"
                 rules={[{ required: true, message: "请输入账号" }]}
               >
-                <Input placeholder="账号" size="large" />
+                <Input
+                  autoComplete="username"
+                  name="username"
+                  placeholder="账号"
+                  size="large"
+                />
               </Form.Item>
               <Form.Item
                 name="password"
                 rules={[{ required: true, message: "请输入密码" }]}
               >
-                <Input.Password placeholder="密码" size="large" />
+                <Input.Password
+                  autoComplete="current-password"
+                  name="password"
+                  placeholder="密码"
+                  size="large"
+                />
               </Form.Item>
               <Form.Item
                 name="confirmPassword"
                 rules={[{ required: true, message: "请确认密码" }]}
               >
-                <Input.Password placeholder="确认密码" size="large" />
+                <Input.Password
+                  autoComplete="new-password"
+                  name="confirmPassword"
+                  placeholder="确认密码"
+                  size="large"
+                />
               </Form.Item>
               {error && <Alert message={error} type="error" showIcon className="mb-2" />}
               <Form.Item>

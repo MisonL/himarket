@@ -350,6 +350,8 @@ export function ThirdPartyAuthConfigModal({
                 ]}
               >
                 <Input
+                  id="auth_config_provider"
+                  autoComplete="off"
                   placeholder="如: google, company-sso"
                   disabled={editingConfig !== null}
                 />
@@ -359,7 +361,7 @@ export function ThirdPartyAuthConfigModal({
                 label="显示名称"
                 rules={[{ required: true, message: "请输入显示名称" }]}
               >
-                <Input placeholder="如: Google登录、公司SSO" />
+                <Input id="auth_config_name" autoComplete="off" placeholder="如: Google登录、公司SSO" />
               </Form.Item>
             </div>
 
