@@ -111,18 +111,6 @@ public class AdminCasServiceImpl implements AdminCasService {
     @Override
     public String handleCallback(
             String ticket, String state, HttpServletRequest request, HttpServletResponse response) {
-        log.info(
-                "[CAS-CALLBACK] Processing callback. URL: {}, State: {}",
-                request.getRequestURL(),
-                state);
-        jakarta.servlet.http.Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (jakarta.servlet.http.Cookie c : cookies) {
-                log.info("[CAS-CALLBACK] Found Cookie: {}={}", c.getName(), c.getValue());
-            }
-        } else {
-            log.warn("[CAS-CALLBACK] No cookies received in callback request!");
-        }
         IdpStateCookie.assertAdminCasStateCookieMatches(request, state);
         IdpState idpState = parseState(state);
         CasConfig config = findCasConfig(idpState.getProvider());

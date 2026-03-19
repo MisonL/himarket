@@ -147,8 +147,6 @@ services:
     image: ${HIMARKET_SERVER_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-server:latest}
     pull_policy: always
     container_name: himarket-server
-    volumes:
-      - ../../himarket-bootstrap/target/himarket-bootstrap-1.0-SNAPSHOT.jar:/app/app.jar
     environment:
       - TZ=${TZ:-Asia/Shanghai}
       - JAVA_OPTS=${JAVA_OPTS:--XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof}
@@ -193,8 +191,6 @@ services:
     image: ${HIMARKET_ADMIN_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-admin:latest}
     pull_policy: always
     container_name: himarket-admin
-    volumes:
-      - ../../himarket-web/himarket-admin/dist:/app
     environment:
       - HIMARKET_SERVER=http://himarket-server:8080
     ports:
