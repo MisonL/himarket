@@ -36,6 +36,8 @@ const Login: React.FC = () => {
         }
       } catch (err) {
         setIsRegister(false); // 默认显示登录表单
+        // Fallback: try loading providers even if need-init fails
+        await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
       }
     };
 
