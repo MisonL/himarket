@@ -4,6 +4,13 @@ import {Portal, ThirdPartyAuthConfig, AuthenticationType, CasConfig, OidcConfig,
 import {portalApi} from '@/lib/api'
 import {ThirdPartyAuthManager} from './ThirdPartyAuthManager'
 
+const AUTH_TYPES = {
+    OIDC: 'OIDC',
+    CAS: 'CAS',
+    LDAP: 'LDAP',
+    OAUTH2: 'OAUTH2',
+} as const
+
 interface PortalSecurityProps {
     portal: Portal
     onRefresh?: () => void
@@ -55,28 +62,28 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
 
             // 分离OIDC和OAuth2配置，去掉type字段
             const oidcConfigs = configs
-                .filter(config => config.type === AuthenticationType.OIDC)
+                .filter(config => String(config.type) === AUTH_TYPES.OIDC)
                 .map(config => {
                     const { type, ...oidcConfig } = config as (OidcConfig & { type: AuthenticationType.OIDC })
                     return oidcConfig
                 })
 
             const casConfigs = configs
-                .filter(config => config.type === AuthenticationType.CAS)
+                .filter(config => String(config.type) === AUTH_TYPES.CAS)
                 .map(config => {
                     const { type, ...casConfig } = config as (CasConfig & { type: AuthenticationType.CAS })
                     return casConfig
                 })
 
             const oauth2Configs = configs
-                .filter(config => config.type === AuthenticationType.OAUTH2)
+                .filter(config => String(config.type) === AUTH_TYPES.OAUTH2)
                 .map(config => {
                     const { type, ...oauth2Config } = config as (OAuth2Config & { type: AuthenticationType.OAUTH2 })
                     return oauth2Config
                 })
 
             const ldapConfigs = configs
-                .filter(config => config.type === AuthenticationType.LDAP)
+                .filter(config => String(config.type) === AUTH_TYPES.LDAP)
                 .map(config => {
                     const { type, ...ldapConfig } = config as (LdapConfig & { type: AuthenticationType.LDAP })
                     return ldapConfig
@@ -115,7 +122,7 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
             portal.portalSettingConfig.oidcConfigs.forEach(oidcConfig => {
                 configs.push({
                     ...oidcConfig,
-                    type: AuthenticationType.OIDC
+                    type: AUTH_TYPES.OIDC
                 })
             })
         }
@@ -124,7 +131,7 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
             portal.portalSettingConfig.casConfigs.forEach(casConfig => {
                 configs.push({
                     ...casConfig,
-                    type: AuthenticationType.CAS
+                    type: AUTH_TYPES.CAS
                 })
             })
         }
@@ -134,7 +141,7 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
             portal.portalSettingConfig.oauth2Configs.forEach(oauth2Config => {
                 configs.push({
                     ...oauth2Config,
-                    type: AuthenticationType.OAUTH2
+                    type: AUTH_TYPES.OAUTH2
                 })
             })
         }
@@ -143,7 +150,7 @@ export function PortalSecurity({portal, onRefresh}: PortalSecurityProps) {
             portal.portalSettingConfig.ldapConfigs.forEach(ldapConfig => {
                 configs.push({
                     ...ldapConfig,
-                    type: AuthenticationType.LDAP
+                    type: AUTH_TYPES.LDAP
                 })
             })
         }
