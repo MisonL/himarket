@@ -46,7 +46,6 @@ import lombok.extern.slf4j.Slf4j;
  * <p>Extends {@link DashScopeChatFormatter} to parse responses from DashScope
  * multimodal APIs, which return image URLs alongside text content.
  */
-@Slf4j
 public class DashScopeImageFormatter extends DashScopeChatFormatter {
 
     private final ImageResponseParser imageResponseParser;

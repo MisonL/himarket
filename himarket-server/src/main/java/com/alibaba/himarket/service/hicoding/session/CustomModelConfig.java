@@ -2,12 +2,16 @@ package com.alibaba.himarket.service.hicoding.session;
 
 import java.util.List;
 import java.util.Set;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 自定义模型配置，包含模型接入点 URL、API Key、模型 ID、显示名称和协议类型。
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CustomModelConfig {
 
     private static final Set<String> ALLOWED_PROTOCOL_TYPES =

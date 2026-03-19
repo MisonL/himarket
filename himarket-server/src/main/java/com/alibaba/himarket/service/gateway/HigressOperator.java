@@ -60,9 +60,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.stream.Collectors;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -186,7 +188,10 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
         boolean isDirect = "direct_route".equalsIgnoreCase(higressMCPConfig.getType());
         DirectRouteConfig directRouteConfig = higressMCPConfig.getDirectRouteConfig();
-        String transportType = isDirect ? directRouteConfig.getTransportType() : null;
+        String transportType =
+                (isDirect && directRouteConfig != null)
+                        ? directRouteConfig.getTransportType()
+                        : null;
 
         // Standardized path format for Higress MCP servers: /mcp-servers/{name}
         String path = "/mcp-servers/" + higressMCPConfig.getName();
@@ -233,7 +238,7 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         meta.setSource(GatewayType.HIGRESS.name());
         meta.setCreateFromType(higressMCPConfig.getType());
         meta.setProtocol(
-                (StrUtil.isBlank(transportType) || transportType.equalsIgnoreCase("SSE"))
+                (StrUtil.isBlank(transportType) || "SSE".equalsIgnoreCase(transportType))
                         ? "SSE"
                         : "HTTP");
         m.setMeta(meta);
@@ -627,6 +632,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressConsumerConfig {
         private String name;
         private List<HigressCredentialConfig> credentials;
@@ -634,6 +641,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressCredentialConfig {
         private String type;
         private String source;
@@ -665,6 +674,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressMCPConfig {
         private String name;
         private String type;
@@ -675,12 +686,16 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class DirectRouteConfig {
         private String path;
         private String transportType;
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressConsumerAuthInfo {
         private String type;
         private Boolean enable;
@@ -688,12 +703,16 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressConsumer {
         private String name;
         private List<HigressKeyAuthCredential> credentials;
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressCredential {
         protected String type;
         protected Map<String, Object> properties;
@@ -701,6 +720,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
     @EqualsAndHashCode(callSuper = true)
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressKeyAuthCredential extends HigressCredential {
         private String source;
         private String key;
@@ -708,17 +729,23 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressPageResponse<T> {
         private List<T> data;
         private int total;
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressResponse<T> {
         private T data;
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressDomainConfig {
         private String name;
         private String enableHttps;
@@ -727,6 +754,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     // AI route definition start
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressAIRoute {
         private String name;
         private String version;
@@ -743,6 +772,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     public static class AiModelPredicate extends RoutePredicate {}
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AiUpstream {
         private String provider;
         private Integer weight;
@@ -750,6 +781,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteAuthConfig {
         private Boolean enabled;
         private List<String> allowedCredentialTypes;
@@ -757,6 +790,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class AiRouteFallbackConfig {
         private Boolean enabled;
         private List<AiUpstream> upstreams;
@@ -776,6 +811,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
     @Data
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class HigressAuthConsumerConfig {
         private String mcpServerName;
         private List<String> consumers;

@@ -144,7 +144,7 @@ public class RemoteTerminalBackend implements TerminalBackend {
                                 })
                         .subscribe();
 
-        if (blocking) {
+        if (blocking && connectedLatch != null) {
             try {
                 if (!connectedLatch.await(10, TimeUnit.SECONDS)) {
                     throw new IOException("连接远程终端超时: " + wsUri);

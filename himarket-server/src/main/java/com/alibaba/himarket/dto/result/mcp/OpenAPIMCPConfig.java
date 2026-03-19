@@ -33,10 +33,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.Builder;
 import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 @Data
-@Slf4j
 public class OpenAPIMCPConfig {
 
     private Server server;

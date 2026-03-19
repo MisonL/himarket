@@ -25,6 +25,7 @@ import java.util.List;
 @Converter(autoApply = true)
 public class ListJsonConverter<E> extends JsonConverter<List<E>> {
 
+    @SuppressWarnings("unchecked")
     protected ListJsonConverter() {
         super((Class<List<E>>) (Class<?>) List.class);
     }

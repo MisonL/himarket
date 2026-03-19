@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -65,13 +64,12 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("unchecked")
-@Slf4j
 public class GatewayServiceImpl implements GatewayService, ApplicationContextAware {
 
     private final GatewayRepository gatewayRepository;
     private final ProductRefRepository productRefRepository;
 
-    private Map<GatewayType, GatewayOperator> gatewayOperators;
+    private Map<GatewayType, GatewayOperator<?>> gatewayOperators;
 
     private final ContextHolder contextHolder;
 
@@ -214,19 +212,22 @@ public class GatewayServiceImpl implements GatewayService, ApplicationContextAwa
     public PageResult<GatewayMCPServerResult> fetchMcpServers(
             String gatewayId, int page, int size) {
         Gateway gateway = findGateway(gatewayId);
-        return getOperator(gateway).fetchMcpServers(gateway, page, size);
+        return (PageResult<GatewayMCPServerResult>)
+                getOperator(gateway).fetchMcpServers(gateway, page, size);
     }
 
     @Override
     public PageResult<AgentAPIResult> fetchAgentAPIs(String gatewayId, int page, int size) {
         Gateway gateway = findGateway(gatewayId);
-        return getOperator(gateway).fetchAgentAPIs(gateway, page, size);
+        return (PageResult<AgentAPIResult>)
+                getOperator(gateway).fetchAgentAPIs(gateway, page, size);
     }
 
     @Override
     public PageResult<GatewayModelAPIResult> fetchModelAPIs(String gatewayId, int page, int size) {
         Gateway gateway = findGateway(gatewayId);
-        return getOperator(gateway).fetchModelAPIs(gateway, page, size);
+        return (PageResult<GatewayModelAPIResult>)
+                getOperator(gateway).fetchModelAPIs(gateway, page, size);
     }
 
     @Override
@@ -326,6 +327,7 @@ public class GatewayServiceImpl implements GatewayService, ApplicationContextAwa
 
     @Override
     public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        @SuppressWarnings("rawtypes")
         Map<String, GatewayOperator> operators =
                 applicationContext.getBeansOfType(GatewayOperator.class);
 
@@ -347,8 +349,8 @@ public class GatewayServiceImpl implements GatewayService, ApplicationContextAwa
                                         ErrorCode.NOT_FOUND, Resources.GATEWAY, gatewayId));
     }
 
-    private GatewayOperator getOperator(Gateway gateway) {
-        GatewayOperator gatewayOperator = gatewayOperators.get(gateway.getGatewayType());
+    private GatewayOperator<?> getOperator(Gateway gateway) {
+        GatewayOperator<?> gatewayOperator = gatewayOperators.get(gateway.getGatewayType());
         if (gatewayOperator == null) {
             throw new BusinessException(
                     ErrorCode.INTERNAL_ERROR,
