@@ -110,15 +110,23 @@ public final class IdpStateCookie {
             String cookieName,
             String value,
             int maxAgeSeconds) {
-        ResponseCookie cookie =
+        boolean isSecure = isSecureRequest(request);
+        ResponseCookie.ResponseCookieBuilder cookieBuilder =
                 ResponseCookie.from(cookieName, value)
                         .httpOnly(true)
-                        .secure(isSecureRequest(request))
+                        .secure(isSecure)
                         .path(IdpConstants.IDP_STATE_COOKIE_PATH)
-                        .sameSite(IdpConstants.IDP_STATE_COOKIE_SAMESITE)
-                        .maxAge(maxAgeSeconds)
-                        .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+                        .maxAge(maxAgeSeconds);
+
+        if (isSecure) {
+            cookieBuilder.sameSite(IdpConstants.IDP_STATE_COOKIE_SAMESITE);
+        } else {
+            // Chrome-based headless browsers (DevTools/Playwright) may drop Lax cookies
+            // on cross-origin redirects if not Secure=true. On localhost, we can relax this.
+            cookieBuilder.sameSite("Lax");
+        }
+
+        response.addHeader(HttpHeaders.SET_COOKIE, cookieBuilder.build().toString());
     }
 
     private static boolean isSecureRequest(HttpServletRequest request) {
