@@ -1,6 +1,9 @@
 networks:
   himarket-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
 
 services:
   # ============================================================
@@ -146,6 +149,7 @@ services:
   himarket-server:
     image: ${HIMARKET_SERVER_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-server:latest}
     pull_policy: always
+    container_name: himarket-server
     environment:
       - TZ=${TZ:-Asia/Shanghai}
       - JAVA_OPTS=${JAVA_OPTS:--XX:+UseG1GC -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0 -XX:MaxMetaspaceSize=512m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/tmp/heapdump.hprof}
@@ -185,10 +189,11 @@ services:
   # 第五层：前端 —— 等 Server healthy 后启动
   # ============================================================
 
-  # Himarket Admin
+  # Admin Frontend
   himarket-admin:
     image: ${HIMARKET_ADMIN_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-admin:latest}
     pull_policy: always
+    container_name: himarket-admin
     environment:
       - HIMARKET_SERVER=http://himarket-server:8080
     ports:
