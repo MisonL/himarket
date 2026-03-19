@@ -12,6 +12,8 @@ set -euo pipefail
 # 切换到项目根目录
 cd "$(dirname "$0")/.."
 
+source "$(dirname "$0")/lib/dev-env.sh"
+
 # ========== 配置 ==========
 APP_PORT=8080
 PID_FILE=".app.pid"
@@ -76,6 +78,8 @@ stop_old_process() {
 
 compile() {
   echo "🔨 编译中..."
+  ensure_java17
+  ensure_maven_wrapper
   # 单次 Maven 调用：编译 + 打包成 fat jar，跳过 Spotless 检查加速编译
   if ! ./mvnw -pl "$BOOT_MODULE" -am package -DskipTests -Dspotless.check.skip=true -q 2>&1; then
     echo "❌ 编译失败"

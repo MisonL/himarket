@@ -8,10 +8,13 @@ prepare_cas_modules() {
     log "cas modules ready"
     return 0
   fi
-  require_cmd mvn
+  if [[ ! -x "${REPO_DIR}/mvnw" ]]; then
+    err "mvnw is not available"
+    exit 1
+  fi
   mkdir -p "${CAS_MODULES_LIB_DIR}"
   log "prepare cas modules"
-  mvn -q -f "${CAS_MODULES_DIR}/pom.xml" dependency:copy-dependencies \
+  "${REPO_DIR}/mvnw" -q -f "${CAS_MODULES_DIR}/pom.xml" dependency:copy-dependencies \
     -DincludeScope=runtime \
     -DoutputDirectory="${CAS_MODULES_LIB_DIR}"
   if [[ ! -f "${sentinel}" || ! -f "${mfa_sentinel}" || ! -f "${delegated_sentinel}" ]]; then
@@ -221,13 +224,23 @@ maybe_build_artifacts() {
   log "build himarket server jar"
   local java_home="${JAVA_HOME:-}"
   if [[ -z "${java_home}" && -x "/usr/libexec/java_home" ]]; then
-    java_home="$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
+    java_home="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
+  fi
+  if [[ -z "${java_home}" ]]; then
+    for candidate in \
+      "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" \
+      "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"; do
+      if [[ -x "${candidate}/bin/java" ]]; then
+        java_home="${candidate}"
+        break
+      fi
+    done
   fi
   if [[ -z "${java_home}" ]]; then
     err "JAVA_HOME is not set and java_home is not available"
     exit 1
   fi
-  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" mvn -pl himarket-bootstrap -am package -DskipTests)
+  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" ./mvnw -pl himarket-bootstrap -am package -DskipTests)
   require_cmd npm
   log "build himarket frontend dist"
   (cd "${REPO_DIR}/himarket-web/himarket-frontend" && npm run build)

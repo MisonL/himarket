@@ -7,22 +7,18 @@ set -e
 # 切换到项目根目录（脚本可从任意位置调用）
 cd "$(dirname "$0")/.."
 
-# 检查 Java 版本
-JAVA_VERSION_OUTPUT=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
-JAVA_MAJOR=$(echo "$JAVA_VERSION_OUTPUT" | cut -d'.' -f1)
-if [ "$JAVA_MAJOR" = "1" ]; then
-    JAVA_MAJOR=$(echo "$JAVA_VERSION_OUTPUT" | cut -d'.' -f2)
-fi
-if [ "$JAVA_MAJOR" != "17" ]; then
-    echo "❌ Error: Java 17 is required, but found Java $JAVA_VERSION_OUTPUT"
-    exit 1
-fi
+source "$(dirname "$0")/lib/dev-env.sh"
+
+ensure_java17
+ensure_maven_wrapper
+ensure_node18
 echo "✅ Java 17 detected."
+echo "✅ Node.js version is compatible."
 
 # 构建 server
 echo "=== Building backend server ==="
 echo "Building with Maven..."
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
 cd himarket-bootstrap
 echo "Building backend Docker image..."
