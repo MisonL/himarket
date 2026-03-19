@@ -142,11 +142,7 @@ export default defineConfig({
         entryFileNames: "index.js",
         chunkFileNames: "chunk-[name].js",
         assetFileNames: "assets/[name].[ext]",
-        manualChunks,
       },
     },
-  },
-  define: {
-    "process.env": {},
   },
 });

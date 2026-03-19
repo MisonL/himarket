@@ -1,3 +1,13 @@
+admin:
+  auth:
+    frontend-redirect-url: http://localhost:5174
+    cas-configs:
+      - provider: cas
+        name: CAS
+        enabled: true
+        server-url: http://localhost:8083/cas
+        validate-endpoint: http://cas:8080/cas/p3/serviceValidate
+        interactive-browser-login: true
 spring:
   datasource:
     url: jdbc:mysql://${db.host}:${db.port}/${db.name}?createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true&useSSL=false&serverTimezone=UTC

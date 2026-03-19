@@ -51,36 +51,7 @@ export default defineConfig({
         chunkSizeWarningLimit: 1500,
         minify: "terser",
         rollupOptions: {
-            output: {
-                manualChunks(id) {
-                    if (id.includes("node_modules")) {
-                        if (id.includes("swagger-ui-react")) {
-                            if (id.includes("swagger-ui-es-bundle-core"))
-                                return "vendor-swagger-core";
-                            return "vendor-swagger-ui";
-                        }
-                        if (id.includes("antd")) return "vendor-antd";
-                        if (id.includes("@ant-design/icons")) return "vendor-antd-icons";
-                        if (
-                            id.includes("react-markdown") ||
-                            id.includes("remark-") ||
-                            id.includes("rehype-") ||
-                            id.includes("highlight.js")
-                        ) {
-                            return "vendor-markdown";
-                        }
-                        if (id.includes("react-dom") || id.includes("react-router-dom"))
-                            return "vendor-react";
-                        if (id.includes("lodash")) return "vendor-lodash";
-                        if (id.includes("echarts")) return "vendor-echarts";
-                        if (id.includes("zrender")) return "vendor-zrender";
-                        if (id.includes("xterm")) return "vendor-xterm";
-                    }
-                },
-            },
+            output: {},
         },
-    },
-    define: {
-        "process.env": {},
     },
 });

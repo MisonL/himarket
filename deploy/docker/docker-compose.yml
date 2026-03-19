@@ -145,6 +145,8 @@ services:
   himarket-server:
     image: ${HIMARKET_SERVER_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-server:latest}
     container_name: himarket-server
+    volumes:
+      - ../../himarket-bootstrap/target/himarket-bootstrap-1.0-SNAPSHOT.jar:/app/app.jar
     environment:
       - DB_HOST=${DB_HOST:-mysql}
       - DB_PORT=${DB_PORT:-3306}
@@ -175,10 +177,12 @@ services:
   # 第五层：前端 —— 等 Server healthy 后启动
   # ============================================================
 
-  # Himarket Admin
+  # Admin Frontend
   himarket-admin:
     image: ${HIMARKET_ADMIN_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-admin:latest}
     container_name: himarket-admin
+    volumes:
+      - ../../himarket-web/himarket-admin/dist:/app
     environment:
       - HIMARKET_SERVER=http://himarket-server:8080
     ports:
