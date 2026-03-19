@@ -1,4 +1,5 @@
-import { Collapse, Form, Input } from "antd";
+import { Collapse, Form, Input, Tooltip } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 
 export function CasIdentityMappingSection() {
   return (
@@ -40,20 +41,50 @@ export function CasIdentityMappingSection() {
                     clipRule="evenodd"
                   />
                 </svg>
-                <span className="ml-2">高级配置</span>
-                <span className="text-xs text-gray-400 ml-2">身份映射</span>
+                <span className="ml-2">身份映射</span>
+                <span className="text-xs text-gray-400 ml-2">决定用户信息来源</span>
               </div>
             ),
             children: (
               <div className="space-y-4 pt-2 ml-3">
                 <div className="grid grid-cols-3 gap-4">
-                  <Form.Item name="userIdField" label="开发者ID">
+                  <Form.Item
+                    name="userIdField"
+                    label={
+                      <span>
+                        用户ID字段&nbsp;
+                        <Tooltip title="CAS 返回的哪个属性作为 HiMarket 的唯一用户 ID。通常是 user 或 uid。">
+                          <QuestionCircleOutlined />
+                        </Tooltip>
+                      </span>
+                    }
+                  >
                     <Input placeholder="默认: user" />
                   </Form.Item>
-                  <Form.Item name="userNameField" label="开发者名称">
+                  <Form.Item
+                    name="userNameField"
+                    label={
+                      <span>
+                        显示名称字段&nbsp;
+                        <Tooltip title="同步到 HiMarket 的用户真名或昵称字段。">
+                          <QuestionCircleOutlined />
+                        </Tooltip>
+                      </span>
+                    }
+                  >
                     <Input placeholder="默认: user" />
                   </Form.Item>
-                  <Form.Item name="emailField" label="邮箱">
+                  <Form.Item
+                    name="emailField"
+                    label={
+                      <span>
+                        邮箱字段&nbsp;
+                        <Tooltip title="同步到 HiMarket 的电子邮箱字段。">
+                          <QuestionCircleOutlined />
+                        </Tooltip>
+                      </span>
+                    }
+                  >
                     <Input placeholder="默认: mail" />
                   </Form.Item>
                 </div>
