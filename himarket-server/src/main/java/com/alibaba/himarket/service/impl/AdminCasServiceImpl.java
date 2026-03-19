@@ -512,14 +512,6 @@ public class AdminCasServiceImpl implements AdminCasService {
         return admin.getAdminId();
     }
 
-    private String getRequiredField(Map<String, Object> userInfo, String field, String label) {
-        String value = Convert.toStr(userInfo.get(field));
-        if (StrUtil.isBlank(value)) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, label + " is missing");
-        }
-        return value;
-    }
-
     private String joinUrl(String baseUrl, String path) {
         if (StrUtil.startWithAnyIgnoreCase(path, "http://", "https://")) {
             return path;
