@@ -197,13 +197,23 @@ const Login: React.FC = () => {
               name="username"
               rules={[{ required: true, message: "请输入账号" }]}
             >
-              <Input placeholder="账号" size="large" />
+              <Input
+                autoComplete="username"
+                name="username"
+                placeholder="账号"
+                size="large"
+              />
             </Form.Item>
             <Form.Item
               name="password"
               rules={[{ required: true, message: "请输入密码" }]}
             >
-              <Input.Password placeholder="密码" size="large" />
+              <Input.Password
+                autoComplete="current-password"
+                name="password"
+                placeholder="密码"
+                size="large"
+              />
             </Form.Item>
             {error && (
               <Alert message={error} type="error" showIcon className="mb-2" />
@@ -253,13 +263,23 @@ const Login: React.FC = () => {
               name="username"
               rules={[{ required: true, message: "请输入账号" }]}
             >
-              <Input placeholder="账号" size="large" />
+              <Input
+                autoComplete="username"
+                name="username"
+                placeholder="账号"
+                size="large"
+              />
             </Form.Item>
             <Form.Item
               name="password"
               rules={[{ required: true, message: "请输入密码" }]}
             >
-              <Input.Password placeholder="密码" size="large" />
+              <Input.Password
+                autoComplete="current-password"
+                name="password"
+                placeholder="密码"
+                size="large"
+              />
             </Form.Item>
             <Form.Item
               name="confirmPassword"

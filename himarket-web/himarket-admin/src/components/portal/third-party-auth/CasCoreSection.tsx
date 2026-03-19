@@ -19,7 +19,7 @@ export function CasCoreSection() {
           { type: "url", message: "请输入有效的URL" },
         ]}
       >
-        <Input placeholder="如: https://cas.example.com/cas" />
+        <Input id="cas_server_url" autoComplete="off" placeholder="如: https://cas.example.com/cas" />
       </Form.Item>
 
       <div className="grid grid-cols-2 gap-4">
@@ -34,7 +34,7 @@ export function CasCoreSection() {
             </span>
           }
         >
-          <Input placeholder="可选，默认由服务地址推导 /login" />
+          <Input id="cas_login_endpoint" autoComplete="off" placeholder="可选，默认由服务地址推导 /login" />
         </Form.Item>
         <Form.Item
           name="validateEndpoint"
@@ -47,7 +47,7 @@ export function CasCoreSection() {
             </span>
           }
         >
-          <Input placeholder="可选，默认由服务地址推导 /p3/serviceValidate" />
+          <Input id="cas_validate_endpoint" autoComplete="off" placeholder="可选，默认由服务地址推导 /p3/serviceValidate" />
         </Form.Item>
       </div>
 
@@ -62,7 +62,7 @@ export function CasCoreSection() {
           </span>
         }
       >
-        <Input placeholder="可选，默认由服务地址推导 /logout" />
+        <Input id="cas_logout_endpoint" autoComplete="off" placeholder="可选，默认由服务地址推导 /logout" />
       </Form.Item>
 
       <Form.Item
