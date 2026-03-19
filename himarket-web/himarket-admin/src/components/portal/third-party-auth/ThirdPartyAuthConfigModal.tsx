@@ -16,7 +16,7 @@ import {
   type FormInstance,
 } from "antd";
 import { SearchOutlined, RightOutlined } from "@ant-design/icons";
-import { AuthenticationType, ThirdPartyAuthConfig } from "@/types";
+import { ThirdPartyAuthConfig } from "@/types";
 import { CasAdvancedSection } from "./CasAdvancedSection";
 import { CasCoreSection } from "./CasCoreSection";
 import { CasLoginBehaviorSection } from "./CasLoginBehaviorSection";
@@ -35,6 +35,14 @@ import { CasExpirationPolicySection } from "./CasExpirationPolicySection";
 import { CasContactsSection } from "./CasContactsSection";
 import { CasProxySection } from "./CasProxySection";
 
+// 强制本地定义认证类型字符串，防止枚举引用异常
+const AUTH_TYPES = {
+  OIDC: "OIDC",
+  CAS: "CAS",
+  LDAP: "LDAP",
+  OAUTH2: "OAUTH2",
+};
+
 interface ThirdPartyAuthConfigModalProps {
   configs: ThirdPartyAuthConfig[];
   editingConfig: ThirdPartyAuthConfig | null;
@@ -42,7 +50,7 @@ interface ThirdPartyAuthConfigModalProps {
   loading: boolean;
   modalVisible: boolean;
   currentStep: number;
-  selectedType: AuthenticationType | null;
+  selectedType: string | null; // 使用 string 增强兼容性
   onCancel: () => void;
   onNext: () => void;
   onPrevious: () => void;
@@ -71,26 +79,26 @@ export function ThirdPartyAuthConfigModal({
       rules={[{ required: true, message: "请选择认证类型" }]}
     >
       <Select placeholder="请选择认证方式" size="large">
-        <Select.Option value={AuthenticationType.OIDC}>
+        <Select.Option value={AUTH_TYPES.OIDC}>
           <div className="py-2">
             <div className="font-medium">
               OIDC（适用于支持OpenID Connect的身份提供商认证）
             </div>
           </div>
         </Select.Option>
-        <Select.Option value={AuthenticationType.CAS}>
+        <Select.Option value={AUTH_TYPES.CAS}>
           <div className="py-2">
             <div className="font-medium">
               CAS（适用于兼容 CAS 协议的单点登录）
             </div>
           </div>
         </Select.Option>
-        <Select.Option value={AuthenticationType.LDAP}>
+        <Select.Option value={AUTH_TYPES.LDAP}>
           <div className="py-2">
             <div className="font-medium">LDAP（适用于企业目录服务登录）</div>
           </div>
         </Select.Option>
-        <Select.Option value={AuthenticationType.OAUTH2}>
+        <Select.Option value={AUTH_TYPES.OAUTH2}>
           <div className="py-2">
             <div className="font-medium">OAuth2（适用于服务间集成）</div>
           </div>
@@ -190,7 +198,8 @@ export function ThirdPartyAuthConfigModal({
   }, [searchText, casSections]);
 
   const renderSelectedForm = (): ReactNode => {
-    if (selectedType === AuthenticationType.OIDC) {
+    const typeStr = String(selectedType);
+    if (typeStr === AUTH_TYPES.OIDC) {
       return (
         <div className="space-y-6">
           <OidcFormSection />
@@ -214,7 +223,7 @@ export function ThirdPartyAuthConfigModal({
         </div>
       );
     }
-    if (selectedType === AuthenticationType.CAS) {
+    if (typeStr === AUTH_TYPES.CAS) {
       return (
         <div className="space-y-6">
           <CasCoreSection />
@@ -268,7 +277,7 @@ export function ThirdPartyAuthConfigModal({
         </div>
       );
     }
-    if (selectedType === AuthenticationType.LDAP) {
+    if (typeStr === AUTH_TYPES.LDAP) {
       return <LdapFormSection />;
     }
     return <OAuth2FormSection />;
