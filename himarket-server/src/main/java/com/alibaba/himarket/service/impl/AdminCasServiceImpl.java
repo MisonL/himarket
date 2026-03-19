@@ -471,7 +471,21 @@ public class AdminCasServiceImpl implements AdminCasService {
                 Optional.ofNullable(config.getIdentityMapping()).orElseGet(IdentityMapping::new);
         String userIdField = StrUtil.blankToDefault(identityMapping.getUserIdField(), "user");
 
-        String username = getRequiredField(userInfo, userIdField, "CAS user id");
+        Object usernameObj = userInfo.get(userIdField);
+        if (usernameObj == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS user id is missing");
+        }
+        String username;
+        if (usernameObj instanceof List) {
+            List<?> list = (List<?>) usernameObj;
+            if (list.isEmpty()) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS user id is empty");
+            }
+            username = String.valueOf(list.get(0));
+        } else {
+            username = String.valueOf(usernameObj);
+        }
+
         Administrator admin =
                 administratorRepository
                         .findByUsername(username)
