@@ -103,7 +103,15 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
                     domain = request.getServerName();
                 }
             }
-            String portalId = portalService.resolvePortal(domain);
+            String portalId = null;
+            try {
+                portalId = portalService.resolvePortal(domain);
+            } catch (Exception e) {
+                log.warn(
+                        "Failed to resolve portal for domain: {}, error: {}",
+                        domain,
+                        e.getMessage());
+            }
 
             if (StrUtil.isNotBlank(portalId)) {
                 contextHolder.savePortal(portalId);
@@ -111,10 +119,14 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
             } else {
                 log.debug("No portal found for domain: {}", domain);
                 if (!requiresStrictPortalResolution(request)) {
-                    String defaultPortalId = portalService.getDefaultPortal();
-                    if (StrUtil.isNotBlank(defaultPortalId)) {
-                        contextHolder.savePortal(defaultPortalId);
-                        log.debug("Use default portal: {}", defaultPortalId);
+                    try {
+                        String defaultPortalId = portalService.getDefaultPortal();
+                        if (StrUtil.isNotBlank(defaultPortalId)) {
+                            contextHolder.savePortal(defaultPortalId);
+                            log.debug("Use default portal: {}", defaultPortalId);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to get default portal, error: {}", e.getMessage());
                     }
                 } else {
                     log.debug(
