@@ -57,7 +57,9 @@ api.interceptors.response.use(
     message.error(error.response?.data?.message || '请求发生错误');
     if (error.response?.status === 403 || error.response?.status === 401) {
       removeToken()
-      window.location.href = '/login'
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

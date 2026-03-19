@@ -33,8 +33,10 @@ const Login: React.FC = () => {
         if (!needInit) {
           await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
         }
+<<<<<<< HEAD
       } catch {
         setIsRegister(false);
+        await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
       }
     };
 
