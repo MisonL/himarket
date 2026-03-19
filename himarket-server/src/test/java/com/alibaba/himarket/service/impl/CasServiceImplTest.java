@@ -229,9 +229,9 @@ class CasServiceImplTest {
         when(developerService.createExternalDeveloper(any()))
                 .thenAnswer(
                         invocation -> {
-                            com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam
-                                    param = invocation.getArgument(0);
-                            assertEquals("alice-corp-id", param.getExternalId());
+                            com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam param =
+                                    invocation.getArgument(0);
+                            assertEquals("alice-corp-id", param.getSubject());
                             assertEquals("alice@corp.com", param.getEmail());
                             return developerResult;
                         });
