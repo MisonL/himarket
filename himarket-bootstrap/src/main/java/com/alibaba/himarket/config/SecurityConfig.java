@@ -5,16 +5,8 @@
  * regarding copyright ownership.  The ASF licenses this file
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.
+ * with the License.  See the License for the specific language
+ * governing permissions and limitations under the License.
  */
 
 package com.alibaba.himarket.config;
@@ -23,108 +15,59 @@ import com.alibaba.himarket.core.security.JwtAuthenticationFilter;
 import com.alibaba.himarket.service.idp.session.AuthSessionStore;
 import jakarta.servlet.DispatcherType;
 import java.util.Arrays;
-import java.util.Collections;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @RequiredArgsConstructor
-@Slf4j
 @EnableMethodSecurity
 public class SecurityConfig {
 
     private final AuthSessionStore authSessionStore;
 
     // Auth endpoints
-    // Note: Using AntPathRequestMatcher here to support patterns like "/**/developers/login".
-    // Spring MVC PathPattern does not allow "**" in the middle of a pattern.
-    private static final RequestMatcher[] AUTH_WHITELIST =
-            antMatchers(
-                    "/admins/init",
-                    "/admins/need-init",
-                    "/admins/login",
-                    "/admins/cas/authorize",
-                    "/admins/cas/callback",
-                    "/admins/cas/proxy-callback",
-                    "/admins/cas/exchange",
-                    "/admins/cas/providers",
-                    "/admins/cas/logout",
-                    "/admins/ldap/providers",
-                    "/admins/ldap/login",
-                    "/**/admins/cas/authorize",
-                    "/**/admins/cas/callback",
-                    "/**/admins/cas/proxy-callback",
-                    "/**/admins/cas/exchange",
-                    "/**/admins/cas/providers",
-                    "/**/admins/cas/logout",
-                    "/**/admins/ldap/providers",
-                    "/**/admins/ldap/login",
-                    "/developers/login",
-                    "/**/developers/login",
-                    "/developers/authorize",
-                    "/**/developers/authorize",
-                    "/developers/callback",
-                    "/**/developers/callback",
-                    "/developers/providers",
-                    "/**/developers/providers",
-                    "/developers/oidc/authorize",
-                    "/developers/oidc/callback",
-                    "/developers/oidc/providers",
-                    "/**/developers/oidc/authorize",
-                    "/**/developers/oidc/callback",
-                    "/**/developers/oidc/providers",
-                    "/developers/cas/authorize",
-                    "/developers/cas/callback",
-                    "/developers/cas/proxy-callback",
-                    "/developers/cas/exchange",
-                    "/developers/cas/providers",
-                    "/developers/cas/logout",
-                    "/**/developers/cas/authorize",
-                    "/**/developers/cas/callback",
-                    "/**/developers/cas/proxy-callback",
-                    "/**/developers/cas/exchange",
-                    "/**/developers/cas/providers",
-                    "/**/developers/cas/logout",
-                    "/developers/ldap/providers",
-                    "/developers/ldap/login",
-                    "/**/developers/ldap/providers",
-                    "/**/developers/ldap/login",
-                    "/developers/oauth2/token",
-                    "/**/developers/oauth2/token",
-                    "/ws/acp",
-                    "/ws/terminal",
-                    "/cli-providers",
-                    "/skills/*/download");
+    private static final String[] AUTH_WHITELIST = {
+        "/auth/**",
+        "/idp/**",
+        "/login",
+        "/register",
+        "/admins/init",
+        "/admins/need-init",
+        "/admins/login",
+        "/admins/logout",
+        "/admins/cas/**",
+        "/admins/ldap/**",
+        "/api/v1/admins/init",
+        "/api/v1/admins/need-init",
+        "/api/v1/admins/login",
+        "/api/v1/admins/cas/**",
+        "/api/v1/admins/ldap/**"
+    };
 
     // Swagger endpoints
-    private static final RequestMatcher[] SWAGGER_WHITELIST =
-            antMatchers(
-                    "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**");
+    private static final String[] SWAGGER_WHITELIST = {
+        "/portal/swagger-ui.html", "/portal/swagger-ui/**", "/portal/v3/api-docs/**"
+    };
 
     // System endpoints
-    private static final RequestMatcher[] SYSTEM_WHITELIST = antMatchers("/favicon.ico", "/error");
+    private static final String[] SYSTEM_WHITELIST = {"/favicon.ico", "/error"};
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(Customizer.withDefaults())
-                .csrf(AbstractHttpConfigurer::disable)
+        http.csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(
@@ -139,7 +82,7 @@ public class SecurityConfig {
                                         // Permit developer registration (POST /developers)
                                         .requestMatchers(HttpMethod.POST, "/developers")
                                         .permitAll()
-                                        // Permit auth endpoints
+                                        // Permit all auth related paths
                                         .requestMatchers(AUTH_WHITELIST)
                                         .permitAll()
                                         // Permit Swagger endpoints
@@ -156,24 +99,14 @@ public class SecurityConfig {
         return http.build();
     }
 
-    private static RequestMatcher[] antMatchers(String... patterns) {
-        return Arrays.stream(patterns)
-                .map(AntPathRequestMatcher::new)
-                .toArray(RequestMatcher[]::new);
-    }
-
-    @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration authenticationConfiguration) throws Exception {
-        return authenticationConfiguration.getAuthenticationManager();
-    }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration corsConfig = new CorsConfiguration();
-        corsConfig.setAllowedOriginPatterns(Collections.singletonList("*"));
-        corsConfig.setAllowedMethods(Collections.singletonList("*"));
-        corsConfig.setAllowedHeaders(Collections.singletonList("*"));
+        corsConfig.setAllowedOriginPatterns(Arrays.asList("*"));
+        corsConfig.setAllowedMethods(
+                Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        corsConfig.setAllowedHeaders(Arrays.asList("*"));
+        corsConfig.setExposedHeaders(Arrays.asList("Authorization"));
         corsConfig.setAllowCredentials(true);
         corsConfig.setMaxAge(3600L);
 

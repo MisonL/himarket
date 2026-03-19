@@ -56,19 +56,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (token != null) {
                 if (authSessionStore.isTokenRevoked(token)) {
                     log.debug("Token revoked: {}", token);
-                    SecurityContextHolder.clearContext();
                 } else {
                     try {
                         authenticateRequest(token);
                     } catch (Exception e) {
                         log.debug("Token auth failed: {}", e.getMessage());
-                        SecurityContextHolder.clearContext();
                     }
                 }
             }
         } catch (Exception e) {
             log.debug("Token error: {}", e.getMessage());
-            SecurityContextHolder.clearContext();
         }
         chain.doFilter(request, response);
     }
