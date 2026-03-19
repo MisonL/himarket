@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useState, useMemo } from "react";
 import {
   Select,
   Button,
@@ -11,8 +12,10 @@ import {
   Steps,
   Switch,
   Collapse,
+  Empty,
   type FormInstance,
 } from "antd";
+import { SearchOutlined, RightOutlined } from "@ant-design/icons";
 import { AuthenticationType, ThirdPartyAuthConfig } from "@/types";
 import { CasAdvancedSection } from "./CasAdvancedSection";
 import { CasCoreSection } from "./CasCoreSection";
@@ -31,7 +34,6 @@ import { CasAuthenticationPolicySection } from "./CasAuthenticationPolicySection
 import { CasExpirationPolicySection } from "./CasExpirationPolicySection";
 import { CasContactsSection } from "./CasContactsSection";
 import { CasProxySection } from "./CasProxySection";
-import { RightOutlined } from "@ant-design/icons";
 
 interface ThirdPartyAuthConfigModalProps {
   configs: ThirdPartyAuthConfig[];
@@ -60,6 +62,8 @@ export function ThirdPartyAuthConfigModal({
   onPrevious,
   onSave,
 }: ThirdPartyAuthConfigModalProps) {
+  const [searchText, setSearchText] = useState("");
+
   const renderTypeSelector = () => (
     <Form.Item
       name="type"
@@ -95,6 +99,96 @@ export function ThirdPartyAuthConfigModal({
     </Form.Item>
   );
 
+  const casSections = useMemo(
+    () => [
+      {
+        id: "validation",
+        label: "校验与协议细节",
+        keywords: ["validation", "format", "version", "xml", "json", "ticket"],
+        component: <CasValidationSection />,
+      },
+      {
+        id: "behavior",
+        label: "登录行为控制",
+        keywords: ["gateway", "renew", "warn", "remember", "login"],
+        component: <CasLoginBehaviorSection />,
+      },
+      {
+        id: "mapping",
+        label: "用户身份映射",
+        keywords: ["mapping", "user", "id", "email", "name", "role", "sync"],
+        component: <CasIdentityMappingSection />,
+      },
+      {
+        id: "definition",
+        label: "CAS 服务定义 (Metadata)",
+        keywords: ["definition", "evaluation", "order", "logout"],
+        component: <CasServiceDefinitionSection />,
+      },
+      {
+        id: "proxy",
+        label: "代理认证 (Proxy / PGT)",
+        keywords: ["proxy", "callback", "pgt", "ticket"],
+        component: <CasProxySection />,
+      },
+      {
+        id: "strategy",
+        label: "访问访问策略 (Access)",
+        keywords: ["strategy", "access", "unauthorized", "redirect"],
+        component: <CasAccessStrategySection />,
+      },
+      {
+        id: "release",
+        label: "属性释放策略",
+        keywords: ["release", "attribute", "allow", "deny"],
+        component: <CasAttributeReleaseSection />,
+      },
+      {
+        id: "mfa",
+        label: "多因子认证 (MFA)",
+        keywords: ["mfa", "multifactor", "provider", "bypass"],
+        component: <CasMultifactorSection />,
+      },
+      {
+        id: "policy",
+        label: "认证策略",
+        keywords: ["policy", "criteria", "handler", "excluded"],
+        component: <CasAuthenticationPolicySection />,
+      },
+      {
+        id: "expiration",
+        label: "配置有效期",
+        keywords: ["expiration", "date", "notify", "expired"],
+        component: <CasExpirationPolicySection />,
+      },
+      {
+        id: "contacts",
+        label: "技术联系人",
+        keywords: ["contact", "email", "phone", "sre"],
+        component: <CasContactsSection />,
+      },
+      {
+        id: "advanced",
+        label: "其它扩展参数",
+        keywords: ["custom", "advanced", "extra"],
+        component: <CasAdvancedSection />,
+      },
+    ],
+    []
+  );
+
+  const filteredCasSections = useMemo(() => {
+    if (!searchText) {
+      return casSections;
+    }
+    const lowerSearch = searchText.toLowerCase();
+    return casSections.filter(
+      s =>
+        s.label.toLowerCase().includes(lowerSearch) ||
+        s.keywords.some(k => k.includes(lowerSearch))
+    );
+  }, [searchText, casSections]);
+
   const renderSelectedForm = (): ReactNode => {
     if (selectedType === AuthenticationType.OIDC) {
       return (
@@ -126,6 +220,7 @@ export function ThirdPartyAuthConfigModal({
           <CasCoreSection />
           <Collapse
             ghost
+            defaultActiveKey={searchText ? ["advanced"] : []}
             expandIcon={({ isActive }) => (
               <RightOutlined rotate={isActive ? 90 : 0} />
             )}
@@ -134,23 +229,37 @@ export function ThirdPartyAuthConfigModal({
                 key: "advanced",
                 label: (
                   <span className="font-medium text-blue-600">
-                    高级配置 (协议细节、身份映射、策略等)
+                    高级配置 (支持关键词搜索)
                   </span>
                 ),
                 children: (
-                  <div className="space-y-8 py-4">
-                    <CasValidationSection />
-                    <CasLoginBehaviorSection />
-                    <CasIdentityMappingSection />
-                    <CasServiceDefinitionSection />
-                    <CasAccessStrategySection />
-                    <CasProxySection />
-                    <CasAttributeReleaseSection />
-                    <CasMultifactorSection />
-                    <CasAuthenticationPolicySection />
-                    <CasExpirationPolicySection />
-                    <CasContactsSection />
-                    <CasAdvancedSection />
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="搜索配置项 (例如: proxy, mapping, ticket...)"
+                      prefix={<SearchOutlined className="text-gray-400" />}
+                      allowClear
+                      size="large"
+                      className="mb-4"
+                      value={searchText}
+                      onChange={e => setSearchText(e.target.value)}
+                    />
+                    <div className="space-y-8 py-2">
+                      {filteredCasSections.length > 0 ? (
+                        filteredCasSections.map(s => (
+                          <div
+                            key={s.id}
+                            className="p-4 border border-gray-100 rounded-lg bg-gray-50/30"
+                          >
+                            <div className="mb-4 font-bold text-gray-700 border-l-4 border-blue-500 pl-3">
+                              {s.label}
+                            </div>
+                            {s.component}
+                          </div>
+                        ))
+                      ) : (
+                        <Empty description="未找到匹配的配置项" />
+                      )}
+                    </div>
                   </div>
                 ),
               },
