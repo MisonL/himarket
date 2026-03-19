@@ -31,14 +31,9 @@ interface ThirdPartyAuthManagerProps {
 
 export function ThirdPartyAuthManager({
   portalId,
-  configs = [], // 增加默认值防御
+  configs = [],
+  onSave,
 }: ThirdPartyAuthManagerProps) {
-  // 注入 onSave 模拟（如果 Props 没传）
-  const onSaveInternal = async (newConfigs: ThirdPartyAuthConfig[]) => {
-    console.log("Saving configs:", newConfigs);
-    // 这里应该是实际的 API 调用，但为了 UI 稳定，我们假设成功
-  };
-
   const [form] = Form.useForm();
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -80,7 +75,7 @@ export function ThirdPartyAuthManager({
           const updatedConfigs = configs.filter(
             config => config.provider !== provider
           );
-          await onSaveInternal(updatedConfigs);
+          await onSave(updatedConfigs);
           message.success("第三方认证配置删除成功");
         } catch {
           message.error("删除第三方认证配置失败");
@@ -153,7 +148,7 @@ export function ThirdPartyAuthManager({
         updatedConfigs = [...configs, newConfig];
       }
 
-      await onSaveInternal(updatedConfigs);
+      await onSave(updatedConfigs);
 
       message.success(
         editingConfig ? "第三方认证配置更新成功" : "第三方认证配置添加成功"
@@ -195,11 +190,18 @@ export function ThirdPartyAuthManager({
     onDelete: handleDelete,
   });
 
-  // 关键修复点：使用字符串常量进行过滤，彻底解决选项丢失
-  const oidcConfigs = configs.filter(config => String(config.type) === AUTH_TYPES.OIDC);
-  const casConfigs = configs.filter(config => String(config.type) === AUTH_TYPES.CAS);
-  const ldapConfigs = configs.filter(config => String(config.type) === AUTH_TYPES.LDAP);
-  const oauth2Configs = configs.filter(config => String(config.type) === AUTH_TYPES.OAUTH2);
+  const oidcConfigs = configs.filter(
+    config => String(config.type) === AUTH_TYPES.OIDC
+  );
+  const casConfigs = configs.filter(
+    config => String(config.type) === AUTH_TYPES.CAS
+  );
+  const ldapConfigs = configs.filter(
+    config => String(config.type) === AUTH_TYPES.LDAP
+  );
+  const oauth2Configs = configs.filter(
+    config => String(config.type) === AUTH_TYPES.OAUTH2
+  );
 
   return (
     <div className="space-y-6">
