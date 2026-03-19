@@ -175,6 +175,94 @@ class CasServiceImplTest {
     }
 
     @Test
+    void handleCallbackShouldExtractAttributesUsingCustomMapping() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        // 模拟 CAS 返回非标准的属性名：corporate_uid 和 corporate_mail
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new HttpHandler() {
+                    @Override
+                    public void handle(HttpExchange exchange) throws IOException {
+                        byte[] body =
+                                ("<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
+                                     + "<cas:authenticationSuccess><cas:user>alice</cas:user>"
+                                     + "<cas:attributes>"
+                                     + "<cas:corporate_uid>alice-corp-id</cas:corporate_uid>"
+                                     + "<cas:corporate_mail>alice@corp.com</cas:corporate_mail>"
+                                     + "</cas:attributes></cas:authenticationSuccess>"
+                                     + "</cas:serviceResponse>")
+                                        .getBytes(StandardCharsets.UTF_8);
+                        exchange.getResponseHeaders().set("Content-Type", "application/xml");
+                        exchange.sendResponseHeaders(200, body.length);
+                        try (OutputStream os = exchange.getResponseBody()) {
+                            os.write(body);
+                        }
+                    }
+                });
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        // 配置自定义映射
+        IdentityMapping mapping = new IdentityMapping();
+        mapping.setUserIdField("corporate_uid");
+        mapping.setEmailField("corporate_mail");
+        casConfig.setIdentityMapping(mapping);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        // 预期通过映射拿到的 ID 是 alice-corp-id
+        when(developerService.getExternalDeveloper("cas", "alice-corp-id")).thenReturn(null);
+
+        DeveloperResult developerResult = new DeveloperResult();
+        developerResult.setDeveloperId("dev-1");
+        when(developerService.createExternalDeveloper(any()))
+                .thenAnswer(
+                        invocation -> {
+                            com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam
+                                    param = invocation.getArgument(0);
+                            assertEquals("alice-corp-id", param.getExternalId());
+                            assertEquals("alice@corp.com", param.getEmail());
+                            return developerResult;
+                        });
+
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        new MemoryAuthSessionStore(
+                                new AuthSessionConfig().getCas().getLoginCodeTtl()),
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
+        String state =
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request).getState();
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
+        expectedServiceHolder[0] = "ignored"; // 内部 Handler 已重写，此处仅占位
+
+        casService.handleCallback("ST-1", state, request, new MockHttpServletResponse());
+    }
+
+    @Test
     void handleCallbackShouldRejectWhenStateCookieMissing() {
         CasConfig casConfig = new CasConfig();
         casConfig.setProvider("cas");
