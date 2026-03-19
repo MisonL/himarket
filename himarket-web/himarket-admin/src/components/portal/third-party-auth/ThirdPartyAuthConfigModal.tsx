@@ -10,6 +10,7 @@ import {
   Space,
   Steps,
   Switch,
+  Collapse,
   type FormInstance,
 } from "antd";
 import { AuthenticationType, ThirdPartyAuthConfig } from "@/types";
@@ -20,6 +21,17 @@ import { CasValidationSection } from "./CasValidationSection";
 import { LdapFormSection } from "./LdapFormSection";
 import { OAuth2FormSection } from "./OAuth2FormSection";
 import { OidcFormSection } from "./OidcFormSection";
+import { OidcIdentityMappingSection } from "./OidcIdentityMappingSection";
+import { CasIdentityMappingSection } from "./CasIdentityMappingSection";
+import { CasServiceDefinitionSection } from "./CasServiceDefinitionSection";
+import { CasAccessStrategySection } from "./CasAccessStrategySection";
+import { CasAttributeReleaseSection } from "./CasAttributeReleaseSection";
+import { CasMultifactorSection } from "./CasMultifactorSection";
+import { CasAuthenticationPolicySection } from "./CasAuthenticationPolicySection";
+import { CasExpirationPolicySection } from "./CasExpirationPolicySection";
+import { CasContactsSection } from "./CasContactsSection";
+import { CasProxySection } from "./CasProxySection";
+import { RightOutlined } from "@ant-design/icons";
 
 interface ThirdPartyAuthConfigModalProps {
   configs: ThirdPartyAuthConfig[];
@@ -85,15 +97,65 @@ export function ThirdPartyAuthConfigModal({
 
   const renderSelectedForm = (): ReactNode => {
     if (selectedType === AuthenticationType.OIDC) {
-      return <OidcFormSection />;
+      return (
+        <div className="space-y-6">
+          <OidcFormSection />
+          <Collapse
+            ghost
+            expandIcon={({ isActive }) => (
+              <RightOutlined rotate={isActive ? 90 : 0} />
+            )}
+            items={[
+              {
+                key: "advanced",
+                label: (
+                  <span className="font-medium text-blue-600">
+                    高级配置 (身份映射、作用域等)
+                  </span>
+                ),
+                children: <OidcIdentityMappingSection />,
+              },
+            ]}
+          />
+        </div>
+      );
     }
     if (selectedType === AuthenticationType.CAS) {
       return (
         <div className="space-y-6">
           <CasCoreSection />
-          <CasValidationSection />
-          <CasLoginBehaviorSection />
-          <CasAdvancedSection />
+          <Collapse
+            ghost
+            expandIcon={({ isActive }) => (
+              <RightOutlined rotate={isActive ? 90 : 0} />
+            )}
+            items={[
+              {
+                key: "advanced",
+                label: (
+                  <span className="font-medium text-blue-600">
+                    高级配置 (协议细节、身份映射、策略等)
+                  </span>
+                ),
+                children: (
+                  <div className="space-y-8 py-4">
+                    <CasValidationSection />
+                    <CasLoginBehaviorSection />
+                    <CasIdentityMappingSection />
+                    <CasServiceDefinitionSection />
+                    <CasAccessStrategySection />
+                    <CasProxySection />
+                    <CasAttributeReleaseSection />
+                    <CasMultifactorSection />
+                    <CasAuthenticationPolicySection />
+                    <CasExpirationPolicySection />
+                    <CasContactsSection />
+                    <CasAdvancedSection />
+                  </div>
+                ),
+              },
+            ]}
+          />
         </div>
       );
     }
