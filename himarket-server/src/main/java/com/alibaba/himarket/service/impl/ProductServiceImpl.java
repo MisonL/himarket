@@ -633,6 +633,7 @@ public class ProductServiceImpl implements ProductService {
             // Handle different configurations based on product type
             switch (product.getType()) {
                 case REST_API:
+                case HTTP_API:
                     productRef.setApiConfig(
                             gatewayService.fetchAPIConfig(gateway.getGatewayId(), config));
                     break;
@@ -648,6 +649,13 @@ public class ProductServiceImpl implements ProductService {
                     productRef.setModelConfig(
                             gatewayService.fetchModelConfig(gateway.getGatewayId(), config));
                     break;
+                case AGENT_SKILL:
+                    // Pending implementation for skill config
+                    break;
+                default:
+                    throw new BusinessException(
+                            ErrorCode.INVALID_REQUEST,
+                            "Gateway source does not support product type: " + product.getType());
             }
         } else if (sourceType.isNacos()) {
             // Handle Nacos configuration
@@ -1000,7 +1008,7 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // TODO: Add other filter types here
+        // Future extension point for other filter types
         // if (param.getType() == ProductType.AGENT && param.getAgentFilter() != null) {
         //     ...
         // }

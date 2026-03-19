@@ -152,10 +152,14 @@ class HiCodingWebSocketE2ETest {
         return mapper.writeValueAsString(rootNode);
     }
 
-    @SuppressWarnings("deprecation")
     private boolean isServerRunning() {
         try {
-            var conn = new java.net.URL("http://localhost:8080/cli-providers").openConnection();
+            var conn =
+                    java.net
+                            .URI
+                            .create("http://localhost:8080/cli-providers")
+                            .toURL()
+                            .openConnection();
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
             conn.connect();

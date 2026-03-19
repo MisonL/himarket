@@ -658,47 +658,6 @@ class SandboxInitPipelinePropertyTest {
         Duration totalTimeout = Duration.ofSeconds(timeoutSeconds);
         Duration maxAllowed = totalTimeout.plusSeconds(5);
 
-        // 创建一个会阻塞超过 timeout 的阶段
-        List<String> executionLog = new CopyOnWriteArrayList<>();
-        InitPhase slowPhase =
-                new InitPhase() {
-                    @Override
-                    public String name() {
-                        return "slow-phase";
-                    }
-
-                    @Override
-                    public int order() {
-                        return 100;
-                    }
-
-                    @Override
-                    public boolean shouldExecute(InitContext context) {
-                        return true;
-                    }
-
-                    @Override
-                    public void execute(InitContext context) throws InitPhaseException {
-                        executionLog.add("execute:slow-phase");
-                        // 模拟耗时操作，但不会无限阻塞
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                        }
-                    }
-
-                    @Override
-                    public boolean verify(InitContext context) {
-                        return true;
-                    }
-
-                    @Override
-                    public RetryPolicy retryPolicy() {
-                        return RetryPolicy.none();
-                    }
-                };
-
         // 创建多个阶段，总执行时间会超过 timeout
         List<InitPhase> phases = new ArrayList<>();
         for (int i = 0; i < 20; i++) {

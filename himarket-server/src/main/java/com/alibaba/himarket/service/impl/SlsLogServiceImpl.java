@@ -70,9 +70,6 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class SlsLogServiceImpl implements SlsLogService {
 
-    private static final String ALIYUN_LOG_CONFIG_CRD_NAME =
-            "aliyunlogconfigs.log.alibabacloud.com";
-
     private final SlsClientFactory slsClientFactory;
 
     private final SlsConfig slsConfig;

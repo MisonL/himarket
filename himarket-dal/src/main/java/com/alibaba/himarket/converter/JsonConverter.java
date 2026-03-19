@@ -31,9 +31,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public abstract class JsonConverter<T> implements AttributeConverter<T, String> {
 
     /**

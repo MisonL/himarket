@@ -80,9 +80,18 @@ public class ConfigInjectionPhase implements InitPhase {
             logger.info("[ConfigInjection] 逐个写入完成: {} 个文件已注入", pendingConfigs.size());
 
             // 统计各类型文件数量
-            long skillCount = pendingConfigs.stream().filter(c -> "skill".equals(c.type())).count();
-            long mcpCount = pendingConfigs.stream().filter(c -> "mcp".equals(c.type())).count();
-            long modelCount = pendingConfigs.stream().filter(c -> "model".equals(c.type())).count();
+            long skillCount =
+                    pendingConfigs.stream()
+                            .filter(c -> c.type() == ConfigFile.ConfigType.SKILL_CONFIG)
+                            .count();
+            long mcpCount =
+                    pendingConfigs.stream()
+                            .filter(c -> c.type() == ConfigFile.ConfigType.MCP_CONFIG)
+                            .count();
+            long modelCount =
+                    pendingConfigs.stream()
+                            .filter(c -> c.type() == ConfigFile.ConfigType.MODEL_SETTINGS)
+                            .count();
             long otherCount = pendingConfigs.size() - skillCount - mcpCount - modelCount;
 
             logger.info(

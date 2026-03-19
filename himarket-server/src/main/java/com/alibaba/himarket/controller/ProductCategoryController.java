@@ -32,15 +32,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "产品类别管理", description = "提供产品类别的创建、更新、删除、查询等管理功能")
 @RestController
-@RequestMapping("/product-categories")
-@Slf4j
 @RequiredArgsConstructor
+@RequestMapping("/categories")
 public class ProductCategoryController {
 
     private final ProductCategoryService productCategoryService;

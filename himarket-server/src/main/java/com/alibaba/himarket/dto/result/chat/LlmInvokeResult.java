@@ -24,11 +24,9 @@ import com.alibaba.himarket.support.chat.ToolCallInfo;
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 
 @Data
 @Builder
-@Slf4j
 public class LlmInvokeResult {
 
     private boolean success;

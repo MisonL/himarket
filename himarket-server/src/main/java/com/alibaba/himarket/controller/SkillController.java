@@ -21,7 +21,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Skill 管理", description = "Skill CRUD 操作和视图查询")
 @RestController
 @RequestMapping("/skills")
-@Slf4j
 @RequiredArgsConstructor
 public class SkillController {
 

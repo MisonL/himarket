@@ -65,11 +65,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriUtils;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CasServiceImpl implements CasService {
@@ -122,8 +120,6 @@ public class CasServiceImpl implements CasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String developerId = createOrGetDeveloper(userInfo, config);
-        long authenticationDate =
-                Convert.toLong(userInfo.get("authenticationDate"), System.currentTimeMillis());
         long expirationPolicy =
                 Convert.toLong(
                         userInfo.get("longTermAuthenticationRequestTokenUsed"),
