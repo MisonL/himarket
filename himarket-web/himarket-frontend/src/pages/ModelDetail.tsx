@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { ProductHeader } from "../components/ProductHeader";
 import { Alert, Button, message, Tabs, Collapse, Select, Spin } from "antd";
+import type { ProductHeaderHandle } from "../components/ProductHeader";
 import {
   CopyOutlined,
   ArrowLeftOutlined,
@@ -15,6 +16,8 @@ import type { IModelConfig, IRoute } from "../lib/apis/typing";
 import APIs from "../lib/apis";
 import MarkdownRender from "../components/MarkdownRender";
 import { copyToClipboard, formatDomainWithPort } from "../lib/utils";
+import { LoginPrompt } from "../components/LoginPrompt";
+import { useAuth } from "../hooks/useAuth";
 
 const { Panel } = Collapse;
 
@@ -27,6 +30,14 @@ function ModelDetail() {
   const [modelConfig, setModelConfig] = useState<IModelConfig>();
   const [selectedModelDomainIndex, setSelectedModelDomainIndex] =
     useState<number>(0);
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const headerRef = useRef<ProductHeaderHandle>(null);
+  const { isLoggedIn } = useAuth();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+
+  const handleSubscriptionStatusChange = useCallback((subscribed: boolean) => {
+    setHasSubscription(subscribed);
+  }, []);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -221,10 +232,12 @@ function ModelDetail() {
     const baseUrl = `${selectedDomain.protocol.toLowerCase()}://${formattedDomain}`;
     const fullUrl = `${baseUrl}${firstRoute.match.path.value}`;
 
+    const modelName = data?.feature?.modelFeature?.model || "{{model_name}}";
+
     return `curl --location '${fullUrl}' \\
   --header 'Content-Type: application/json' \\
   --data '{
-    "model": "{{model_name}}",
+    "model": "${modelName}",
     "stream": true,
     "max_tokens": 1024,
     "top_p": 0.95,
@@ -281,11 +294,13 @@ function ModelDetail() {
         </button>
 
         <ProductHeader
+          ref={headerRef}
           name={data.name}
           description={data.description}
           icon={data.icon}
           updatedAt={data.updatedAt}
           productType="MODEL_API"
+          onSubscriptionStatusChange={handleSubscriptionStatusChange}
         />
       </div>
 
@@ -651,12 +666,19 @@ function ModelDetail() {
                         icon={<MessageOutlined />}
                         className="rounded-lg mt-4"
                         onClick={() => {
-                          navigate("/chat", {
-                            state: { selectedProduct: data },
-                          });
+                          if (!isLoggedIn) {
+                            setLoginPromptOpen(true);
+                            return;
+                          }
+                          if (hasSubscription) {
+                            navigate("/chat", { state: { selectedProduct: data } });
+                          } else {
+                            message.warning('请先订阅该产品后再进行对话测试');
+                            headerRef.current?.showManageModal();
+                          }
                         }}
                       >
-                        开始对话测试
+                        {!isLoggedIn ? '登录后开始对话' : hasSubscription ? '开始对话测试' : '订阅并开始对话'}
                       </Button>
                     </div>
                   ),
@@ -687,13 +709,15 @@ function ModelDetail() {
                               }}
                             />
                           </div>
-                          <div className="text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg">
-                            💡 将{" "}
-                            <code className="bg-white px-1.5 py-0.5 rounded text-blue-600">
-                              {"{{model_name}}"}
-                            </code>{" "}
-                            替换为实际的模型名称
-                          </div>
+                          {!data?.feature?.modelFeature?.model && (
+                            <div className="text-xs text-gray-500 bg-blue-50 px-3 py-2 rounded-lg">
+                              提示：将{" "}
+                              <code className="bg-white px-1.5 py-0.5 rounded text-blue-600">
+                                {"{{model_name}}"}
+                              </code>{" "}
+                              替换为实际的模型名称
+                            </div>
+                          )}
                         </>
                       ) : (
                         <div className="text-gray-400 text-center py-8">
@@ -712,6 +736,11 @@ function ModelDetail() {
           </div>
         </div>
       </div>
+      <LoginPrompt
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        contextMessage="登录后即可订阅模型并开始对话测试"
+      />
     </Layout>
   );
 }
