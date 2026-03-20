@@ -240,7 +240,7 @@ maybe_build_artifacts() {
     err "JAVA_HOME is not set and java_home is not available"
     exit 1
   fi
-  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" ./mvnw -pl himarket-bootstrap -am package -DskipTests)
+  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" ./mvnw -pl himarket-bootstrap -am clean package -DskipTests)
   require_cmd npm
   log "build himarket frontend dist"
   (cd "${REPO_DIR}/himarket-web/himarket-frontend" && npm run build)
