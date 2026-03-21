@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Popover, Skeleton, Divider } from "antd";
+import { Button, Divider, Popover, Skeleton } from "antd";
 import { ProductIconRenderer } from "../icon/ProductIconRenderer";
 import { getIconString } from "../../lib/iconUtils";
 import APIs, { type IProductDetail, type IMcpTool } from "../../lib/apis";
@@ -29,13 +29,18 @@ function McpCard(props: McpCardProps) {
 
   const [toolsLoading, setToolsLoading] = useState(false);
   const [tools, setTools] = useState<IMcpTool[]>([]);
+  const [toolsError, setToolsError] = useState("");
   const [popoverVisible, setPopoverVisible] = useState(false);
+
+  const getParameterCount = (tool: IMcpTool) =>
+    Object.keys(tool.inputSchema?.properties || {}).length;
 
   // 加载工具列表
   const loadTools = async () => {
     if (tools.length > 0) return; // 已加载过则不重复加载
 
     setToolsLoading(true);
+    setToolsError("");
     try {
       const resp = await APIs.getMcpTools({ productId: data.productId });
       if (resp.data?.tools) {
@@ -43,6 +48,7 @@ function McpCard(props: McpCardProps) {
       }
     } catch (error) {
       console.error("Failed to load MCP tools:", error);
+      setToolsError("工具预览暂时不可用");
     } finally {
       setToolsLoading(false);
     }
@@ -113,7 +119,6 @@ function McpCard(props: McpCardProps) {
             content={
               <div className="w-80 max-h-96 overflow-y-auto">
                 {toolsLoading ? (
-                  // 骨架屏
                   <div className="space-y-3">
                     <Skeleton.Input
                       active
@@ -131,25 +136,44 @@ function McpCard(props: McpCardProps) {
                       </div>
                     ))}
                   </div>
+                ) : toolsError ? (
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-mainTitle">
+                      工具预览
+                    </div>
+                    <div className="rounded-xl border border-[#f0e5e5] bg-[#fff7f7] px-3 py-3 text-xs leading-5 text-[#a85b5b]">
+                      {toolsError}
+                    </div>
+                  </div>
                 ) : (
-                  <div>
-                    {/* 顶部标题 */}
-                    <div className="font-medium text-base mb-3">
-                      工具({tools.length})
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <div className="font-medium text-base text-mainTitle">
+                        工具预览
+                      </div>
+                      <div className="text-xs leading-5 text-colorTextSecondaryCustom">
+                        游客也可以先查看工具清单，登录并订阅后再正式接入。
+                      </div>
                     </div>
 
-                    {/* 工具列表 */}
                     {tools.length === 0 ? (
-                      <div className="text-sm text-gray-400">暂无工具</div>
+                      <div className="rounded-xl border border-dashed border-[#d9d9d9] bg-[#fafafa] px-3 py-4 text-sm text-colorTextSecondaryCustom">
+                        暂无工具
+                      </div>
                     ) : (
                       <div className="space-y-3">
                         {tools.map((tool, index) => (
                           <div key={tool.name}>
-                            <div className="space-y-1">
-                              <div className="font-medium text-sm text-gray-900">
-                                {tool.name}
+                            <div className="space-y-2 rounded-xl border border-[#ececec] bg-white px-3 py-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="font-medium text-sm text-mainTitle">
+                                  {tool.name}
+                                </div>
+                                <span className="rounded-full bg-[#f4f6fb] px-2 py-1 text-[11px] text-colorTextSecondaryCustom">
+                                  {getParameterCount(tool)} 个参数
+                                </span>
                               </div>
-                              <div className="text-xs text-gray-500 leading-relaxed">
+                              <div className="text-xs leading-relaxed text-colorTextSecondaryCustom">
                                 {tool.description || "暂无描述"}
                               </div>
                             </div>
@@ -172,14 +196,12 @@ function McpCard(props: McpCardProps) {
         </div>
       </div>
 
-      {/* 中部：描述 */}
       <div className="flex-1 overflow-hidden">
         <p className="text-sm text-colorTextSecondaryCustom line-clamp-2">
           {data.description || "暂无描述"}
         </p>
       </div>
 
-      {/* 下部：按钮区域 */}
       <div className="flex gap-2">
         {isSubscribed ? (
           <Button

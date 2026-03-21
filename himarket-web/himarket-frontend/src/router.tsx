@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import {
   Navigate,
   Route,
@@ -21,10 +21,11 @@ import CasCallback from "./pages/CasCallback";
 import OidcCallback from "./pages/OidcCallback";
 import Square from "./pages/Square";
 import Chat from "./pages/Chat";
-import Coding from "./pages/Coding";
-import SkillDetail from "./pages/SkillDetail";
 import { RequireAuth } from "./components/RequireAuth";
 import { usePortalConfig } from "./context/PortalConfigContext";
+
+const Coding = lazy(() => import("./pages/Coding"));
+const SkillDetail = lazy(() => import("./pages/SkillDetail"));
 
 function DynamicHome() {
   const { firstVisiblePath } = usePortalConfig();
@@ -70,10 +71,24 @@ export function Router() {
         <Route path="/agents" element={<Square activeType="AGENT_API" />} />
         <Route path="/apis" element={<Square activeType="REST_API" />} />
         <Route path="/skills" element={<Square activeType="AGENT_SKILL" />} />
-        <Route path="/skills/:skillProductId" element={<SkillDetail />} />
+        <Route
+          path="/skills/:skillProductId"
+          element={
+            <Suspense fallback={null}>
+              <SkillDetail />
+            </Suspense>
+          }
+        />
         <Route path="/chat" element={<Chat />} />
         <Route path="/quest" element={<Navigate to="/coding" />} />
-        <Route path="/coding" element={<Coding />} />
+        <Route
+          path="/coding"
+          element={
+            <Suspense fallback={null}>
+              <Coding />
+            </Suspense>
+          }
+        />
         <Route path="/getting-started" element={<GettingStarted />} />
         <Route path="/apis/:apiProductId" element={<ApiDetail />} />
         <Route

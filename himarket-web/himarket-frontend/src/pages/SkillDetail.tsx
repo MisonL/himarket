@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { Alert, Spin, Tag, Button } from "antd";
 import { ArrowLeftOutlined, DownloadOutlined } from "@ant-design/icons";
-import Editor from "@monaco-editor/react";
+import hljs from "highlight.js";
+import "highlight.js/styles/github.css";
 import type { IProductDetail } from "../lib/apis";
 import type { ISkillConfig } from "../lib/apis/typing";
 import type { SkillFileTreeNode, SkillFileContent } from "../lib/apis/cliProvider";
@@ -23,6 +24,13 @@ function inferLanguage(path: string): string {
     toml: "ini", xml: "xml", html: "html", css: "css", md: "markdown",
   };
   return map[ext] ?? "plaintext";
+}
+
+function escapeHtml(content: string): string {
+  return content
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 function SkillDetail() {
@@ -142,6 +150,22 @@ function SkillDetail() {
     }
   }, [skillProductId, fileTree, data]);
 
+  const highlightedFileContent = useMemo(() => {
+    if (!selectedFilePath || !fileContent || fileContent.encoding === "base64") {
+      return "";
+    }
+
+    const language = inferLanguage(selectedFilePath);
+    try {
+      if (language !== "plaintext" && hljs.getLanguage(language)) {
+        return hljs.highlight(fileContent.content, { language }).value;
+      }
+      return hljs.highlightAuto(fileContent.content).value;
+    } catch {
+      return escapeHtml(fileContent.content);
+    }
+  }, [fileContent, selectedFilePath]);
+
   if (loading) {
     return (
       <Layout>
@@ -216,15 +240,13 @@ function SkillDetail() {
       );
     }
     return (
-      <div style={{ minHeight: 400 }}>
-        <Editor
-          height={Math.max(400, (fileContent.content.split("\n").length + 2) * 19)}
-          path={selectedFilePath}
-          language={inferLanguage(selectedFilePath)}
-          value={fileContent.content}
-          options={{ readOnly: true, minimap: { enabled: false }, scrollBeyondLastLine: false }}
-          theme="vs"
-        />
+      <div
+        className="overflow-auto bg-[#f6f8fa]"
+        style={{ minHeight: 400, maxHeight: 800 }}
+      >
+        <pre className="m-0 p-4 text-[13px] leading-6">
+          <code dangerouslySetInnerHTML={{ __html: highlightedFileContent }} />
+        </pre>
       </div>
     );
   };

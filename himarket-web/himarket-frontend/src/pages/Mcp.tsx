@@ -183,6 +183,9 @@ function McpPage() {
             style={{ width: "100%", maxWidth: "500px" }}
           >
             <Input.Search
+              id="mcp-search"
+              name="mcp-search"
+              aria-label="搜索 MCP 服务"
               placeholder="请输入内容"
               size="large"
               value={searchText}

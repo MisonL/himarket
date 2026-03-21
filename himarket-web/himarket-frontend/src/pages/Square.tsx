@@ -228,6 +228,9 @@ function Square(props: { activeType: string }) {
           <div className="flex items-center justify-end mb-2 pl-4">
             {/* 搜索框 */}
             <Input
+              id={`${activeType.toLowerCase()}-search`}
+              name={`${activeType.toLowerCase()}-search`}
+              aria-label="搜索市场产品"
               placeholder="搜索..."
               prefix={<SearchOutlined className="text-gray-400" />}
               value={searchQuery}

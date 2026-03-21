@@ -1,14 +1,31 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
-import { Typography, Button, Modal, Select, message, Popconfirm, Input, Pagination, Spin } from "antd";
+import {
+  Alert,
+  Typography,
+  Button,
+  Modal,
+  Select,
+  message,
+  Popconfirm,
+  Input,
+  Pagination,
+  Spin,
+  Tag,
+} from "antd";
 import { ApiOutlined, CheckCircleFilled, ClockCircleFilled, ExclamationCircleFilled, PlusOutlined, RobotOutlined, BulbOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
 import {
+  default as api,
   getConsumers,
   subscribeProduct,
   unsubscribeProduct,
   getProductSubscriptions,
 } from "../lib/api";
-import type { Consumer } from "../types/consumer";
+import type {
+  Consumer,
+  ConsumerCredentialResult,
+  CredentialType,
+} from "../types/consumer";
 import type { IMCPConfig, IProductIcon, IAgentConfig } from "../lib/apis/typing";
 import APIs, { getProductSubscriptionStatus, type ISubscription } from "../lib/apis";
 import { LoginPrompt } from "./LoginPrompt";
@@ -33,7 +50,34 @@ interface ProductHeaderProps {
   onSubscriptionStatusChange?: (hasSubscription: boolean) => void;
 }
 
+interface ConsumerCompatibility {
+  credentialType: CredentialType;
+  compatible: boolean;
+  reason?: string;
+}
+
 type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+
+const CREDENTIAL_TYPE_LABEL: Record<CredentialType, string> = {
+  API_KEY: "API Key",
+  HMAC: "HMAC",
+  JWT: "JWT",
+};
+
+const inferCredentialType = (
+  config?: ConsumerCredentialResult | null
+): CredentialType => {
+  if (config?.credentialType) {
+    return config.credentialType;
+  }
+  if (config?.jwtConfig?.issuer || config?.jwtConfig?.jwks) {
+    return "JWT";
+  }
+  if ((config?.hmacConfig?.credentials?.length || 0) > 0) {
+    return "HMAC";
+  }
+  return "API_KEY";
+};
 
 // 处理产品图标的函数
 const getIconUrl = (icon?: IProductIcon, defaultIcon?: string): string => {
@@ -77,6 +121,11 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
   const [isApplyingSubscription, setIsApplyingSubscription] = useState(false);
   const [selectedConsumerId, setSelectedConsumerId] = useState<string>("");
   const [consumers, setConsumers] = useState<Consumer[]>([]);
+  const [requiredCredentialType, setRequiredCredentialType] =
+    useState<CredentialType | null>(null);
+  const [consumerCompatibility, setConsumerCompatibility] = useState<
+    Record<string, ConsumerCompatibility>
+  >({});
 
   // 分页相关state
   const [currentPage, setCurrentPage] = useState(1);
@@ -84,6 +133,7 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
 
   // 分开管理不同的loading状态
   const [consumersLoading, setConsumersLoading] = useState(false);
+  const [compatibilityLoading, setCompatibilityLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
@@ -124,6 +174,23 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
   // 获取产品ID - 根据产品类型获取正确的参数
   const productId =
     apiProductId || mcpProductId || agentProductId || modelProductId || "";
+
+  const fetchRequiredCredentialType = React.useCallback(async () => {
+    if (!productId || !shouldShowSubscribeButton) {
+      setRequiredCredentialType(null);
+      return null;
+    }
+    try {
+      const response = await APIs.getProduct({ id: productId });
+      const nextType = response?.data?.requiredCredentialType || null;
+      setRequiredCredentialType(nextType);
+      return nextType;
+    } catch (error) {
+      console.error("获取产品认证要求失败:", error);
+      setRequiredCredentialType(null);
+      return null;
+    }
+  }, [productId, shouldShowSubscribeButton]);
 
   // 查询订阅状态
   const fetchSubscriptionStatus = React.useCallback(async () => {
@@ -184,27 +251,109 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
     fetchSubscriptionStatus();
   }, [fetchSubscriptionStatus]);
 
+  useEffect(() => {
+    fetchRequiredCredentialType();
+  }, [fetchRequiredCredentialType]);
+
+  const buildCompatibilityReason = (
+    actualType: CredentialType,
+    requiredType: CredentialType
+  ) =>
+    actualType === requiredType
+      ? undefined
+      : `当前 consumer 为 ${CREDENTIAL_TYPE_LABEL[actualType]}，产品要求 ${CREDENTIAL_TYPE_LABEL[requiredType]}`;
+
   // 获取消费者列表
-  const fetchConsumers = async () => {
+  const fetchConsumers = async (requiredTypeOverride?: CredentialType | null) => {
     try {
       setConsumersLoading(true);
+      setCompatibilityLoading(true);
       const response = await getConsumers({}, { page: 1, size: 100 });
-      if (response.data) {
-        setConsumers(response.data.content || response.data);
+      const consumerList = response.data?.content || response.data || [];
+      setConsumers(consumerList);
+
+      const targetRequiredType =
+        requiredTypeOverride === undefined
+          ? requiredCredentialType
+          : requiredTypeOverride;
+
+      if (!targetRequiredType) {
+        setConsumerCompatibility({});
+        return;
       }
+
+      const compatibilityEntries = await Promise.all(
+        consumerList.map(async (consumer: Consumer) => {
+          try {
+            const credentialResponse = await api.get(
+              `/consumers/${consumer.consumerId}/credentials`
+            );
+            const credentialPayload = credentialResponse?.data;
+            const credentialConfig =
+              credentialPayload?.code === "SUCCESS"
+                ? (credentialPayload.data as ConsumerCredentialResult)
+                : null;
+            const credentialType = inferCredentialType(credentialConfig);
+            return [
+              consumer.consumerId,
+              {
+                credentialType,
+                compatible: credentialType === targetRequiredType,
+                reason: buildCompatibilityReason(
+                  credentialType,
+                  targetRequiredType
+                ),
+              },
+            ] as const;
+          } catch (error) {
+            console.error("获取 consumer 凭证失败:", error);
+            return [
+              consumer.consumerId,
+              {
+                credentialType: "API_KEY" as CredentialType,
+                compatible: false,
+                reason: "无法读取该 consumer 的凭证配置",
+              },
+            ] as const;
+          }
+        })
+      );
+
+      setConsumerCompatibility(Object.fromEntries(compatibilityEntries));
     } catch (error) {
       console.log(error);
-      // message.error('获取消费者列表失败');
     } finally {
       setConsumersLoading(false);
+      setCompatibilityLoading(false);
     }
   };
 
+  const selectableConsumers = consumers.map(consumer => {
+    const compatibility = consumerCompatibility[consumer.consumerId];
+    const isAlreadySubscribed = subscriptionStatus?.subscribedConsumers?.some(
+      item => item.consumer.consumerId === consumer.consumerId
+    );
+    const disabled =
+      isAlreadySubscribed ||
+      Boolean(requiredCredentialType && compatibility && !compatibility.compatible);
+    const reason = isAlreadySubscribed
+      ? "已订阅当前产品"
+      : compatibility?.reason;
+
+    return {
+      consumer,
+      compatibility,
+      disabled,
+      reason,
+    };
+  });
+
   // 开始申请订阅流程
-  const startApplyingSubscription = () => {
+  const startApplyingSubscription = async () => {
+    const latestRequiredType = await fetchRequiredCredentialType();
     setIsApplyingSubscription(true);
     setSelectedConsumerId("");
-    fetchConsumers();
+    fetchConsumers(latestRequiredType);
   };
 
   // 取消申请订阅
@@ -217,6 +366,18 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
   const handleApplySubscription = async () => {
     if (!selectedConsumerId) {
       message.warning("请选择消费者");
+      return;
+    }
+
+    const selectedCompatibility = consumerCompatibility[selectedConsumerId];
+    if (
+      requiredCredentialType &&
+      selectedCompatibility &&
+      !selectedCompatibility.compatible
+    ) {
+      message.warning(
+        selectedCompatibility.reason || "所选 consumer 与产品认证要求不兼容"
+      );
       return;
     }
 
@@ -460,6 +621,9 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
           {/* 搜索框 */}
           <div className="mb-4">
             <Search
+              id="subscription-consumer-search"
+              name="subscription-consumer-search"
+              aria-label="搜索消费者名称"
               placeholder="搜索消费者名称"
               value={searchKeyword}
               onChange={handleSearchChange}
@@ -618,46 +782,67 @@ export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>
               ) : (
                 <div className="w-full">
                   <div className="bg-gray-50 p-4 rounded-xl">
+                    {requiredCredentialType ? (
+                      <Alert
+                        className="mb-4"
+                        type="info"
+                        showIcon
+                        message={`当前产品要求 consumer 凭证类型为 ${CREDENTIAL_TYPE_LABEL[requiredCredentialType]}`}
+                        description="不兼容的 consumer 会被禁用，并在列表中显示原因。"
+                      />
+                    ) : null}
                     <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label
+                        htmlFor="subscription-consumer-select"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
                         选择消费者
                       </label>
                       <Select
+                        id="subscription-consumer-select"
+                        aria-label="选择消费者"
                         placeholder="搜索或选择消费者"
                         style={{ width: "100%" }}
                         value={selectedConsumerId}
                         onChange={setSelectedConsumerId}
                         showSearch
-                        loading={consumersLoading}
+                        loading={consumersLoading || compatibilityLoading}
                         filterOption={(input, option) =>
-                          (option?.children as unknown as string)
-                            ?.toLowerCase()
+                          String(
+                            (option as { searchText?: string } | undefined)
+                              ?.searchText || ""
+                          )
+                            .toLowerCase()
                             .includes(input.toLowerCase())
                         }
                         notFoundContent={
-                          consumersLoading ? "加载中..." : "暂无消费者数据"
+                          consumersLoading || compatibilityLoading
+                            ? "加载中..."
+                            : "暂无消费者数据"
                         }
-                      >
-                        {consumers
-                          .filter(consumer => {
-                            // 过滤掉已经订阅的consumer
-                            const isAlreadySubscribed =
-                              subscriptionStatus?.subscribedConsumers?.some(
-                                item =>
-                                  item.consumer.consumerId ===
-                                  consumer.consumerId
-                              );
-                            return !isAlreadySubscribed;
-                          })
-                          .map(consumer => (
-                            <Select.Option
-                              key={consumer.consumerId}
-                              value={consumer.consumerId}
-                            >
-                              {consumer.name}
-                            </Select.Option>
-                          ))}
-                      </Select>
+                        options={selectableConsumers.map(item => ({
+                          value: item.consumer.consumerId,
+                          label: (
+                            <div className="flex items-center justify-between gap-3">
+                              <span>{item.consumer.name}</span>
+                              <div className="flex items-center gap-2">
+                                {item.compatibility ? (
+                                  <Tag color={item.compatibility.compatible ? "blue" : "default"}>
+                                    {CREDENTIAL_TYPE_LABEL[item.compatibility.credentialType]}
+                                  </Tag>
+                                ) : null}
+                                {item.disabled && item.reason ? (
+                                  <span className="text-xs text-gray-400">
+                                    {item.reason}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          ),
+                          disabled: item.disabled,
+                          searchText: `${item.consumer.name} ${item.compatibility?.credentialType || ""} ${item.reason || ""}`,
+                        }))}
+                      />
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button

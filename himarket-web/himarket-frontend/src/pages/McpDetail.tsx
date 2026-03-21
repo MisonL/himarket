@@ -16,10 +16,25 @@ import { ArrowLeftOutlined, CopyOutlined } from "@ant-design/icons";
 import { ProductType } from "../types";
 import * as yaml from "js-yaml";
 import type { IMCPConfig } from "../lib/apis/typing";
-import type { IProductDetail } from "../lib/apis";
+import type { IMcpTool, IProductDetail } from "../lib/apis";
 import APIs from "../lib/apis";
 import MarkdownRender from "../components/MarkdownRender";
 import { copyToClipboard, formatDomainWithPort } from "../lib/utils";
+import { useAuth } from "../hooks/useAuth";
+
+type ParsedYamlTool = {
+  name: string;
+  description: string;
+  args?: Array<{
+    name: string;
+    description: string;
+    type: string;
+    required: boolean;
+    position: string;
+    default?: string;
+    enum?: string[];
+  }>;
+};
 
 function McpDetail() {
   const { mcpProductId } = useParams();
@@ -27,70 +42,61 @@ function McpDetail() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<IProductDetail>();
   const [mcpConfig, setMcpConfig] = useState<IMCPConfig>();
-  const [parsedTools, setParsedTools] = useState<
-    Array<{
-      name: string;
-      description: string;
-      args?: Array<{
-        name: string;
-        description: string;
-        type: string;
-        required: boolean;
-        position: string;
-        default?: string;
-        enum?: string[];
-      }>;
-    }>
-  >([]);
+  const [toolPreviews, setToolPreviews] = useState<IMcpTool[]>([]);
+  const [toolsLoading, setToolsLoading] = useState(false);
+  const [toolsError, setToolsError] = useState("");
   const [httpJson, setHttpJson] = useState("");
   const [sseJson, setSseJson] = useState("");
   const [localJson, setLocalJson] = useState("");
   const [selectedDomainIndex, setSelectedDomainIndex] = useState<number>(0);
 
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
 
-  // 解析YAML配置的函数
-  const parseYamlConfig = (
-    yamlString: string
-  ): {
-    tools?: Array<{
-      name: string;
-      description: string;
-      args?: Array<{
-        name: string;
-        description: string;
-        type: string;
-        required: boolean;
-        position: string;
-        default?: string;
-        enum?: string[];
-      }>;
-    }>;
-  } | null => {
+  const buildToolPreviewFromYaml = useCallback((yamlString: string): IMcpTool[] => {
     try {
       const parsed = yaml.load(yamlString) as {
-        tools?: Array<{
-          name: string;
-          description: string;
-          args?: Array<{
-            name: string;
-            description: string;
-            type: string;
-            required: boolean;
-            position: string;
-            default?: string;
-            enum?: string[];
-          }>;
-        }>;
+        tools?: ParsedYamlTool[];
       };
-      return parsed;
+      if (!Array.isArray(parsed?.tools)) {
+        return [];
+      }
+      return parsed.tools
+        .filter(tool => Boolean(tool?.name))
+        .map(tool => {
+          const properties =
+            tool.args?.reduce<Record<string, NonNullable<IMcpTool["inputSchema"]["properties"]>[string]>>(
+              (acc, arg) => {
+                acc[arg.name] = {
+                  type: arg.type,
+                  description: arg.description,
+                  enum: arg.enum,
+                };
+                return acc;
+              },
+              {}
+            ) || {};
+
+          return {
+            name: tool.name,
+            description: tool.description,
+            inputSchema: {
+              type: "object",
+              properties,
+              required:
+                tool.args
+                  ?.filter(arg => arg.required)
+                  .map(arg => arg.name) || [],
+              additionalProperties: false,
+            },
+          };
+        });
     } catch (error) {
       console.warn("解析YAML配置失败:", error);
-      return null;
+      return [];
     }
-  };
+  }, []);
 
-  // 生成连接配置的函数
   const generateConnectionConfig = useCallback(
     (
       domains:
@@ -103,7 +109,6 @@ function McpDetail() {
       protocolType?: string,
       domainIndex: number = 0
     ) => {
-      // 互斥：优先判断本地模式
       if (localConfig) {
         const localConfigJson = JSON.stringify(localConfig, null, 2);
         setLocalJson(localConfigJson);
@@ -129,7 +134,6 @@ function McpDetail() {
         let endpoint = `${baseUrl}${path}`;
 
         if (protocolType === "SSE") {
-          // 仅生成SSE配置，不追加/sse
           const sseConfig = `{
   "mcpServers": {
     "${serverName}": {
@@ -143,7 +147,6 @@ function McpDetail() {
           setLocalJson("");
           return;
         } else if (protocolType === "StreamableHTTP") {
-          // 仅生成HTTP配置
           const httpConfig = `{
   "mcpServers": {
     "${serverName}": {
@@ -156,7 +159,6 @@ function McpDetail() {
           setLocalJson("");
           return;
         } else {
-          // protocol为null或其他值：生成两种配置
           const httpConfig = `{
   "mcpServers": {
     "${serverName}": {
@@ -181,7 +183,6 @@ function McpDetail() {
         }
       }
 
-      // 无有效配置
       setHttpJson("");
       setSseJson("");
       setLocalJson("");
@@ -194,6 +195,7 @@ function McpDetail() {
       if (!mcpProductId) {
         return;
       }
+
       setLoading(true);
       setError("");
       try {
@@ -207,15 +209,10 @@ function McpDetail() {
 
             if (mcpProduct.mcpConfig) {
               setMcpConfig(mcpProduct.mcpConfig);
-
-              // 解析tools配置
               if (mcpProduct.mcpConfig.tools) {
-                const parsedConfig = parseYamlConfig(
-                  mcpProduct.mcpConfig.tools
+                setToolPreviews(
+                  buildToolPreviewFromYaml(mcpProduct.mcpConfig.tools)
                 );
-                if (parsedConfig && parsedConfig.tools) {
-                  setParsedTools(parsedConfig.tools);
-                }
               }
             }
           }
@@ -230,9 +227,36 @@ function McpDetail() {
       }
     };
     fetchDetail();
-  }, [mcpProductId]);
+  }, [buildToolPreviewFromYaml, mcpProductId]);
 
-  // 监听 mcpConfig 变化，重新生成连接配置
+  useEffect(() => {
+    const fetchTools = async () => {
+      if (!mcpProductId) {
+        return;
+      }
+
+      setToolsLoading(true);
+      setToolsError("");
+      try {
+        const response = await APIs.getMcpTools({ productId: mcpProductId });
+        if (response.code === "SUCCESS" && Array.isArray(response.data?.tools)) {
+          setToolPreviews(response.data.tools);
+        } else if (toolPreviews.length === 0) {
+          setToolsError(response.message || "工具预览暂时不可用");
+        }
+      } catch (fetchError) {
+        console.error("获取工具预览失败:", fetchError);
+        if (toolPreviews.length === 0) {
+          setToolsError("工具预览暂时不可用");
+        }
+      } finally {
+        setToolsLoading(false);
+      }
+    };
+
+    fetchTools();
+  }, [mcpProductId, toolPreviews.length]);
+
   useEffect(() => {
     if (mcpConfig && data) {
       generateConnectionConfig(
@@ -246,7 +270,6 @@ function McpDetail() {
     }
   }, [mcpConfig, generateConnectionConfig, selectedDomainIndex, data]);
 
-  // 生成域名选项的函数
   const getDomainOptions = (
     domains: Array<{
       domain: string;
@@ -273,6 +296,17 @@ function McpDetail() {
     copyToClipboard(text).then(() => {
       message.success("已复制到剪贴板");
     });
+  };
+
+  const getToolParameters = (tool: IMcpTool) => {
+    const properties = tool.inputSchema?.properties || {};
+    return Object.entries(properties).map(([name, property]) => ({
+      name,
+      type: property.type || "string",
+      description: property.description || "暂无说明",
+      required: tool.inputSchema?.required?.includes(name) || false,
+      enum: property.enum,
+    }));
   };
 
   const domainOptions = useMemo(() => {
@@ -350,100 +384,129 @@ function McpDetail() {
               items={[
                 {
                   key: "overview",
-                  label: "Overview",
+                  label: "概览",
                   children: data.document ? (
                     <div className="min-h-[400px] prose prose-lg">
                       <MarkdownRender content={data.document} />
                     </div>
                   ) : (
-                    <div className="text-gray-500 text-center py-8">
-                      No overview available
+                    <div className="py-8 text-center text-gray-500">
+                      暂无概览内容
                     </div>
                   ),
                 },
                 {
                   key: "tools",
-                  label: `Tools (${parsedTools.length})`,
+                  label: `工具预览 (${toolPreviews.length})`,
                   children:
-                    parsedTools.length > 0 ? (
-                      <div className="border border-gray-200 rounded-lg bg-gray-50">
-                        {parsedTools.map((tool, idx) => (
-                          <div
-                            key={idx}
-                            className={
-                              idx < parsedTools.length - 1
-                                ? "border-b border-gray-200"
-                                : ""
-                            }
-                          >
-                            <Collapse
-                              ghost
-                              expandIconPosition="end"
-                              items={[
-                                {
-                                  key: idx.toString(),
-                                  label: tool.name,
-                                  children: (
-                                    <div className="px-4 pb-2">
-                                      <div className="text-gray-600 mb-4">
-                                        {tool.description}
-                                      </div>
+                    toolsLoading ? (
+                      <div className="flex min-h-[240px] items-center justify-center">
+                        <Spin tip="加载工具预览中..." />
+                      </div>
+                    ) : toolsError ? (
+                      <Alert
+                        message="工具预览暂时不可用"
+                        description={toolsError}
+                        type="warning"
+                        showIcon
+                      />
+                    ) : toolPreviews.length > 0 ? (
+                      <div className="space-y-4">
+                        <Alert
+                          type="info"
+                          showIcon
+                          className="rounded-2xl border border-[#dbe7ff] bg-[#f7faff]"
+                          message="先看清单，再决定是否订阅"
+                          description={
+                            isLoggedIn
+                              ? "你现在可以查看工具和参数结构。订阅后即可用自己的消费凭证正式接入。"
+                              : "游客可以先查看工具和参数结构，登录后再申请订阅并接入自己的 MCP 客户端。"
+                          }
+                        />
+                        <div className="rounded-lg border border-gray-200 bg-gray-50">
+                          {toolPreviews.map((tool, idx) => {
+                            const parameters = getToolParameters(tool);
+                            return (
+                              <div
+                                key={tool.name}
+                                className={
+                                  idx < toolPreviews.length - 1
+                                    ? "border-b border-gray-200"
+                                    : ""
+                                }
+                              >
+                                <Collapse
+                                  ghost
+                                  expandIconPosition="end"
+                                  items={[
+                                    {
+                                      key: tool.name,
+                                      label: (
+                                        <div className="flex items-center gap-3">
+                                          <span className="font-medium text-gray-900">
+                                            {tool.name}
+                                          </span>
+                                          <span className="rounded-full bg-[#eef2f8] px-2 py-1 text-[11px] text-gray-500">
+                                            {parameters.length} 个参数
+                                          </span>
+                                        </div>
+                                      ),
+                                      children: (
+                                        <div className="px-4 pb-2">
+                                          <div className="mb-4 text-gray-600">
+                                            {tool.description}
+                                          </div>
 
-                                      {tool.args && tool.args.length > 0 && (
-                                        <div>
-                                          <p className="font-medium text-gray-700 mb-3">
-                                            输入参数:
-                                          </p>
-                                          {tool.args.map((arg, argIdx) => (
-                                            <div key={argIdx} className="mb-3">
-                                              <div className="flex items-center mb-2">
-                                                <span className="font-medium text-gray-800 mr-2">
-                                                  {arg.name}
-                                                </span>
-                                                <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded mr-2">
-                                                  {arg.type}
-                                                </span>
-                                                {arg.required && (
-                                                  <span className="text-red-500 text-xs mr-2">
-                                                    *
-                                                  </span>
-                                                )}
-                                                {arg.description && (
-                                                  <span className="text-xs text-gray-500">
+                                          {parameters.length > 0 ? (
+                                            <div>
+                                              <p className="mb-3 font-medium text-gray-700">
+                                                输入参数:
+                                              </p>
+                                              {parameters.map((arg, argIdx) => (
+                                                <div key={argIdx} className="mb-3">
+                                                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                                                    <span className="font-medium text-gray-800">
+                                                      {arg.name}
+                                                    </span>
+                                                    <span className="rounded bg-gray-200 px-2 py-1 text-xs text-gray-600">
+                                                      {arg.type}
+                                                    </span>
+                                                    {arg.required && (
+                                                      <span className="rounded bg-[#fff1f0] px-2 py-1 text-xs text-[#cf5b56]">
+                                                        必填
+                                                      </span>
+                                                    )}
+                                                    {arg.enum &&
+                                                      arg.enum.length > 0 && (
+                                                        <span className="rounded bg-[#f5f5f5] px-2 py-1 text-xs text-gray-500">
+                                                          {`枚举: ${arg.enum.join(" / ")}`}
+                                                        </span>
+                                                      )}
+                                                  </div>
+                                                  <div className="rounded-xl border border-[#ececec] bg-white px-3 py-2 text-sm leading-6 text-gray-500">
                                                     {arg.description}
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <input
-                                                type="text"
-                                                placeholder={
-                                                  arg.description ||
-                                                  `请输入${arg.name}`
-                                                }
-                                                className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                              />
+                                                  </div>
+                                                </div>
+                                              ))}
                                             </div>
-                                          ))}
+                                          ) : (
+                                            <div className="text-sm text-gray-500">
+                                              这个工具不需要额外参数
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-
-                                      {(!tool.args ||
-                                        tool.args.length === 0) && (
-                                        <div className="text-gray-500 text-sm">
-                                          No parameters required
-                                        </div>
-                                      )}
-                                    </div>
-                                  ),
-                                },
-                              ]}
-                            />
-                          </div>
-                        ))}
+                                      ),
+                                    },
+                                  ]}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
-                      <div className="text-gray-500 text-center py-8">
-                        No tools available
+                      <div className="py-8 text-center text-gray-500">
+                        暂无可预览工具
                       </div>
                     ),
                 },
@@ -599,6 +662,9 @@ function McpDetail() {
                   return tabs;
                 })()}
               />
+              <div className="mt-4 rounded-xl border border-[#ececec] bg-[#fafafa] px-3 py-3 text-xs leading-5 text-colorTextSecondaryCustom">
+                先复制连接配置到支持 MCP 的客户端中，再使用你自己的订阅凭证完成正式接入。
+              </div>
             </div>
           )}
         </div>
