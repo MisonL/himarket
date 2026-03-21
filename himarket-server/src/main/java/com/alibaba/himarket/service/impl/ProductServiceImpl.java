@@ -53,6 +53,7 @@ import com.alibaba.himarket.repository.*;
 import com.alibaba.himarket.service.*;
 import com.alibaba.himarket.service.hichat.manager.ToolManager;
 import com.alibaba.himarket.support.chat.mcp.MCPTransportConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.ProductStatus;
 import com.alibaba.himarket.support.enums.ProductType;
 import com.alibaba.himarket.support.enums.SourceType;
@@ -61,6 +62,7 @@ import com.alibaba.himarket.support.product.ProductFeature;
 import com.alibaba.himarket.support.product.SkillConfig;
 import com.github.benmanes.caffeine.cache.Cache;
 import io.agentscope.core.tool.mcp.McpClientWrapper;
+import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 import jakarta.persistence.criteria.Subquery;
@@ -76,6 +78,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.yaml.snakeyaml.Yaml;
 
 @Service
 @Slf4j
@@ -554,37 +557,70 @@ public class ProductServiceImpl implements ProductService {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST, "API product is not a mcp server");
         }
+        McpToolListResult cachedPreview = buildCachedMcpToolPreview(product);
+        if (!contextHolder.isDeveloper()) {
+            return cachedPreview;
+        }
+
+        if (product.getRequiredCredentialType() != null
+                && !product.getRequiredCredentialType().isApiKeyCompatible()) {
+            return cachedPreview;
+        }
 
         ConsumerService consumerService =
                 SpringUtil.getApplicationContext().getBean(ConsumerService.class);
-        String consumerId = consumerService.getPrimaryConsumer().getConsumerId();
-        // Check subscription status
-        subscriptionRepository
-                .findByConsumerIdAndProductId(consumerId, productId)
-                .orElseThrow(
-                        () ->
-                                new BusinessException(
-                                        ErrorCode.INVALID_REQUEST,
-                                        "API product is not subscribed, not allowed to list"
-                                                + " tools"));
+        try {
+            String consumerId = consumerService.getPrimaryConsumer().getConsumerId();
+            if (subscriptionRepository
+                    .findByConsumerIdAndProductId(consumerId, productId)
+                    .isEmpty()) {
+                return cachedPreview;
+            }
 
-        // Initialize client and fetch tools
-        MCPTransportConfig transportConfig = product.getMcpConfig().toTransportConfig();
-        CredentialContext credentialContext =
-                consumerService.getDefaultCredential(contextHolder.getUser());
-        transportConfig.setHeaders(credentialContext.copyHeaders());
-        transportConfig.setQueryParams(credentialContext.copyQueryParams());
+            MCPTransportConfig transportConfig =
+                    Optional.ofNullable(product.getMcpConfig())
+                            .map(MCPConfigResult::toTransportConfig)
+                            .orElse(null);
+            if (transportConfig == null) {
+                return cachedPreview;
+            }
 
-        McpToolListResult result = new McpToolListResult();
+            CredentialContext credentialContext =
+                    consumerService.getDefaultCredential(contextHolder.getUser());
+            if (credentialContext == null) {
+                return cachedPreview;
+            }
+            transportConfig.setHeaders(credentialContext.copyHeaders());
+            transportConfig.setQueryParams(credentialContext.copyQueryParams());
 
-        McpClientWrapper mcpClientWrapper = toolManager.getOrCreateClient(transportConfig);
-        if (mcpClientWrapper == null) {
-            throw new BusinessException(
-                    ErrorCode.INTERNAL_ERROR, "Failed to initialize MCP client");
+            McpClientWrapper mcpClientWrapper = toolManager.getOrCreateClient(transportConfig);
+            if (mcpClientWrapper == null) {
+                if (hasToolPreview(cachedPreview)) {
+                    return cachedPreview;
+                }
+                throw new BusinessException(
+                        ErrorCode.INTERNAL_ERROR, "Failed to initialize MCP client");
+            }
+
+            McpToolListResult result = new McpToolListResult();
+            result.setTools(mcpClientWrapper.listTools().block());
+            return result;
+        } catch (BusinessException e) {
+            if (hasToolPreview(cachedPreview)) {
+                log.warn(
+                        "Fallback to cached MCP tool preview for product {}: {}",
+                        productId,
+                        e.getMessage());
+                return cachedPreview;
+            }
+            throw e;
+        } catch (Exception e) {
+            if (hasToolPreview(cachedPreview)) {
+                log.warn("Fallback to cached MCP tool preview for product {}", productId, e);
+                return cachedPreview;
+            }
+            throw e;
         }
-
-        result.setTools(mcpClientWrapper.listTools().block());
-        return result;
     }
 
     @Override
@@ -782,6 +818,177 @@ public class ProductServiceImpl implements ProductService {
             product.setModelConfig(
                     JSONUtil.toBean(productRef.getModelConfig(), ModelConfigResult.class));
         }
+
+        product.setRequiredCredentialType(resolveRequiredCredentialType(product, productRef));
+    }
+
+    private ConsumerCredentialType resolveRequiredCredentialType(
+            ProductResult product, ProductRef productRef) {
+        if (product.getType() == ProductType.MODEL_API) {
+            return Optional.ofNullable(product.getModelConfig())
+                    .map(ModelConfigResult::getRequiredCredentialType)
+                    .orElse(null);
+        }
+
+        if (product.getType() == ProductType.MCP_SERVER && product.getMcpConfig() != null) {
+            return product.getMcpConfig().getRequiredCredentialType();
+        }
+
+        return null;
+    }
+
+    private McpToolListResult buildCachedMcpToolPreview(ProductResult product) {
+        McpToolListResult result = new McpToolListResult();
+        result.setTools(new ArrayList<>());
+
+        String rawTools =
+                Optional.ofNullable(product.getMcpConfig())
+                        .map(MCPConfigResult::getTools)
+                        .orElse(null);
+        if (StrUtil.isBlank(rawTools)) {
+            return result;
+        }
+
+        Object parsed = new Yaml().load(rawTools);
+        if (!(parsed instanceof Map<?, ?> parsedMap)) {
+            return result;
+        }
+
+        Object tools = parsedMap.get("tools");
+        if (!(tools instanceof List<?> toolEntries)) {
+            return result;
+        }
+
+        result.setTools(
+                toolEntries.stream()
+                        .map(this::convertStoredTool)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList()));
+        return result;
+    }
+
+    @SuppressWarnings("unchecked")
+    private McpSchema.Tool convertStoredTool(Object rawTool) {
+        if (!(rawTool instanceof Map<?, ?> rawMap)) {
+            return null;
+        }
+        String name = asString(rawMap.get("name"));
+        if (StrUtil.isBlank(name)) {
+            return null;
+        }
+
+        Map<String, Object> inputSchema = null;
+        Object rawInputSchema = rawMap.get("inputSchema");
+        if (rawInputSchema instanceof Map<?, ?> inputSchemaMap) {
+            inputSchema = new LinkedHashMap<>((Map<String, Object>) inputSchemaMap);
+        }
+        if (inputSchema == null) {
+            inputSchema = buildInputSchemaFromArgs(rawMap.get("args"));
+        }
+
+        Map<String, Object> properties = copyMap(inputSchema.get("properties"));
+        List<String> required = copyStringList(inputSchema.get("required"));
+        Map<String, Object> definitions = copyMap(inputSchema.get("definitions"));
+        Map<String, Object> defs = copyMap(inputSchema.get("defs"));
+        if (defs == null) {
+            defs = definitions;
+        }
+
+        McpSchema.JsonSchema jsonSchema =
+                new McpSchema.JsonSchema(
+                        StrUtil.blankToDefault(asString(inputSchema.get("type")), "object"),
+                        properties,
+                        required,
+                        asBoolean(inputSchema.get("additionalProperties")),
+                        defs,
+                        definitions);
+
+        return new McpSchema.Tool(
+                name,
+                asString(rawMap.get("title")),
+                asString(rawMap.get("description")),
+                jsonSchema,
+                copyMap(rawMap.get("outputSchema")),
+                null,
+                copyMap(rawMap.get("_meta")));
+    }
+
+    private Map<String, Object> buildInputSchemaFromArgs(Object rawArgs) {
+        Map<String, Object> inputSchema = new LinkedHashMap<>();
+        inputSchema.put("type", "object");
+        inputSchema.put("additionalProperties", Boolean.FALSE);
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        List<String> required = new ArrayList<>();
+        if (rawArgs instanceof List<?> args) {
+            for (Object rawArg : args) {
+                if (!(rawArg instanceof Map<?, ?> rawArgMap)) {
+                    continue;
+                }
+                String name = asString(rawArgMap.get("name"));
+                if (StrUtil.isBlank(name)) {
+                    continue;
+                }
+
+                Map<String, Object> property = new LinkedHashMap<>();
+                putIfPresent(property, "type", rawArgMap.get("type"));
+                putIfPresent(property, "description", rawArgMap.get("description"));
+                putIfPresent(property, "default", rawArgMap.get("default"));
+                putIfPresent(property, "enum", rawArgMap.get("enum"));
+                putIfPresent(property, "items", rawArgMap.get("items"));
+                putIfPresent(property, "properties", rawArgMap.get("properties"));
+
+                properties.put(name, property);
+                if (Boolean.TRUE.equals(rawArgMap.get("required"))) {
+                    required.add(name);
+                }
+            }
+        }
+
+        inputSchema.put("properties", properties);
+        if (!required.isEmpty()) {
+            inputSchema.put("required", required);
+        }
+        return inputSchema;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> copyMap(Object value) {
+        if (!(value instanceof Map<?, ?> rawMap)) {
+            return null;
+        }
+        return new LinkedHashMap<>((Map<String, Object>) rawMap);
+    }
+
+    private List<String> copyStringList(Object value) {
+        if (!(value instanceof List<?> rawList)) {
+            return null;
+        }
+        return rawList.stream().filter(Objects::nonNull).map(String::valueOf).toList();
+    }
+
+    private void putIfPresent(Map<String, Object> target, String key, Object value) {
+        if (value != null) {
+            target.put(key, value);
+        }
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Boolean asBoolean(Object value) {
+        if (value instanceof Boolean booleanValue) {
+            return booleanValue;
+        }
+        if (value instanceof String stringValue && StrUtil.isNotBlank(stringValue)) {
+            return Boolean.valueOf(stringValue);
+        }
+        return null;
+    }
+
+    private boolean hasToolPreview(McpToolListResult result) {
+        return result != null && CollUtil.isNotEmpty(result.getTools());
     }
 
     private Product findPublishedProduct(String portalId, String productId) {

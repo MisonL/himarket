@@ -25,6 +25,7 @@ import com.alibaba.himarket.core.response.Response;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -68,8 +69,22 @@ public class ExceptionAdvice {
                 .body(Response.fail(ErrorCode.INVALID_PARAMETER.name(), message));
     }
 
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Response<Void>> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("[Access Denied] message: {}", e.getMessage());
+        return ResponseEntity.status(ErrorCode.FORBIDDEN.getStatus())
+                .body(
+                        Response.fail(
+                                ErrorCode.FORBIDDEN.name(),
+                                ErrorCode.FORBIDDEN.getMessage(e.getMessage())));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Response<Void>> handleSystemException(Exception e) {
+        if (e instanceof AccessDeniedException accessDeniedException) {
+            return handleAccessDeniedException(accessDeniedException);
+        }
+
         // Log full stack trace for system errors
         log.error(
                 "[System Exception] type: {}, message: {}",
