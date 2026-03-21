@@ -26,7 +26,6 @@ public class OpenCodeConfigGenerator implements CliConfigGenerator {
     private static final Logger logger = LoggerFactory.getLogger(OpenCodeConfigGenerator.class);
 
     private static final String CONFIG_FILE_NAME = "opencode.json";
-    private static final String OPENCODE_DIR = ".opencode";
     private static final String PROVIDER_KEY = "custom-provider";
     private static final String NPM_PACKAGE = "@ai-sdk/openai-compatible";
     private static final String API_KEY_ENV_REF = "{env:CUSTOM_MODEL_API_KEY}";

@@ -56,7 +56,7 @@ Write your code following our [coding standards](#-coding-standards).
 
 ```bash
 # Format Java code (required)
-mvn spotless:apply
+./mvnw spotless:apply
 
 # Format frontend code if you modified it
 cd himarket-web/himarket-admin
@@ -141,7 +141,7 @@ Your PR **must include** the following sections:
    - This helps us track which issues are being addressed
 
 3. **Checklist** (Required)
-   - Confirm you've run `mvn spotless:apply` to format your code
+   - Confirm you've run `./mvnw spotless:apply` to format your code
    - Indicate whether you've added tests or updated documentation
    - Check off applicable items
 
@@ -161,7 +161,7 @@ Close #456
 
 ## Checklist
 
-- [x] Code has been formatted with `mvn spotless:apply`
+- [x] Code has been formatted with `./mvnw spotless:apply`
 - [x] Code is self-reviewed
 - [x] Tests added/updated (if applicable)
 - [x] Documentation updated (if applicable)
@@ -172,7 +172,7 @@ Close #456
 Every PR will automatically trigger the following checks:
 
 1. **PR Check** - Validates your PR title and description format (Required ✅)
-2. **Code Format Check** - Runs `mvn spotless:check` to verify code formatting (Required ✅)
+2. **Code Format Check** - Runs `./mvnw spotless:check` to verify code formatting (Required ✅)
 
 **All checks must pass** before your PR can be merged. If a check fails, the bot will comment with instructions on how to fix it.
 
@@ -187,7 +187,7 @@ Every PR will automatically trigger the following checks:
 ### Java Code
 
 **Code Formatting (Required):**
-- Run `mvn spotless:apply` before committing to auto-format your code
+- Run `./mvnw spotless:apply` before committing to auto-format your code
 - This ensures consistent code style across the project
 - **CI will fail** if code is not formatted
 
@@ -213,4 +213,3 @@ Every PR will automatically trigger the following checks:
 - **Naming**: Follow the pattern `V{version}__{description}.sql`
   - Example: `V3__Add_product_feature.sql`
 - **Testing**: Always test your migrations on a clean database before submitting
-

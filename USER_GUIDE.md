@@ -126,7 +126,10 @@ After creating a portal, click the portal card to enter the detailed configurati
 User login configuration:
 
 + Username/Password Login: Traditional username and password method (enabled by default)
-+ OIDC Login: Supports third-party identity authentication (such as enterprise SSO)
++ OIDC / CAS Login: Supports third-party identity authentication (such as enterprise SSO)
++ **Zero-Touch Config**: Supports one-click configuration via `.env` file for faster deployment.
++ **Advanced UX**: Integrated live search in security settings to quickly filter parameters.+ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
++ **CAS Attribute Synchronization**: Supports automatic synchronization of developer `email` and `display_name` attributes from the CAS Server to ensure real-time identity consistency.
 
 ### Security
 

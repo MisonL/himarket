@@ -44,6 +44,38 @@ public class PageResult<T> implements OutputConverter<PageResult<T>, Page<T>> {
 
     private long totalElements;
 
+    public List<T> getContent() {
+        return content;
+    }
+
+    public void setContent(List<T> content) {
+        this.content = content;
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public void setNumber(int number) {
+        this.number = number;
+    }
+
+    public int getSize() {
+        return size;
+    }
+
+    public void setSize(int size) {
+        this.size = size;
+    }
+
+    public long getTotalElements() {
+        return totalElements;
+    }
+
+    public void setTotalElements(long totalElements) {
+        this.totalElements = totalElements;
+    }
+
     public <S> PageResult<T> mapFrom(PageResult<S> source, Function<S, T> mapper) {
         setContent(source.getContent().stream().map(mapper).collect(Collectors.toList()));
         setSize(source.getSize());

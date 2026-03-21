@@ -77,7 +77,8 @@ services:
     extra_hosts:
       - "mock-oidc.local:host-gateway"
     networks:
-      - himarket-network
+      himarket-network:
+        ipv4_address: 172.24.0.9
 
   openldap:
     image: ${OPENLDAP_IMAGE:-osixia/openldap:1.5.0}

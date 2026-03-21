@@ -10,7 +10,7 @@ const tooltipStyle = {
 export default function ModelFeatureForm() {
   return (
     <>
-      <Divider orientation="left" style={{ marginTop: 0, marginBottom: 16 }}>
+      <Divider style={{ marginTop: 0, marginBottom: 16 }}>
         模型参数
       </Divider>
       <Row gutter={16}>

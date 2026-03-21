@@ -44,7 +44,6 @@ CAS behavior can be tuned via `application.yml` or environment variables:
 - `auth.cas.session-lease-buffer`: Buffer subtracted from CAS ticket expiration to set local token TTL (default `5m`). Ensure this is aligned with CAS server session expiration policies.
 - `auth.cas.max-sessions-per-user`: Maximum active CAS sessions allowed per developer (default `10`).
 - Remember Me: Enabled when `longTermAuthenticationRequestTokenUsed=true` is present in the CAS ticket validation response.
-
 ### LDAP Configuration Reference
 LDAP settings can be managed via the Admin UI or `application.yml`:
 - `serverUrl`: LDAP server address (e.g., `ldap://localhost:389`).
@@ -52,7 +51,12 @@ LDAP settings can be managed via the Admin UI or `application.yml`:
 - `bindDn/bindPassword`: Optional manager credentials for searching.
 - `userSearchFilter`: Filter pattern, e.g., `(uid={0})` or `(sAMAccountName={0})`.
 - `identityMapping`: Maps LDAP attributes (`uid`, `cn`, `mail`) to HiMarket fields.
-
+### CAS Authentication & Security
+When working with CAS:
+- **URL Encoding**: Ensure all redirect URLs (e.g., `service` parameter) are manually encoded using `URLUtils.encode()`. Avoid double-encoding or inconsistent `StringBuilder` concatenation.
+- **Attribute Synchronization**: HiMarket automatically syncs `email` and `display_name` from CAS attributes on successful login.
+- **Service Definitions**: CAS service definitions are controlled via `deploy/docker/auth/cas/services/JSON`. Ensure `attributeReleasePolicy` is properly configured for attribute sync to work.
+- **Ticket Validation**: Prefer SAML validation for multi-value attribute support, or standard CAS 3.0 for basic integration.
 ---
 
 **ALWAYS RESPOND IN CHINESE-SIMPLIFIED**

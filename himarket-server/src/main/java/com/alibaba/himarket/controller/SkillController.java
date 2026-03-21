@@ -1,7 +1,7 @@
 package com.alibaba.himarket.controller;
 
 import com.alibaba.himarket.core.annotation.AdminAuth;
-import com.alibaba.himarket.core.annotation.AdminOrDeveloperAuth;
+import com.alibaba.himarket.core.annotation.PublicAccess;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
 import com.alibaba.himarket.core.skill.SkillZipParser;
@@ -21,7 +21,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,7 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "Skill 管理", description = "Skill CRUD 操作和视图查询")
 @RestController
 @RequestMapping("/skills")
-@Slf4j
 @RequiredArgsConstructor
 public class SkillController {
 
@@ -94,7 +92,7 @@ public class SkillController {
 
     @Operation(summary = "获取文件树（通过 productId）")
     @GetMapping("/{productId}/files")
-    @AdminOrDeveloperAuth
+    @PublicAccess
     public List<SkillFileTreeNode> getFileTreeByProduct(@PathVariable String productId) {
         SkillCoordinate coord = resolveSkillCoordinate(productId);
         if (coord.skillName() == null || coord.skillName().isBlank()) {
@@ -105,7 +103,7 @@ public class SkillController {
 
     @Operation(summary = "获取单文件内容（通过 productId）")
     @GetMapping("/{productId}/files/{*filePath}")
-    @AdminOrDeveloperAuth
+    @PublicAccess
     public SkillFileContentResult getFileContentByProduct(
             @PathVariable String productId, @PathVariable String filePath) {
         SkillCoordinate coord = resolveSkillCoordinate(productId);

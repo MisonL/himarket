@@ -19,6 +19,7 @@
 
 package com.alibaba.himarket.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.BooleanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
@@ -39,6 +40,8 @@ import com.alibaba.himarket.dto.result.common.PageResult;
 import com.alibaba.himarket.dto.result.consumer.ConsumerCredentialResult;
 import com.alibaba.himarket.dto.result.consumer.ConsumerResult;
 import com.alibaba.himarket.dto.result.consumer.CredentialContext;
+import com.alibaba.himarket.dto.result.mcp.MCPConfigResult;
+import com.alibaba.himarket.dto.result.model.ModelConfigResult;
 import com.alibaba.himarket.dto.result.portal.PortalResult;
 import com.alibaba.himarket.dto.result.product.ProductRefResult;
 import com.alibaba.himarket.dto.result.product.ProductResult;
@@ -55,7 +58,10 @@ import com.alibaba.himarket.service.ProductService;
 import com.alibaba.himarket.support.consumer.ApiKeyConfig;
 import com.alibaba.himarket.support.consumer.ConsumerAuthConfig;
 import com.alibaba.himarket.support.consumer.HmacConfig;
+import com.alibaba.himarket.support.consumer.JwtConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.CredentialMode;
+import com.alibaba.himarket.support.enums.ProductType;
 import com.alibaba.himarket.support.enums.SourceType;
 import com.alibaba.himarket.support.enums.SubscriptionStatus;
 import com.alibaba.himarket.support.gateway.GatewayConfig;
@@ -70,7 +76,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -130,9 +135,17 @@ public class ConsumerServiceImpl implements ConsumerService {
     @Override
     public PageResult<ConsumerResult> listConsumers(QueryConsumerParam param, Pageable pageable) {
         Page<Consumer> consumers = consumerRepository.findAll(buildConsumerSpec(param), pageable);
+        List<ConsumerResult> results =
+                consumers.getContent().stream()
+                        .map(consumer -> new ConsumerResult().convertFrom(consumer))
+                        .collect(Collectors.toList());
+        fillConsumerCredentialTypes(results);
 
-        return new PageResult<ConsumerResult>()
-                .convertFrom(consumers, consumer -> new ConsumerResult().convertFrom(consumer));
+        return PageResult.of(
+                results,
+                consumers.getNumber() + 1,
+                consumers.getSize(),
+                consumers.getTotalElements());
     }
 
     @Override
@@ -142,7 +155,7 @@ public class ConsumerServiceImpl implements ConsumerService {
                         ? findDevConsumer(consumerId)
                         : findConsumer(consumerId);
 
-        return new ConsumerResult().convertFrom(consumer);
+        return buildConsumerResult(consumer);
     }
 
     @Override
@@ -225,7 +238,13 @@ public class ConsumerServiceImpl implements ConsumerService {
                         });
         ConsumerCredential credential = param.convertTo();
         credential.setConsumerId(consumerId);
-        complementCredentials(credential);
+        ConsumerCredentialType credentialType =
+                resolveRequestedCredentialType(
+                        param.getCredentialType(),
+                        param.getApiKeyConfig(),
+                        param.getHmacConfig(),
+                        param.getJwtConfig());
+        normalizeCredential(credential, credentialType);
         credentialRepository.save(credential);
     }
 
@@ -238,7 +257,7 @@ public class ConsumerServiceImpl implements ConsumerService {
         apiKeyConfig.setCredentials(Collections.singletonList(apiKeyCredential));
 
         credential.setApiKeyConfig(apiKeyConfig);
-        complementCredentials(credential);
+        normalizeCredential(credential, ConsumerCredentialType.API_KEY);
 
         return credential;
     }
@@ -249,15 +268,24 @@ public class ConsumerServiceImpl implements ConsumerService {
 
         return credentialRepository
                 .findByConsumerId(consumerId)
-                .map(credential -> new ConsumerCredentialResult().convertFrom(credential))
+                .map(this::buildCredentialResult)
                 .orElse(new ConsumerCredentialResult());
     }
 
     @Override
     public void updateCredential(String consumerId, UpdateCredentialParam param) {
         ConsumerCredential credential = findCredential(consumerId);
+        ConsumerCredentialType credentialType =
+                resolveRequestedCredentialType(
+                        param.getCredentialType(),
+                        param.getApiKeyConfig(),
+                        param.getHmacConfig(),
+                        param.getJwtConfig());
 
         param.update(credential);
+        normalizeCredential(credential, credentialType);
+        assertPrimaryConsumerCredentialType(consumerId, credentialType);
+        assertSubscribedProductsCompatible(consumerId, credentialType);
 
         List<ConsumerRef> consumerRefs = consumerRefRepository.findAllByConsumerId(consumerId);
         for (ConsumerRef consumerRef : consumerRefs) {
@@ -278,7 +306,10 @@ public class ConsumerServiceImpl implements ConsumerService {
     @Override
     public void deleteCredential(String consumerId) {
         existsConsumer(consumerId);
-        credentialRepository.deleteAllByConsumerId(consumerId);
+        throw new BusinessException(
+                ErrorCode.INVALID_REQUEST,
+                "Consumer credential cannot be deleted. Use update to replace the active"
+                        + " credential type");
     }
 
     @Override
@@ -308,6 +339,7 @@ public class ConsumerServiceImpl implements ConsumerService {
         }
 
         ConsumerCredential credential = findCredential(consumerId);
+        assertProductCredentialCompatibility(product, credential);
 
         ProductSubscription subscription = param.convertTo();
         subscription.setSubscriptionId(IdGenerator.genSubscriptionId());
@@ -444,6 +476,8 @@ public class ConsumerServiceImpl implements ConsumerService {
                         ? findDevConsumer(consumerId)
                         : findConsumer(consumerId);
         ConsumerCredential credential = findCredential(consumerId);
+        ProductResult product = productService.getProduct(subscription.getProductId());
+        assertProductCredentialCompatibility(product, credential);
 
         // Obtain product reference
         ProductRefResult productRef = productService.getProductRef(subscription.getProductId());
@@ -459,7 +493,6 @@ public class ConsumerServiceImpl implements ConsumerService {
         subscription.setStatus(SubscriptionStatus.APPROVED);
         subscriptionRepository.saveAndFlush(subscription);
 
-        ProductResult product = productService.getProduct(subscription.getProductId());
         SubscriptionResult result = new SubscriptionResult().convertFrom(subscription);
         if (product != null) {
             result.setProductName(product.getName());
@@ -593,6 +626,241 @@ public class ConsumerServiceImpl implements ConsumerService {
         }
     }
 
+    private void normalizeCredential(
+            ConsumerCredential credential, ConsumerCredentialType credentialType) {
+        if (credential == null || credentialType == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Credential type is required");
+        }
+
+        switch (credentialType) {
+            case API_KEY -> {
+                if (credential.getApiKeyConfig() == null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_REQUEST, "API_KEY credential config is required");
+                }
+                credential.setHmacConfig(null);
+                credential.setJwtConfig(null);
+            }
+            case HMAC -> {
+                if (credential.getHmacConfig() == null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_REQUEST, "HMAC credential config is required");
+                }
+                credential.setApiKeyConfig(null);
+                credential.setJwtConfig(null);
+            }
+            case JWT -> {
+                if (credential.getJwtConfig() == null) {
+                    throw new BusinessException(
+                            ErrorCode.INVALID_REQUEST, "JWT credential config is required");
+                }
+                credential.setApiKeyConfig(null);
+                credential.setHmacConfig(null);
+            }
+        }
+
+        complementCredentials(credential);
+    }
+
+    private ConsumerCredentialType resolveRequestedCredentialType(
+            ConsumerCredentialType explicitType,
+            ApiKeyConfig apiKeyConfig,
+            HmacConfig hmacConfig,
+            JwtConfig jwtConfig) {
+        EnumSet<ConsumerCredentialType> configuredTypes =
+                EnumSet.noneOf(ConsumerCredentialType.class);
+        if (apiKeyConfig != null) {
+            configuredTypes.add(ConsumerCredentialType.API_KEY);
+        }
+        if (hmacConfig != null) {
+            configuredTypes.add(ConsumerCredentialType.HMAC);
+        }
+        if (jwtConfig != null) {
+            configuredTypes.add(ConsumerCredentialType.JWT);
+        }
+
+        if (explicitType != null) {
+            if (!configuredTypes.isEmpty() && !configuredTypes.contains(explicitType)) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_REQUEST,
+                        StrUtil.format(
+                                "Credential type `{}` does not match credential payload",
+                                explicitType));
+            }
+            if (configuredTypes.size() > 1) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_REQUEST,
+                        "Only one credential payload can be configured at a time");
+            }
+            return explicitType;
+        }
+
+        if (configuredTypes.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Credential type or payload is required");
+        }
+        if (configuredTypes.size() > 1) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    "Only one credential payload can be configured at a time");
+        }
+        return configuredTypes.iterator().next();
+    }
+
+    private ConsumerCredentialType resolveCredentialType(ConsumerCredential credential) {
+        if (credential == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "Credential is required");
+        }
+
+        EnumSet<ConsumerCredentialType> configuredTypes =
+                EnumSet.noneOf(ConsumerCredentialType.class);
+        if (credential.getApiKeyConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.API_KEY);
+        }
+        if (credential.getHmacConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.HMAC);
+        }
+        if (credential.getJwtConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.JWT);
+        }
+
+        if (configuredTypes.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    StrUtil.format(
+                            "Consumer `{}` has no active credential config",
+                            credential.getConsumerId()));
+        }
+        if (configuredTypes.size() > 1) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    StrUtil.format(
+                            "Consumer `{}` has multiple credential configs, which is not"
+                                    + " supported",
+                            credential.getConsumerId()));
+        }
+        return configuredTypes.iterator().next();
+    }
+
+    private ConsumerResult buildConsumerResult(Consumer consumer) {
+        ConsumerResult result = new ConsumerResult().convertFrom(consumer);
+        result.setCredentialType(resolveCredentialType(findCredential(consumer.getConsumerId())));
+        return result;
+    }
+
+    private ConsumerCredentialResult buildCredentialResult(ConsumerCredential credential) {
+        ConsumerCredentialResult result = new ConsumerCredentialResult().convertFrom(credential);
+        result.setCredentialType(resolveCredentialType(credential));
+        return result;
+    }
+
+    private void fillConsumerCredentialTypes(List<ConsumerResult> consumers) {
+        if (CollUtil.isEmpty(consumers)) {
+            return;
+        }
+
+        Map<String, ConsumerCredentialType> credentialTypeMap =
+                credentialRepository
+                        .findByConsumerIdIn(
+                                consumers.stream()
+                                        .map(ConsumerResult::getConsumerId)
+                                        .collect(Collectors.toList()))
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ConsumerCredential::getConsumerId,
+                                        this::resolveCredentialType));
+
+        for (ConsumerResult consumer : consumers) {
+            consumer.setCredentialType(credentialTypeMap.get(consumer.getConsumerId()));
+        }
+    }
+
+    private void assertPrimaryConsumerCredentialType(
+            String consumerId, ConsumerCredentialType credentialType) {
+        Consumer consumer = findConsumer(consumerId);
+        if (BooleanUtil.isTrue(consumer.getIsPrimary()) && !credentialType.isApiKeyCompatible()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Primary consumer only supports API_KEY credential");
+        }
+    }
+
+    private void assertSubscribedProductsCompatible(
+            String consumerId, ConsumerCredentialType credentialType) {
+        List<ProductSubscription> subscriptions =
+                subscriptionRepository.findAllByConsumerId(consumerId);
+        if (subscriptions.isEmpty()) {
+            return;
+        }
+
+        List<String> productIds =
+                subscriptions.stream().map(ProductSubscription::getProductId).distinct().toList();
+        Map<String, ProductResult> products = productService.getProducts(productIds);
+
+        for (ProductSubscription subscription : subscriptions) {
+            ProductResult product = products.get(subscription.getProductId());
+            if (product == null) {
+                continue;
+            }
+            ConsumerCredentialType requiredCredentialType =
+                    resolveProductRequiredCredentialType(product);
+            if (requiredCredentialType != null && requiredCredentialType != credentialType) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_REQUEST,
+                        StrUtil.format(
+                                "Consumer `{}` already subscribed product `{}` which requires"
+                                        + " credential type `{}`",
+                                consumerId,
+                                product.getName(),
+                                requiredCredentialType));
+            }
+        }
+    }
+
+    private void assertProductCredentialCompatibility(
+            ProductResult product, ConsumerCredential credential) {
+        ConsumerCredentialType requiredCredentialType =
+                resolveProductRequiredCredentialType(product);
+        if (requiredCredentialType == null) {
+            return;
+        }
+
+        ConsumerCredentialType credentialType = resolveCredentialType(credential);
+        if (requiredCredentialType != credentialType) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST,
+                    StrUtil.format(
+                            "Product `{}` requires credential type `{}`, but consumer uses `{}`",
+                            product.getName(),
+                            requiredCredentialType,
+                            credentialType));
+        }
+    }
+
+    private ConsumerCredentialType resolveProductRequiredCredentialType(ProductResult product) {
+        if (product == null) {
+            return null;
+        }
+
+        if (product.getRequiredCredentialType() != null) {
+            return product.getRequiredCredentialType();
+        }
+
+        if (product.getType() == ProductType.MODEL_API) {
+            return Optional.ofNullable(product.getModelConfig())
+                    .map(ModelConfigResult::getRequiredCredentialType)
+                    .orElse(null);
+        }
+
+        if (product.getType() == ProductType.MCP_SERVER) {
+            return Optional.ofNullable(product.getMcpConfig())
+                    .map(MCPConfigResult::getRequiredCredentialType)
+                    .orElse(null);
+        }
+
+        return null;
+    }
+
     private ConsumerAuthConfig authorizeConsumer(
             Consumer consumer, ConsumerCredential credential, ProductRefResult productRef) {
         GatewayConfig gatewayConfig = gatewayService.getGatewayConfig(productRef.getGatewayId());
@@ -720,7 +988,7 @@ public class ConsumerServiceImpl implements ConsumerService {
     @Override
     public CredentialContext getDefaultCredential(String developerId) {
         try {
-            ConsumerResult consumer = getPrimaryConsumer();
+            ConsumerResult consumer = getPrimaryConsumer(developerId);
 
             return credentialRepository
                     .findByConsumerId(consumer.getConsumerId())
@@ -742,6 +1010,11 @@ public class ConsumerServiceImpl implements ConsumerService {
     @Transactional
     public void setPrimaryConsumer(String consumerId) {
         Consumer consumer = findDevConsumer(consumerId);
+        ConsumerCredentialType credentialType = resolveCredentialType(findCredential(consumerId));
+        if (!credentialType.isApiKeyCompatible()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "Primary consumer only supports API_KEY credential");
+        }
 
         // Return if consumer is already primary
         if (BooleanUtil.isTrue(consumer.getIsPrimary())) {
@@ -763,38 +1036,78 @@ public class ConsumerServiceImpl implements ConsumerService {
 
     @Override
     public ConsumerResult getPrimaryConsumer(String developerId) {
-        return consumerRepository
-                .findByDeveloperIdAndIsPrimary(developerId, true)
-                .map(
-                        consumer -> {
-                            log.debug(
-                                    "Found existing primary consumer: developerId={},"
-                                            + " consumerId={}",
-                                    developerId,
-                                    consumer.getConsumerId());
-                            return new ConsumerResult().convertFrom(consumer);
-                        })
-                // If no primary consumer found, set the first consumer as primary
-                .orElseGet(
-                        () -> {
-                            Consumer firstConsumer =
-                                    consumerRepository
-                                            .findFirstByDeveloperId(
-                                                    developerId,
-                                                    Sort.by(Sort.Direction.ASC, "createAt"))
-                                            .orElseThrow(
-                                                    () ->
-                                                            new BusinessException(
-                                                                    ErrorCode.INVALID_REQUEST,
-                                                                    "No consumer found for"
-                                                                            + " developer: "
-                                                                            + developerId));
+        Optional<Consumer> primaryConsumer =
+                consumerRepository.findByDeveloperIdAndIsPrimary(developerId, true);
+        if (primaryConsumer.isPresent()) {
+            Consumer consumer = primaryConsumer.get();
+            try {
+                ConsumerCredentialType credentialType =
+                        resolveCredentialType(findCredential(consumer.getConsumerId()));
+                if (credentialType.isApiKeyCompatible()) {
+                    log.debug(
+                            "Found existing primary consumer: developerId={}, consumerId={}",
+                            developerId,
+                            consumer.getConsumerId());
+                    return buildConsumerResult(consumer);
+                }
+                log.warn(
+                        "Primary consumer {} is not API_KEY, trying to repair developer {}",
+                        consumer.getConsumerId(),
+                        developerId);
+            } catch (BusinessException e) {
+                log.warn(
+                        "Primary consumer {} has invalid credential state, trying to repair"
+                                + " developer {}",
+                        consumer.getConsumerId(),
+                        developerId,
+                        e);
+            }
+        }
 
-                            firstConsumer.setIsPrimary(true);
-                            consumerRepository.save(firstConsumer);
+        List<Consumer> consumers = consumerRepository.findAllByDeveloperId(developerId);
+        if (consumers.isEmpty()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_REQUEST, "No consumer found for developer: " + developerId);
+        }
 
-                            return new ConsumerResult().convertFrom(firstConsumer);
-                        });
+        Map<String, ConsumerCredentialType> credentialTypeMap =
+                credentialRepository
+                        .findByConsumerIdIn(
+                                consumers.stream()
+                                        .map(Consumer::getConsumerId)
+                                        .collect(Collectors.toList()))
+                        .stream()
+                        .collect(
+                                Collectors.toMap(
+                                        ConsumerCredential::getConsumerId,
+                                        this::resolveCredentialType));
+
+        Consumer firstApiKeyConsumer =
+                consumers.stream()
+                        .sorted(
+                                Comparator.comparing(
+                                                Consumer::getCreateAt,
+                                                Comparator.nullsLast(Comparator.naturalOrder()))
+                                        .thenComparing(
+                                                Consumer::getConsumerId,
+                                                Comparator.nullsLast(Comparator.naturalOrder())))
+                        .filter(
+                                consumer ->
+                                        ConsumerCredentialType.API_KEY
+                                                == credentialTypeMap.get(consumer.getConsumerId()))
+                        .findFirst()
+                        .orElseThrow(
+                                () ->
+                                        new BusinessException(
+                                                ErrorCode.INVALID_REQUEST,
+                                                "No API_KEY consumer found for developer: "
+                                                        + developerId));
+
+        consumerRepository.clearPrimary(developerId);
+        firstApiKeyConsumer.setIsPrimary(true);
+        consumerRepository.save(firstApiKeyConsumer);
+
+        return buildConsumerResult(firstApiKeyConsumer);
     }
 
     @Override

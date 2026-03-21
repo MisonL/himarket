@@ -42,8 +42,11 @@ final class CasAccessStrategyExporter {
 
     Map<String, Object> export(CasAccessStrategyConfig accessStrategyConfig) {
         Map<String, Object> accessStrategy = new LinkedHashMap<>();
+        if (accessStrategyConfig == null) {
+            return accessStrategy;
+        }
         CasHttpRequestAccessStrategyConfig httpRequestConfig =
-                accessStrategyConfig != null ? accessStrategyConfig.getHttpRequest() : null;
+                accessStrategyConfig.getHttpRequest();
         accessStrategy.put(
                 "@class",
                 hasHttpRequestAccessStrategy(httpRequestConfig)

@@ -9,12 +9,10 @@ import {
   Pagination,
   Skeleton,
   Input,
-  Select,
   Tag,
-  Space,
   Tabs,
 } from "antd";
-import type { ApiProduct, ProductIcon } from "@/types/api-product";
+import type { ApiProduct } from "@/types/api-product";
 import {
   ApiOutlined,
   MoreOutlined,
@@ -31,8 +29,6 @@ import {
 import McpServerIcon from "@/components/icons/McpServerIcon";
 import { apiProductApi } from "@/lib/api";
 import ApiProductFormModal from "@/components/api-product/ApiProductFormModal";
-import { getProductCategories } from "@/lib/productCategoryApi";
-import type { ProductCategory } from "@/types/product-category";
 import { ProductIconRenderer } from "@/components/icons/ProductIconRenderer";
 import { getIconString } from "@/lib/iconUtils";
 
@@ -46,14 +42,7 @@ const PRODUCT_TYPES = [
   { key: 'REST_API', label: 'REST API' },
 ];
 
-const getDefaultIcon = (type: string) => {
-  if (type === 'REST_API') return <ApiOutlined style={{ fontSize: '16px' }} />;
-  if (type === 'MCP_SERVER') return <McpServerIcon style={{ fontSize: '16px' }} />;
-  if (type === 'AGENT_API') return <RobotOutlined style={{ fontSize: '16px' }} />;
-  if (type === 'MODEL_API') return <BulbOutlined style={{ fontSize: '16px' }} />;
-  if (type === 'AGENT_SKILL') return <ThunderboltOutlined style={{ fontSize: '16px' }} />;
-  return <ApiOutlined style={{ fontSize: '16px' }} />;
-};
+
 
 const getTypeLabel = (type: string) => {
   return PRODUCT_TYPES.find(t => t.key === type)?.label || type;
@@ -236,19 +225,6 @@ export default function ApiProducts() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ApiProduct | null>(null);
-  const [productCategories, setProductCategories] = useState<ProductCategory[]>(
-    []
-  );
-
-  const fetchProductCategories = async () => {
-    try {
-      const response = await getProductCategories();
-      setProductCategories(response.data.content || []);
-    } catch (error) {
-      console.error("获取产品类别失败:", error);
-      message.error("获取产品类别失败");
-    }
-  };
 
   const buildParams = useCallback(
     (page: number, size: number, tab: string, name: string) => {

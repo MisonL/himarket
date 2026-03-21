@@ -41,9 +41,7 @@ import com.aliyun.sdk.service.apig20240327.models.HttpApiApiInfo;
 import com.github.benmanes.caffeine.cache.Cache;
 import java.net.URI;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 
-@Slf4j
 public abstract class GatewayOperator<T> {
 
     private final Cache<String, GatewayClient> clientCache =

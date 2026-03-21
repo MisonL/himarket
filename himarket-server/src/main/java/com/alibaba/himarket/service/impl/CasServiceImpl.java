@@ -65,12 +65,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CasServiceImpl implements CasService {
@@ -123,8 +120,6 @@ public class CasServiceImpl implements CasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String developerId = createOrGetDeveloper(userInfo, config);
-        long authenticationDate =
-                Convert.toLong(userInfo.get("authenticationDate"), System.currentTimeMillis());
         long expirationPolicy = IdpConstants.DEFAULT_EXPIRATION_MILLIS;
         if (cn.hutool.core.convert.Convert.toBool(
                 userInfo.get("longTermAuthenticationRequestTokenUsed"), false)) {
@@ -252,10 +247,11 @@ public class CasServiceImpl implements CasService {
         String endpoint =
                 StrUtil.blankToDefault(config.getLogoutEndpoint(), IdpConstants.CAS_LOGOUT_PATH);
         String logoutUrl = joinUrl(config.getServerUrl(), endpoint);
-        return UriComponentsBuilder.fromUriString(logoutUrl)
-                .queryParam(IdpConstants.SERVICE, serviceUrl)
-                .build()
-                .toUriString();
+        return logoutUrl
+                + "?"
+                + IdpConstants.SERVICE
+                + "="
+                + UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
     }
 
     private CasConfig findCasConfig(String provider) {
@@ -299,11 +295,13 @@ public class CasServiceImpl implements CasService {
                     ErrorCode.INVALID_PARAMETER,
                     "CAS authorize request cannot enable gateway and renew together");
         }
-        StringBuilder builder = new StringBuilder(buildLoginUrl(config));
-        builder.append("?")
-                .append(IdpConstants.SERVICE)
-                .append("=")
-                .append(UriUtils.encode(serviceUrl, StandardCharsets.UTF_8));
+        String encodedServiceUrl = UriUtils.encode(serviceUrl, StandardCharsets.UTF_8);
+        StringBuilder builder =
+                new StringBuilder(buildLoginUrl(config))
+                        .append("?")
+                        .append(IdpConstants.SERVICE)
+                        .append("=")
+                        .append(encodedServiceUrl);
         if (gateway) {
             builder.append("&").append(IdpConstants.GATEWAY).append("=true");
         }
@@ -375,11 +373,11 @@ public class CasServiceImpl implements CasService {
     }
 
     private String buildFrontendRedirectUrl(String code) {
-        return UriComponentsBuilder.fromUriString(
-                        portalFrontendUrlResolver.buildCallbackUrl("/cas/callback"))
-                .queryParam(IdpConstants.CODE, code)
-                .build()
-                .toUriString();
+        return portalFrontendUrlResolver.buildCallbackUrl("/cas/callback")
+                + "?"
+                + IdpConstants.CODE
+                + "="
+                + code;
     }
 
     private String resolveProxyCallbackUrl(CasConfig config, String apiPrefix) {

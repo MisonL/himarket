@@ -27,7 +27,6 @@ export function ApiProductUsageGuide({
   const [originalContent, setOriginalContent] = useState(
     apiProduct.document || ""
   );
-  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -42,7 +41,6 @@ export function ApiProductUsageGuide({
   const handleSave = () => {
     const categoryIds = apiProduct.categories?.map(cat => cat.categoryId) || [];
 
-    setSaving(true);
     apiProductApi
       .updateApiProduct(apiProduct.productId, {
         document: content,
@@ -55,7 +53,6 @@ export function ApiProductUsageGuide({
         handleRefresh();
       })
       .finally(() => {
-        setSaving(true);
       });
   };
 

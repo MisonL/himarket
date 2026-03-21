@@ -20,7 +20,7 @@
 package com.alibaba.himarket.controller;
 
 import com.alibaba.himarket.core.annotation.AdminAuth;
-import com.alibaba.himarket.core.annotation.AdminOrDeveloperAuth;
+import com.alibaba.himarket.core.annotation.PublicAccess;
 import com.alibaba.himarket.dto.params.category.CreateProductCategoryParam;
 import com.alibaba.himarket.dto.params.category.QueryProductCategoryParam;
 import com.alibaba.himarket.dto.params.category.UpdateProductCategoryParam;
@@ -32,15 +32,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "产品类别管理", description = "提供产品类别的创建、更新、删除、查询等管理功能")
 @RestController
-@RequestMapping("/product-categories")
-@Slf4j
 @RequiredArgsConstructor
+@RequestMapping({"/categories", "/product-categories"})
 public class ProductCategoryController {
 
     private final ProductCategoryService productCategoryService;
@@ -55,7 +53,7 @@ public class ProductCategoryController {
 
     @Operation(summary = "获取产品类别列表")
     @GetMapping
-    @AdminOrDeveloperAuth
+    @PublicAccess
     public PageResult<ProductCategoryResult> listProductCategories(
             QueryProductCategoryParam param, Pageable pageable) {
         return productCategoryService.listProductCategories(param, pageable);
@@ -71,7 +69,7 @@ public class ProductCategoryController {
 
     @Operation(summary = "获取产品类别详情")
     @GetMapping("/{categoryId}")
-    @AdminOrDeveloperAuth
+    @PublicAccess
     public ProductCategoryResult getProductCategory(@PathVariable String categoryId) {
         return productCategoryService.getProductCategory(categoryId);
     }

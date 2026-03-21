@@ -25,6 +25,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.publisher.Sinks;
+import reactor.netty.http.client.WebsocketClientSpec;
 
 /**
  * 远程 Sidecar 运行时适配器。
@@ -270,9 +271,8 @@ public class RemoteRuntimeAdapter implements RuntimeAdapter {
         ReactorNettyWebSocketClient wsClient =
                 new ReactorNettyWebSocketClient(
                         reactor.netty.http.client.HttpClient.create()
-                                .responseTimeout(Duration.ofSeconds(30)));
-        wsClient.setHandlePing(true);
-        wsClient.setMaxFramePayloadLength(1024 * 1024);
+                                .responseTimeout(Duration.ofSeconds(30)),
+                        () -> WebsocketClientSpec.builder().maxFramePayloadLength(1024 * 1024));
         CountDownLatch connectedLatch = new CountDownLatch(1);
 
         wsConnection =

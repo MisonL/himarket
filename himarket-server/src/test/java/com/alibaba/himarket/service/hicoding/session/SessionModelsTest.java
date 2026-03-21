@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.io.TempDir;
@@ -75,7 +74,6 @@ class SessionModelsTest {
             process.start();
             assertTrue(process.isAlive(), cli.key() + " 进程应该处于运行状态");
 
-            AtomicInteger expectedId = new AtomicInteger(0);
             CountDownLatch initLatch = new CountDownLatch(1);
             CountDownLatch sessionLatch = new CountDownLatch(1);
             AtomicReference<String> initResponse = new AtomicReference<>();

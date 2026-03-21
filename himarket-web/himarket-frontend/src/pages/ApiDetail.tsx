@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Alert, Tabs, Space, Button, message } from "antd";
 import { Layout } from "../components/Layout";
@@ -10,13 +10,9 @@ import {
 } from "@ant-design/icons";
 import type { IProductDetail } from "../lib/apis";
 import APIs from "../lib/apis";
-
-const SwaggerUIWrapper = lazy(() =>
-  import("../components/SwaggerUIWrapper").then(module => ({
-    default: module.SwaggerUIWrapper,
-  }))
-);
-const MarkdownRender = lazy(() => import("../components/MarkdownRender"));
+import { SwaggerUIWrapper } from "../components/SwaggerUIWrapper";
+import MarkdownRender from "../components/MarkdownRender";
+import * as yaml from "js-yaml";
 
 function ApiDetailPage() {
   const { apiProductId } = useParams();
@@ -30,7 +26,6 @@ function ApiDetailPage() {
 
   const loadOpenApiDocument = async (spec: string) => {
     try {
-      const yaml = await import("js-yaml");
       return yaml.load(spec) as {
         servers?: Array<{ url?: string }>;
         paths?: Record<string, Record<string, unknown>>;
@@ -160,9 +155,7 @@ function ApiDetailPage() {
                   label: "概览",
                   children: apiData.document ? (
                     <div className="min-h-[400px] prose prose-lg">
-                      <Suspense fallback={null}>
-                        <MarkdownRender content={apiData.document} />
-                      </Suspense>
+                      <MarkdownRender content={apiData.document} />
                     </div>
                   ) : (
                     <div className="text-gray-500 text-center py-16">
@@ -176,9 +169,7 @@ function ApiDetailPage() {
                   children: (
                     <div>
                       {apiData.apiConfig && apiData.apiConfig.spec ? (
-                        <Suspense fallback={null}>
-                          <SwaggerUIWrapper apiSpec={apiData.apiConfig.spec} />
-                        </Suspense>
+                        <SwaggerUIWrapper apiSpec={apiData.apiConfig.spec} />
                       ) : (
                         <div className="text-gray-500 text-center py-16">
                           暂无OpenAPI规范
