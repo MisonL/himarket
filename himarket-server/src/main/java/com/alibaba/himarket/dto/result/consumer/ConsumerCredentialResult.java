@@ -24,11 +24,14 @@ import com.alibaba.himarket.entity.ConsumerCredential;
 import com.alibaba.himarket.support.consumer.ApiKeyConfig;
 import com.alibaba.himarket.support.consumer.HmacConfig;
 import com.alibaba.himarket.support.consumer.JwtConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import lombok.Data;
 
 @Data
 public class ConsumerCredentialResult
         implements OutputConverter<ConsumerCredentialResult, ConsumerCredential> {
+
+    private ConsumerCredentialType credentialType;
 
     private JwtConfig jwtConfig;
 

@@ -49,6 +49,9 @@ import com.alibaba.himarket.support.chat.mcp.MCPTransportConfig;
 import com.alibaba.himarket.support.consumer.ApiKeyConfig;
 import com.alibaba.himarket.support.consumer.ConsumerAuthConfig;
 import com.alibaba.himarket.support.consumer.HigressAuthConfig;
+import com.alibaba.himarket.support.consumer.HmacConfig;
+import com.alibaba.himarket.support.consumer.JwtConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.GatewayType;
 import com.alibaba.himarket.support.gateway.GatewayConfig;
 import com.alibaba.himarket.support.gateway.HigressConfig;
@@ -59,11 +62,11 @@ import io.modelcontextprotocol.spec.McpSchema;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -232,6 +235,8 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
         // tools
         m.setTools(higressMCPConfig.getRawConfigurations());
+        m.setRequiredCredentialType(
+                resolveRequiredCredentialType(higressMCPConfig.getConsumerAuthInfo()));
 
         // meta
         MCPConfigResult.McpMetadata meta = new MCPConfigResult.McpMetadata();
@@ -330,6 +335,7 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
         ModelConfigResult result = new ModelConfigResult();
         result.setModelAPIConfig(config);
+        result.setRequiredCredentialType(resolveAllowedCredentialType(aiRoute.getAuthConfig()));
 
         return JSONUtil.toJsonStr(result);
     }
@@ -357,6 +363,15 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
 
         // Build authentication context
         CredentialContext credentialContext = CredentialContext.builder().build();
+        if (config.getRequiredCredentialType() != null
+                && !config.getRequiredCredentialType().isApiKeyCompatible()) {
+            log.info(
+                    "Skip MCP tool fetch for server {} because required credential type is {}",
+                    config.getMcpServerName(),
+                    config.getRequiredCredentialType());
+            return null;
+        }
+
         Optional.ofNullable(higressMCPConfig.getConsumerAuthInfo())
                 .filter(authInfo -> BooleanUtil.isTrue(authInfo.getEnable()))
                 .map(HigressConsumerAuthInfo::getAllowedConsumers)
@@ -387,8 +402,7 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         transportConfig.setHeaders(credentialContext.copyHeaders());
         transportConfig.setQueryParams(credentialContext.copyQueryParams());
 
-        McpClientWrapper mcpClientWrapper =
-                toolManager.getOrCreateClient(config.toTransportConfig());
+        McpClientWrapper mcpClientWrapper = toolManager.getOrCreateClient(transportConfig);
         if (mcpClientWrapper == null) {
             return null;
         }
@@ -401,27 +415,44 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         return JSONUtil.toJsonStr(openAPIMCPConfig);
     }
 
-    private void fillCredentialContext(
-            CredentialContext context, HigressKeyAuthCredential credential) {
-        String apiKey =
-                Optional.ofNullable(credential.getValues())
-                        .filter(CollUtil::isNotEmpty)
-                        .map(CollUtil::getFirst)
-                        .orElse(null);
-
-        if (apiKey == null) {
+    private void fillCredentialContext(CredentialContext context, Map<String, Object> credential) {
+        if (credential == null) {
             return;
         }
 
-        String source = credential.getSource();
-        String key = credential.getKey();
+        String type = Objects.toString(credential.get("type"), null);
+        if (!"key-auth".equalsIgnoreCase(type)) {
+            log.debug("Skip unsupported MCP preview credential type: {}", type);
+            return;
+        }
+
+        List<String> values = toStringList(credential.get("values"));
+        String apiKey = CollUtil.getFirst(values);
+        if (StrUtil.isBlank(apiKey)) {
+            return;
+        }
+
+        String source = Objects.toString(credential.get("source"), null);
+        String key = Objects.toString(credential.get("key"), null);
+        if (StrUtil.isBlank(source)) {
+            source = "BEARER";
+        }
+        if (StrUtil.isBlank(key)) {
+            key = "Authorization";
+        }
 
         switch (source.toUpperCase()) {
             case "BEARER" -> context.getHeaders().put("Authorization", "Bearer " + apiKey);
             case "QUERY" -> context.getQueryParams().put(key, apiKey);
-            // Header or other values
             default -> context.getHeaders().put(key, apiKey);
         }
+    }
+
+    private List<String> toStringList(Object rawValues) {
+        if (!(rawValues instanceof List<?> values)) {
+            return Collections.emptyList();
+        }
+        return values.stream().filter(Objects::nonNull).map(String::valueOf).toList();
     }
 
     @Override
@@ -433,15 +464,14 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     @Override
     public String createConsumer(
             Consumer consumer, ConsumerCredential credential, GatewayConfig config) {
-        HigressConfig higressConfig = config.getHigressConfig();
-        HigressClient client = new HigressClient(higressConfig);
+        Gateway gateway = resolveGateway(config);
+        HigressClient client = getClient(gateway);
+        HigressConsumerConfig payload = buildHigressConsumer(consumer.getConsumerId(), credential);
 
-        client.execute(
-                "/v1/consumers",
-                HttpMethod.POST,
-                null,
-                buildHigressConsumer(consumer.getConsumerId(), credential.getApiKeyConfig()),
-                String.class);
+        runWithTimeoutReconcile(
+                "create consumer " + consumer.getConsumerId(),
+                () -> client.execute("/v1/consumers", HttpMethod.POST, null, payload, String.class),
+                () -> doesConsumerMatch(client, consumer.getConsumerId(), payload));
 
         return consumer.getConsumerId();
     }
@@ -449,28 +479,42 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     @Override
     public void updateConsumer(
             String consumerId, ConsumerCredential credential, GatewayConfig config) {
-        HigressConfig higressConfig = config.getHigressConfig();
-        HigressClient client = new HigressClient(higressConfig);
+        Gateway gateway = resolveGateway(config);
+        HigressClient client = getClient(gateway);
+        HigressConsumerConfig payload = buildHigressConsumer(consumerId, credential);
 
-        client.execute(
-                "/v1/consumers/" + consumerId,
-                HttpMethod.PUT,
-                null,
-                buildHigressConsumer(consumerId, credential.getApiKeyConfig()),
-                String.class);
+        runWithTimeoutReconcile(
+                "update consumer " + consumerId,
+                () ->
+                        client.execute(
+                                "/v1/consumers/" + consumerId,
+                                HttpMethod.PUT,
+                                null,
+                                payload,
+                                String.class),
+                () -> doesConsumerMatch(client, consumerId, payload));
     }
 
     @Override
     public void deleteConsumer(String consumerId, GatewayConfig config) {
-        HigressConfig higressConfig = config.getHigressConfig();
-        HigressClient client = new HigressClient(higressConfig);
+        Gateway gateway = resolveGateway(config);
+        HigressClient client = getClient(gateway);
 
-        client.execute("/v1/consumers/" + consumerId, HttpMethod.DELETE, null, null, String.class);
+        runWithTimeoutReconcile(
+                "delete consumer " + consumerId,
+                () ->
+                        client.execute(
+                                "/v1/consumers/" + consumerId,
+                                HttpMethod.DELETE,
+                                null,
+                                null,
+                                String.class),
+                () -> !isConsumerPresent(client, consumerId));
     }
 
     @Override
     public boolean isConsumerExists(String consumerId, GatewayConfig config) {
-        HigressClient client = new HigressClient(config.getHigressConfig());
+        HigressClient client = getClient(resolveGateway(config));
         try {
             client.execute("/v1/consumers/" + consumerId, HttpMethod.GET, null, null, String.class);
             return true;
@@ -499,13 +543,18 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     private ConsumerAuthConfig authorizeMCPServer(
             Gateway gateway, String consumerId, String mcpServerName) {
         HigressClient client = getClient(gateway);
+        HigressAuthConsumerConfig payload = buildAuthHigressConsumer(mcpServerName, consumerId);
 
-        client.execute(
-                "/v1/mcpServer/consumers/",
-                HttpMethod.PUT,
-                null,
-                buildAuthHigressConsumer(mcpServerName, consumerId),
-                Void.class);
+        runWithTimeoutReconcile(
+                "authorize mcp server " + mcpServerName + " for consumer " + consumerId,
+                () ->
+                        client.execute(
+                                "/v1/mcpServer/consumers/",
+                                HttpMethod.PUT,
+                                null,
+                                payload,
+                                Void.class),
+                () -> isMCPServerAuthorized(gateway, mcpServerName, consumerId));
 
         HigressAuthConfig higressAuthConfig =
                 HigressAuthConfig.builder()
@@ -529,7 +578,10 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         // Add consumer only if not exists
         if (!CollUtil.contains(allowedConsumers, consumerId)) {
             allowedConsumers.add(consumerId);
-            updateAIRoute(gateway, aiRoute);
+            updateAIRoute(
+                    gateway,
+                    aiRoute,
+                    () -> isAIRouteAuthorized(gateway, modelRouteName, consumerId));
         }
 
         HigressAuthConfig higressAuthConfig =
@@ -552,12 +604,18 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         }
 
         if ("MCP_SERVER".equalsIgnoreCase(higressAuthConfig.getResourceType())) {
-            client.execute(
-                    "/v1/mcpServer/consumers/",
-                    HttpMethod.DELETE,
-                    null,
-                    buildAuthHigressConsumer(higressAuthConfig.getResourceName(), consumerId),
-                    Void.class);
+            String resourceName = higressAuthConfig.getResourceName();
+            HigressAuthConsumerConfig payload = buildAuthHigressConsumer(resourceName, consumerId);
+            runWithTimeoutReconcile(
+                    "revoke mcp server " + resourceName + " for consumer " + consumerId,
+                    () ->
+                            client.execute(
+                                    "/v1/mcpServer/consumers/",
+                                    HttpMethod.DELETE,
+                                    null,
+                                    payload,
+                                    Void.class),
+                    () -> !isMCPServerAuthorized(gateway, resourceName, consumerId));
         } else {
             HigressAIRoute aiRoute = fetchAIRoute(gateway, higressAuthConfig.getResourceName());
             RouteAuthConfig aiRouteAuthConfig = aiRoute.getAuthConfig();
@@ -568,8 +626,25 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
             }
 
             aiRouteAuthConfig.getAllowedConsumers().remove(consumerId);
-            updateAIRoute(gateway, aiRoute);
+            updateAIRoute(
+                    gateway,
+                    aiRoute,
+                    () ->
+                            !isAIRouteAuthorized(
+                                    gateway, higressAuthConfig.getResourceName(), consumerId));
         }
+    }
+
+    private HigressMCPConfig fetchMCPServer(Gateway gateway, String mcpServerName) {
+        HigressClient client = getClient(gateway);
+        HigressResponse<HigressMCPConfig> response =
+                client.execute(
+                        "/v1/mcpServer/" + mcpServerName,
+                        HttpMethod.GET,
+                        null,
+                        null,
+                        new ParameterizedTypeReference<>() {});
+        return response.getData();
     }
 
     private HigressAIRoute fetchAIRoute(Gateway gateway, String modelRouteName) {
@@ -586,11 +661,20 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         return response.getData();
     }
 
-    private void updateAIRoute(Gateway gateway, HigressAIRoute aiRoute) {
+    private void updateAIRoute(
+            Gateway gateway, HigressAIRoute aiRoute, BooleanSupplier reconciler) {
         HigressClient client = getClient(gateway);
 
-        client.execute(
-                "/v1/ai/routes/" + aiRoute.getName(), HttpMethod.PUT, null, aiRoute, Void.class);
+        runWithTimeoutReconcile(
+                "update ai route " + aiRoute.getName(),
+                () ->
+                        client.execute(
+                                "/v1/ai/routes/" + aiRoute.getName(),
+                                HttpMethod.PUT,
+                                null,
+                                aiRoute,
+                                Void.class),
+                reconciler);
     }
 
     @Override
@@ -601,6 +685,112 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     @Override
     public GatewayType getGatewayType() {
         return GatewayType.HIGRESS;
+    }
+
+    private Gateway resolveGateway(GatewayConfig config) {
+        if (config.getGateway() != null) {
+            return config.getGateway();
+        }
+        Gateway gateway = new Gateway();
+        gateway.setGatewayType(GatewayType.HIGRESS);
+        gateway.setHigressConfig(config.getHigressConfig());
+        return gateway;
+    }
+
+    private void runWithTimeoutReconcile(
+            String action, Runnable operation, BooleanSupplier reconciler) {
+        try {
+            operation.run();
+        } catch (RuntimeException e) {
+            if (!isTimeoutException(e) || !reconciler.getAsBoolean()) {
+                throw e;
+            }
+            log.warn("Higress {} timed out, but reconciliation confirmed success", action);
+        }
+    }
+
+    private boolean isTimeoutException(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof java.util.concurrent.TimeoutException) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains("timed out")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private boolean doesConsumerMatch(
+            HigressClient client, String consumerId, HigressConsumerConfig expected) {
+        try {
+            HigressResponse<HigressConsumer> response =
+                    client.execute(
+                            "/v1/consumers/" + consumerId,
+                            HttpMethod.GET,
+                            null,
+                            null,
+                            new ParameterizedTypeReference<HigressResponse<HigressConsumer>>() {});
+            HigressConsumer actual = response.getData();
+            return actual != null
+                    && StrUtil.equals(actual.getName(), expected.getName())
+                    && Objects.equals(
+                            normalizeStructure(actual.getCredentials()),
+                            normalizeStructure(expected.getCredentials()));
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
+    }
+
+    private boolean isConsumerPresent(HigressClient client, String consumerId) {
+        try {
+            client.execute("/v1/consumers/" + consumerId, HttpMethod.GET, null, null, String.class);
+            return true;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
+    }
+
+    private boolean isAIRouteAuthorized(Gateway gateway, String modelRouteName, String consumerId) {
+        HigressAIRoute route = fetchAIRoute(gateway, modelRouteName);
+        return Optional.ofNullable(route.getAuthConfig())
+                .map(RouteAuthConfig::getAllowedConsumers)
+                .map(consumers -> CollUtil.contains(consumers, consumerId))
+                .orElse(false);
+    }
+
+    private boolean isMCPServerAuthorized(
+            Gateway gateway, String mcpServerName, String consumerId) {
+        HigressMCPConfig mcpServer = fetchMCPServer(gateway, mcpServerName);
+        return Optional.ofNullable(mcpServer.getConsumerAuthInfo())
+                .map(HigressConsumerAuthInfo::getAllowedConsumers)
+                .map(consumers -> CollUtil.contains(consumers, consumerId))
+                .orElse(false);
+    }
+
+    private Object normalizeStructure(Object value) {
+        if (value instanceof Map<?, ?> mapValue) {
+            Map<String, Object> normalized = new TreeMap<>();
+            mapValue.forEach(
+                    (key, item) -> normalized.put(String.valueOf(key), normalizeStructure(item)));
+            return normalized;
+        }
+        if (value instanceof List<?> listValue) {
+            return listValue.stream()
+                    .map(this::normalizeStructure)
+                    .sorted(Comparator.comparing(JSONUtil::toJsonStr))
+                    .toList();
+        }
+        return value;
     }
 
     @Override
@@ -636,7 +826,7 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     @AllArgsConstructor
     public static class HigressConsumerConfig {
         private String name;
-        private List<HigressCredentialConfig> credentials;
+        private List<Map<String, Object>> credentials;
     }
 
     @Data
@@ -651,26 +841,26 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     }
 
     public HigressConsumerConfig buildHigressConsumer(
-            String consumerId, ApiKeyConfig apiKeyConfig) {
-
-        String source = mapSource(apiKeyConfig.getSource());
-
-        List<String> apiKeys =
-                apiKeyConfig.getCredentials().stream()
-                        .map(ApiKeyConfig.ApiKeyCredential::getApiKey)
-                        .collect(Collectors.toList());
-
-        return HigressConsumerConfig.builder()
-                .name(consumerId)
-                .credentials(
-                        Collections.singletonList(
-                                HigressCredentialConfig.builder()
-                                        .type("key-auth")
-                                        .source(source)
-                                        .key(apiKeyConfig.getKey())
-                                        .values(apiKeys)
-                                        .build()))
-                .build();
+            String consumerId, ConsumerCredential credential) {
+        return switch (resolveCredentialType(credential)) {
+            case API_KEY ->
+                    HigressConsumerConfig.builder()
+                            .name(consumerId)
+                            .credentials(buildApiKeyCredentials(credential.getApiKeyConfig()))
+                            .build();
+            case HMAC ->
+                    HigressConsumerConfig.builder()
+                            .name(consumerId)
+                            .credentials(buildHmacCredentials(credential.getHmacConfig()))
+                            .build();
+            case JWT ->
+                    HigressConsumerConfig.builder()
+                            .name(consumerId)
+                            .credentials(
+                                    Collections.singletonList(
+                                            buildJwtCredential(credential.getJwtConfig())))
+                            .build();
+        };
     }
 
     @Data
@@ -707,25 +897,7 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
     @AllArgsConstructor
     public static class HigressConsumer {
         private String name;
-        private List<HigressKeyAuthCredential> credentials;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class HigressCredential {
-        protected String type;
-        protected Map<String, Object> properties;
-    }
-
-    @EqualsAndHashCode(callSuper = true)
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class HigressKeyAuthCredential extends HigressCredential {
-        private String source;
-        private String key;
-        private List<String> values;
+        private List<Map<String, Object>> credentials;
     }
 
     @Data
@@ -824,5 +996,130 @@ public class HigressOperator extends GatewayOperator<HigressClient> {
         if ("HEADER".equalsIgnoreCase(source)) return "HEADER";
         if ("QueryString".equalsIgnoreCase(source)) return "QUERY";
         return source;
+    }
+
+    private ConsumerCredentialType resolveRequiredCredentialType(HigressConsumerAuthInfo authInfo) {
+        if (authInfo == null || !BooleanUtil.isTrue(authInfo.getEnable())) {
+            return null;
+        }
+        return ConsumerCredentialType.fromHigressAuthType(authInfo.getType());
+    }
+
+    private ConsumerCredentialType resolveAllowedCredentialType(RouteAuthConfig authConfig) {
+        if (authConfig == null || !BooleanUtil.isTrue(authConfig.getEnabled())) {
+            return null;
+        }
+
+        List<String> allowedCredentialTypes = authConfig.getAllowedCredentialTypes();
+        if (CollUtil.isEmpty(allowedCredentialTypes)) {
+            return null;
+        }
+
+        EnumSet<ConsumerCredentialType> resolvedTypes =
+                allowedCredentialTypes.stream()
+                        .filter(StrUtil::isNotBlank)
+                        .map(ConsumerCredentialType::fromHigressAuthType)
+                        .collect(
+                                Collectors.toCollection(
+                                        () -> EnumSet.noneOf(ConsumerCredentialType.class)));
+
+        if (resolvedTypes.size() != 1) {
+            return null;
+        }
+
+        return resolvedTypes.iterator().next();
+    }
+
+    private ConsumerCredentialType resolveCredentialType(ConsumerCredential credential) {
+        EnumSet<ConsumerCredentialType> configuredTypes =
+                EnumSet.noneOf(ConsumerCredentialType.class);
+        if (credential.getApiKeyConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.API_KEY);
+        }
+        if (credential.getHmacConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.HMAC);
+        }
+        if (credential.getJwtConfig() != null) {
+            configuredTypes.add(ConsumerCredentialType.JWT);
+        }
+        if (configuredTypes.isEmpty()) {
+            throw new IllegalArgumentException("Consumer credential config is empty");
+        }
+        if (configuredTypes.size() > 1) {
+            throw new IllegalArgumentException(
+                    "Consumer credential has multiple auth configs, which is not supported");
+        }
+        return configuredTypes.iterator().next();
+    }
+
+    private List<Map<String, Object>> buildApiKeyCredentials(ApiKeyConfig apiKeyConfig) {
+        String source = mapSource(apiKeyConfig.getSource());
+        List<String> apiKeys =
+                apiKeyConfig.getCredentials().stream()
+                        .map(ApiKeyConfig.ApiKeyCredential::getApiKey)
+                        .collect(Collectors.toList());
+
+        return Collections.singletonList(
+                MapBuilder.<String, Object>create()
+                        .put("type", "key-auth")
+                        .put("source", source)
+                        .put("key", apiKeyConfig.getKey())
+                        .put("values", apiKeys)
+                        .build());
+    }
+
+    private List<Map<String, Object>> buildHmacCredentials(HmacConfig hmacConfig) {
+        return hmacConfig.getCredentials().stream()
+                .map(
+                        credential ->
+                                MapBuilder.<String, Object>create()
+                                        .put("type", "hmac-auth")
+                                        .put("access_key", credential.getAk())
+                                        .put("secret_key", credential.getSk())
+                                        .build())
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Object> buildJwtCredential(JwtConfig jwtConfig) {
+        MapBuilder<String, Object> builder =
+                MapBuilder.<String, Object>create()
+                        .put("type", "jwt-auth")
+                        .put("issuer", jwtConfig.getIssuer())
+                        .put("jwks", jwtConfig.getJwks())
+                        .put("clock_skew_seconds", jwtConfig.getClockSkewSeconds())
+                        .put("keep_token", jwtConfig.getKeepToken());
+
+        if (CollUtil.isNotEmpty(jwtConfig.getClaimsToHeaders())) {
+            builder.put(
+                    "claims_to_headers",
+                    jwtConfig.getClaimsToHeaders().stream()
+                            .map(
+                                    item ->
+                                            MapBuilder.<String, Object>create()
+                                                    .put("claim", item.getClaim())
+                                                    .put("header", item.getHeader())
+                                                    .put("override", item.getOverride())
+                                                    .build())
+                            .collect(Collectors.toList()));
+        }
+        if (CollUtil.isNotEmpty(jwtConfig.getFromHeaders())) {
+            builder.put(
+                    "from_headers",
+                    jwtConfig.getFromHeaders().stream()
+                            .map(
+                                    item ->
+                                            MapBuilder.<String, Object>create()
+                                                    .put("name", item.getName())
+                                                    .put("value_prefix", item.getValuePrefix())
+                                                    .build())
+                            .collect(Collectors.toList()));
+        }
+        if (CollUtil.isNotEmpty(jwtConfig.getFromParams())) {
+            builder.put("from_params", jwtConfig.getFromParams());
+        }
+        if (CollUtil.isNotEmpty(jwtConfig.getFromCookies())) {
+            builder.put("from_cookies", jwtConfig.getFromCookies());
+        }
+        return builder.build();
     }
 }

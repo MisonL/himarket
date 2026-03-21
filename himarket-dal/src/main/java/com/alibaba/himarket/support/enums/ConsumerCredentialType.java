@@ -17,28 +17,31 @@
  * under the License.
  */
 
-package com.alibaba.himarket.dto.result.model;
+package com.alibaba.himarket.support.enums;
 
-import com.alibaba.himarket.dto.result.httpapi.HttpRouteResult;
-import com.alibaba.himarket.dto.result.httpapi.ServiceResult;
-import com.alibaba.himarket.support.enums.ConsumerCredentialType;
-import java.util.List;
-import lombok.Builder;
-import lombok.Data;
+import cn.hutool.core.util.StrUtil;
 
-@Data
-public class ModelConfigResult {
+public enum ConsumerCredentialType {
+    API_KEY,
+    HMAC,
+    JWT;
 
-    private ModelAPIConfig modelAPIConfig;
+    public boolean isApiKeyCompatible() {
+        return this == API_KEY;
+    }
 
-    private ConsumerCredentialType requiredCredentialType;
+    public static ConsumerCredentialType fromHigressAuthType(String authType) {
+        if (StrUtil.isBlank(authType)) {
+            return API_KEY;
+        }
 
-    @Data
-    @Builder
-    public static class ModelAPIConfig {
-        private String modelCategory;
-        private List<String> aiProtocols;
-        private List<HttpRouteResult> routes;
-        private List<ServiceResult> services;
+        return switch (authType.trim().toUpperCase()) {
+            case "KEY-AUTH", "API_KEY" -> API_KEY;
+            case "HMAC-AUTH", "HMAC" -> HMAC;
+            case "JWT-AUTH", "JWT" -> JWT;
+            default ->
+                    throw new IllegalArgumentException(
+                            "Unsupported Higress auth type: " + authType);
+        };
     }
 }

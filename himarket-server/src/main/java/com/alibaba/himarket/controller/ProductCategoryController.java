@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "产品类别管理", description = "提供产品类别的创建、更新、删除、查询等管理功能")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/categories")
+@RequestMapping({"/categories", "/product-categories"})
 public class ProductCategoryController {
 
     private final ProductCategoryService productCategoryService;

@@ -20,6 +20,7 @@
 package com.alibaba.himarket.repository;
 
 import com.alibaba.himarket.entity.ConsumerCredential;
+import java.util.List;
 import java.util.Optional;
 
 public interface ConsumerCredentialRepository extends BaseRepository<ConsumerCredential, Long> {
@@ -31,6 +32,8 @@ public interface ConsumerCredentialRepository extends BaseRepository<ConsumerCre
      * @return the consumer credential if found
      */
     Optional<ConsumerCredential> findByConsumerId(String consumerId);
+
+    List<ConsumerCredential> findByConsumerIdIn(List<String> consumerIds);
 
     /**
      * Delete all credentials by consumer ID

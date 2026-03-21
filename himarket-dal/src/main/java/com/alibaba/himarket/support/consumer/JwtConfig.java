@@ -19,7 +19,38 @@
 
 package com.alibaba.himarket.support.consumer;
 
+import java.util.List;
 import lombok.Data;
 
 @Data
-public class JwtConfig {}
+public class JwtConfig {
+
+    private String issuer;
+
+    private String jwks;
+
+    private List<ClaimsToHeader> claimsToHeaders;
+
+    private List<FromHeader> fromHeaders;
+
+    private List<String> fromParams;
+
+    private List<String> fromCookies;
+
+    private Long clockSkewSeconds;
+
+    private Boolean keepToken;
+
+    @Data
+    public static class ClaimsToHeader {
+        private String claim;
+        private String header;
+        private Boolean override;
+    }
+
+    @Data
+    public static class FromHeader {
+        private String name;
+        private String valuePrefix;
+    }
+}
