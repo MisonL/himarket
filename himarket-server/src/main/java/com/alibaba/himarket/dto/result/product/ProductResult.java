@@ -26,6 +26,7 @@ import com.alibaba.himarket.dto.result.httpapi.APIConfigResult;
 import com.alibaba.himarket.dto.result.mcp.MCPConfigResult;
 import com.alibaba.himarket.dto.result.model.ModelConfigResult;
 import com.alibaba.himarket.entity.Product;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.ProductStatus;
 import com.alibaba.himarket.support.enums.ProductType;
 import com.alibaba.himarket.support.product.Icon;
@@ -48,6 +49,8 @@ public class ProductResult implements OutputConverter<ProductResult, Product> {
     private ProductStatus status = ProductStatus.PENDING;
 
     private Boolean enableConsumerAuth = false;
+
+    private ConsumerCredentialType requiredCredentialType;
 
     private ProductType type;
 

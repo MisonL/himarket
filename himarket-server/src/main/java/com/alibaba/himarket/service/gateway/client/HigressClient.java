@@ -23,6 +23,7 @@ import cn.hutool.core.map.MapBuilder;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.support.gateway.HigressConfig;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,8 @@ import org.springframework.web.client.RestTemplate;
 public class HigressClient extends GatewayClient {
 
     private static final String HIGRESS_COOKIE_NAME = "_hi_sess";
+    private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+    private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(30);
 
     private final RestTemplate restTemplate;
     private final HigressConfig config;
@@ -43,7 +46,12 @@ public class HigressClient extends GatewayClient {
 
     public HigressClient(HigressConfig higressConfig) {
         this.config = higressConfig;
-        this.restTemplate = HTTPClientFactory.createRestTemplate();
+        this.restTemplate =
+                HTTPClientFactory.createRestTemplate(
+                        "higress.client.connect-timeout",
+                        DEFAULT_CONNECT_TIMEOUT,
+                        "higress.client.read-timeout",
+                        DEFAULT_READ_TIMEOUT);
     }
 
     public <T, R> T execute(

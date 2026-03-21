@@ -21,6 +21,7 @@ package com.alibaba.himarket.dto.result.consumer;
 
 import com.alibaba.himarket.dto.converter.OutputConverter;
 import com.alibaba.himarket.entity.Consumer;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import java.time.LocalDateTime;
 import lombok.Data;
 
@@ -34,6 +35,8 @@ public class ConsumerResult implements OutputConverter<ConsumerResult, Consumer>
     private String description;
 
     private Boolean isPrimary;
+
+    private ConsumerCredentialType credentialType;
 
     private LocalDateTime createAt;
 }
