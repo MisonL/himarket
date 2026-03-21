@@ -3,7 +3,7 @@
   "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=(cas|cas-saml1|cas1|cas2)(?:&.*)?$",
   "proxyPolicy": {
     "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
-    "pattern": "^http://himarket-server:8080/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
+    "pattern": "^http://(?:himarket-server:8080|172\\.24\\.0\\.11:8080)/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
     "useServiceId": false,
     "exactMatch": false
   },
