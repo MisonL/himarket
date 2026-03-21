@@ -198,6 +198,42 @@ load_auth_harness_env() {
     . "${ENV_FILE}"
     set +a
   fi
+  if [[ -z "${JWT_SECRET:-}" ]]; then
+    local generated_jwt_secret
+    if command -v openssl >/dev/null 2>&1; then
+      generated_jwt_secret="$(openssl rand -hex 32)"
+    else
+      generated_jwt_secret="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)"
+    fi
+
+    python3 - "${ENV_FILE}" "${generated_jwt_secret}" <<'PY'
+import pathlib
+import sys
+
+env_path = pathlib.Path(sys.argv[1])
+value = sys.argv[2]
+
+lines = []
+if env_path.exists():
+    lines = env_path.read_text().splitlines()
+
+updated = False
+result = []
+for line in lines:
+    if line.startswith("JWT_SECRET="):
+        result.append(f"JWT_SECRET={value}")
+        updated = True
+    else:
+        result.append(line)
+
+if not updated:
+    result.append(f"JWT_SECRET={value}")
+
+env_path.write_text("\n".join(result) + "\n")
+PY
+    export JWT_SECRET="${generated_jwt_secret}"
+    log "generated JWT_SECRET in ${ENV_FILE}"
+  fi
 }
 
 init_runtime_context() {
