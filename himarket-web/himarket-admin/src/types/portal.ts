@@ -234,6 +234,7 @@ export interface PortalSettingConfig {
 export interface PortalUiConfig {
   logo: string | null;
   icon: string | null;
+  menuVisibility?: Record<string, boolean> | null;
 }
 
 export interface PortalDomainConfig {
