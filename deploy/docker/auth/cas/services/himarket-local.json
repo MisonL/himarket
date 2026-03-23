@@ -13,7 +13,7 @@
     "ssoEnabled": true,
     "delegatedAuthenticationPolicy": {
       "@class": "org.apereo.cas.services.DefaultRegisteredServiceDelegatedAuthenticationPolicy",
-      "permitUndefined": false,
+      "permitUndefined": true,
       "exclusive": false
     }
   },
