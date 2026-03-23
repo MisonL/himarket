@@ -82,7 +82,7 @@ configure_portal_auth() {
           "validateEndpoint": "http://cas:8080/cas/p3/serviceValidate",
           "validation": { "protocolVersion": "CAS3", "responseFormat": "JSON" },
           "proxy": {
-            "enabled": false,
+            "enabled": true,
             "callbackPath": "http://himarket-server:8080/developers/cas/proxy-callback",
             "targetServicePattern": "^http://localhost:5173/.*$",
             "proxyEndpoint": "http://cas:8080/cas/proxy",

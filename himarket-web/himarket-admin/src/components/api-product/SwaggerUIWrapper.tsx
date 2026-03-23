@@ -12,10 +12,7 @@ const swaggerBundleUrl = new URL(
   "../../../node_modules/swagger-ui-react/swagger-ui-bundle.js",
   import.meta.url
 ).href;
-const swaggerCssUrl = new URL(
-  "../../../node_modules/swagger-ui-react/swagger-ui.css",
-  import.meta.url
-).href;
+const swaggerCssUrl = `${import.meta.env.BASE_URL}vendor/swagger-ui.css`;
 
 interface SwaggerUIBundleConfig {
   spec: unknown;
