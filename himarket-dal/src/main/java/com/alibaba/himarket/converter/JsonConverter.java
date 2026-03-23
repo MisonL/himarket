@@ -29,6 +29,7 @@ import jakarta.persistence.AttributeConverter;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -115,26 +116,32 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
         if (obj.getClass().isArray()) {
             int len = Array.getLength(obj);
             for (int i = 0; i < len; i++) {
-                handleEncryption(Array.get(obj, i), isEncrypt);
+                Object element = Array.get(obj, i);
+                if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
+                    handleEncryption(element, isEncrypt);
+                }
             }
             return;
         }
 
-        if (obj instanceof Iterable<?> iterable) {
-            for (Object element : iterable) {
-                handleEncryption(element, isEncrypt);
+        if (obj instanceof Collection<?> collection) {
+            for (Object element : collection) {
+                if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
+                    handleEncryption(element, isEncrypt);
+                }
             }
             return;
         }
 
         if (obj instanceof Map<?, ?> map) {
             for (Object value : map.values()) {
-                handleEncryption(value, isEncrypt);
+                if (value != null && !ClassUtil.isSimpleValueType(value.getClass())) {
+                    handleEncryption(value, isEncrypt);
+                }
             }
             return;
         }
 
-        // Avoid reflecting JDK internals on Java 17+ (e.g., ArrayList.elementData).
         String className = obj.getClass().getName();
         if (className.startsWith("java.")
                 || className.startsWith("javax.")

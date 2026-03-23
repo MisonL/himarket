@@ -1,44 +1,20 @@
-import React, { useState, useEffect } from "react";
-import {
-  Typography,
-  Button,
-  Modal,
-  Select,
-  message,
-  Popconfirm,
-  Input,
-  Pagination,
-  Spin,
-} from "antd";
-import {
-  ApiOutlined,
-  CheckCircleFilled,
-  ClockCircleFilled,
-  ExclamationCircleFilled,
-  PlusOutlined,
-  RobotOutlined,
-  BulbOutlined,
-} from "@ant-design/icons";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import { Typography, Button, Modal, Select, message, Popconfirm, Input, Pagination, Spin } from "antd";
+import { ApiOutlined, CheckCircleFilled, ClockCircleFilled, ExclamationCircleFilled, PlusOutlined, RobotOutlined, BulbOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
-import {
-  getConsumers,
-  subscribeProduct,
-  unsubscribeProduct,
-  getProductSubscriptions,
-} from "../lib/api";
+import { getConsumers, subscribeProduct, unsubscribeProduct, getProductSubscriptions } from "../lib/api";
 import type { Consumer } from "../types/consumer";
-import type {
-  IMCPConfig,
-  IProductIcon,
-  IAgentConfig,
-} from "../lib/apis/typing";
-import APIs, {
-  getProductSubscriptionStatus,
-  type ISubscription,
-} from "../lib/apis";
+import type { IMCPConfig, IProductIcon, IAgentConfig } from "../lib/apis/typing";
+import APIs, { getProductSubscriptionStatus, type ISubscription } from "../lib/apis";
+import { LoginPrompt } from "./LoginPrompt";
+import { useAuth } from "../hooks/useAuth";
 
 const { Title, Paragraph } = Typography;
 const { Search } = Input;
+
+export interface ProductHeaderHandle {
+  showManageModal: () => void;
+}
 
 interface ProductHeaderProps {
   name: string;
@@ -48,7 +24,8 @@ interface ProductHeaderProps {
   mcpConfig?: IMCPConfig;
   agentConfig?: IAgentConfig;
   updatedAt?: string;
-  productType?: "REST_API" | "MCP_SERVER" | "AGENT_API" | "MODEL_API" | "AGENT_SKILL";
+  productType?: 'REST_API' | 'MCP_SERVER' | 'AGENT_API' | 'MODEL_API' | 'AGENT_SKILL';
+  onSubscriptionStatusChange?: (hasSubscription: boolean) => void;
 }
 
 type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
@@ -66,17 +43,13 @@ const getIconUrl = (icon?: IProductIcon, defaultIcon?: string): string => {
       return icon.value || fallback;
     case "BASE64":
       // 如果value已经包含data URL前缀，直接使用；否则添加前缀
-      return icon.value
-        ? icon.value.startsWith("data:")
-          ? icon.value
-          : `data:image/png;base64,${icon.value}`
-        : fallback;
+      return icon.value ? (icon.value.startsWith('data:') ? icon.value : `data:image/png;base64,${icon.value}`) : fallback;
     default:
       return fallback;
   }
 };
 
-export const ProductHeader: React.FC<ProductHeaderProps> = ({
+export const ProductHeader = forwardRef<ProductHeaderHandle, ProductHeaderProps>(({
   name,
   description,
   icon,
@@ -85,13 +58,20 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
   agentConfig,
   updatedAt,
   productType,
-}) => {
-  const { apiProductId, mcpProductId, agentProductId, modelProductId } =
-    useParams();
+  onSubscriptionStatusChange,
+}, ref) => {
+  const {
+    apiProductId,
+    mcpProductId,
+    agentProductId,
+    modelProductId
+  } = useParams();
 
+  const { isLoggedIn } = useAuth();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [isManageModalVisible, setIsManageModalVisible] = useState(false);
   const [isApplyingSubscription, setIsApplyingSubscription] = useState(false);
-  const [selectedConsumerId, setSelectedConsumerId] = useState<string>("");
+  const [selectedConsumerId, setSelectedConsumerId] = useState<string>('');
   const [consumers, setConsumers] = useState<Consumer[]>([]);
 
   // 分页相关state
@@ -104,8 +84,7 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
 
   // 订阅状态相关的state
-  const [subscriptionStatus, setSubscriptionStatus] =
-    useState<UnwrapPromise<ReturnType<typeof getProductSubscriptionStatus>>>();
+  const [subscriptionStatus, setSubscriptionStatus] = useState<UnwrapPromise<ReturnType<typeof getProductSubscriptionStatus>>>();
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
 
   // 订阅详情分页数据（用于管理弹窗）
@@ -124,22 +103,19 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
   // AGENT_API: 来自 NACOS 时不显示
   // MODEL_API: 始终显示
   // REST_API: 始终显示
-  const isNacosAgent =
-    productType === "AGENT_API" &&
-    agentConfig?.meta?.source?.toUpperCase() === "NACOS";
-  const isNacosMcp =
-    productType === "MCP_SERVER" &&
-    mcpConfig?.meta?.source?.toUpperCase() === "NACOS";
+  const isNacosAgent = productType === 'AGENT_API' &&
+    agentConfig?.meta?.source?.toUpperCase() === 'NACOS';
+  const isNacosMcp = productType === 'MCP_SERVER' &&
+    mcpConfig?.meta?.source?.toUpperCase() === 'NACOS';
 
   const shouldShowSubscribeButton =
-    productType === "MODEL_API" || // MODEL_API: 始终显示
-    productType === "REST_API" || // REST_API: 始终显示
-    (productType === "AGENT_API" && !isNacosAgent) || // AGENT_API: 非 Nacos 时显示
-    (productType === "MCP_SERVER" && !isNacosMcp); // MCP_SERVER: 非 Nacos 时显示
+    productType === 'MODEL_API' ||                      // MODEL_API: 始终显示
+    productType === 'REST_API' ||                       // REST_API: 始终显示
+    (productType === 'AGENT_API' && !isNacosAgent) ||   // AGENT_API: 非 Nacos 时显示
+    (productType === 'MCP_SERVER' && !isNacosMcp);      // MCP_SERVER: 非 Nacos 时显示
 
   // 获取产品ID - 根据产品类型获取正确的参数
-  const productId =
-    apiProductId || mcpProductId || agentProductId || modelProductId || "";
+  const productId = apiProductId || mcpProductId || agentProductId || modelProductId || '';
 
   // 查询订阅状态
   const fetchSubscriptionStatus = React.useCallback(async () => {
@@ -150,17 +126,26 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
       const status = await APIs.getProductSubscriptionStatus(productId);
       setSubscriptionStatus(status);
     } catch (error) {
-      console.error("获取订阅状态失败:", error);
+      console.error('获取订阅状态失败:', error);
     } finally {
       setSubscriptionLoading(false);
     }
   }, [productId, shouldShowSubscribeButton]);
 
+  // 暴露给父组件的方法
+  useImperativeHandle(ref, () => ({
+    showManageModal,
+  }));
+
+  // 订阅状态变化时通知父组件
+  useEffect(() => {
+    if (subscriptionStatus !== undefined && onSubscriptionStatusChange) {
+      onSubscriptionStatusChange(subscriptionStatus.hasSubscription);
+    }
+  }, [subscriptionStatus, onSubscriptionStatusChange]);
+
   // 获取订阅详情（用于管理弹窗）
-  const fetchSubscriptionDetails = async (
-    page: number = 1,
-    search: string = ""
-  ): Promise<void> => {
+  const fetchSubscriptionDetails = async (page: number = 1, search: string = ''): Promise<void> => {
     if (!productId) return Promise.resolve();
 
     setDetailsLoading(true);
@@ -168,17 +153,17 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
       const response = await getProductSubscriptions(productId, {
         consumerName: search.trim() || undefined,
         page: page - 1, // 后端使用0基索引
-        size: pageSize,
+        size: pageSize
       });
 
       setSubscriptionDetails({
         content: response.data.content || [],
         totalElements: response.data.totalElements || 0,
-        totalPages: response.data.totalPages || 0,
+        totalPages: response.data.totalPages || 0
       });
     } catch (error) {
-      console.error("获取订阅详情失败:", error);
-      message.error("获取订阅详情失败，请重试");
+      console.error('获取订阅详情失败:', error);
+      message.error('获取订阅详情失败，请重试');
     } finally {
       setDetailsLoading(false);
     }
@@ -197,7 +182,7 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
         setConsumers(response.data.content || response.data);
       }
     } catch (error) {
-      console.log(error);
+      console.log(error)
       // message.error('获取消费者列表失败');
     } finally {
       setConsumersLoading(false);
@@ -207,38 +192,38 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
   // 开始申请订阅流程
   const startApplyingSubscription = () => {
     setIsApplyingSubscription(true);
-    setSelectedConsumerId("");
+    setSelectedConsumerId('');
     fetchConsumers();
   };
 
   // 取消申请订阅
   const cancelApplyingSubscription = () => {
     setIsApplyingSubscription(false);
-    setSelectedConsumerId("");
+    setSelectedConsumerId('');
   };
 
   // 提交申请订阅
   const handleApplySubscription = async () => {
     if (!selectedConsumerId) {
-      message.warning("请选择消费者");
+      message.warning('请选择消费者');
       return;
     }
 
     try {
       setSubmitLoading(true);
       await subscribeProduct(selectedConsumerId, productId);
-      message.success("申请提交成功");
+      message.success('申请提交成功');
 
       // 重置状态
       setIsApplyingSubscription(false);
-      setSelectedConsumerId("");
+      setSelectedConsumerId('');
 
       // 重新获取订阅状态和详情数据
       await fetchSubscriptionStatus();
-      await fetchSubscriptionDetails(currentPage, "");
+      await fetchSubscriptionDetails(currentPage, '');
     } catch (error) {
-      console.error("申请订阅失败:", error);
-      message.error("申请提交失败，请重试");
+      console.error('申请订阅失败:', error);
+      message.error('申请提交失败，请重试');
     } finally {
       setSubmitLoading(false);
     }
@@ -253,14 +238,14 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
       setSubscriptionDetails({
         content: subscriptionStatus.fullSubscriptionData.content,
         totalElements: subscriptionStatus.fullSubscriptionData.totalElements,
-        totalPages: subscriptionStatus.fullSubscriptionData.totalPages,
+        totalPages: subscriptionStatus.fullSubscriptionData.totalPages
       });
       // 重置分页到第一页
       setCurrentPage(1);
-      setSearchKeyword("");
+      setSearchKeyword('');
     } else {
       // 如果没有缓存数据，则重新获取
-      fetchSubscriptionDetails(1, "");
+      fetchSubscriptionDetails(1, '');
     }
   };
 
@@ -284,20 +269,21 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
 
   // 处理回车键搜索
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
+    if (e.key === 'Enter') {
       handleSearch();
     }
   };
+
 
   // 隐藏管理弹窗
   const handleManageCancel = () => {
     setIsManageModalVisible(false);
     // 重置申请订阅状态
     setIsApplyingSubscription(false);
-    setSelectedConsumerId("");
+    setSelectedConsumerId('');
     // 重置分页和搜索
     setCurrentPage(1);
-    setSearchKeyword("");
+    setSearchKeyword('');
     // 清空订阅详情数据
     setSubscriptionDetails({ content: [], totalElements: 0, totalPages: 0 });
   };
@@ -306,14 +292,14 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
   const handleUnsubscribe = async (consumerId: string) => {
     try {
       await unsubscribeProduct(consumerId, productId);
-      message.success("取消订阅成功");
+      message.success('取消订阅成功');
 
       // 重新获取订阅状态和详情数据
       await fetchSubscriptionStatus();
-      await fetchSubscriptionDetails(currentPage, "");
+      await fetchSubscriptionDetails(currentPage, '');
     } catch (error) {
-      console.error("取消订阅失败:", error);
-      message.error("取消订阅失败，请重试");
+      console.error('取消订阅失败:', error);
+      message.error('取消订阅失败，请重试');
     }
   };
 
@@ -322,14 +308,11 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
       <div className="mb-2">
         {/* 第一行：图标和标题信息 */}
         <div className="flex items-center gap-4 mb-3">
-          {(!icon || imageLoadFailed) &&
-          (productType === "REST_API" ||
-            productType === "AGENT_API" ||
-            productType === "MODEL_API") ? (
+          {(!icon || imageLoadFailed) && (productType === 'REST_API' || productType === 'AGENT_API' || productType === 'MODEL_API') ? (
             <div className="w-16 h-16 rounded-xl flex-shrink-0 flex items-center justify-center bg-gray-50 border border-gray-200">
-              {productType === "REST_API" ? (
+              {productType === 'REST_API' ? (
                 <ApiOutlined className="text-3xl text-black" />
-              ) : productType === "AGENT_API" ? (
+              ) : productType === 'AGENT_API' ? (
                 <RobotOutlined className="text-3xl text-black" />
               ) : (
                 <BulbOutlined className="text-3xl text-black" />
@@ -340,23 +323,15 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
               src={getIconUrl(icon, defaultIcon)}
               alt="icon"
               className="w-16 h-16 rounded-xl object-cover border border-gray-200 flex-shrink-0"
-              onError={e => {
+              onError={(e) => {
                 const target = e.target as HTMLImageElement;
-                if (
-                  productType === "REST_API" ||
-                  productType === "AGENT_API" ||
-                  productType === "MODEL_API"
-                ) {
+                if (productType === 'REST_API' || productType === 'AGENT_API' || productType === 'MODEL_API') {
                   setImageLoadFailed(true);
                 } else {
                   // 确保有一个最终的fallback图片，避免无限循环请求
                   const fallbackIcon = defaultIcon || "/logo.svg";
-                  const currentUrl = new URL(target.src, window.location.href)
-                    .href;
-                  const fallbackUrl = new URL(
-                    fallbackIcon,
-                    window.location.href
-                  ).href;
+                  const currentUrl = new URL(target.src, window.location.href).href;
+                  const fallbackUrl = new URL(fallbackIcon, window.location.href).href;
                   if (currentUrl !== fallbackUrl) {
                     target.src = fallbackIcon;
                   }
@@ -370,14 +345,11 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
             </Title>
             {updatedAt && (
               <div className="text-sm text-gray-400">
-                {new Date(updatedAt)
-                  .toLocaleDateString("zh-CN", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                  })
-                  .replace(/\//g, ".")}{" "}
-                updated
+                {new Date(updatedAt).toLocaleDateString('zh-CN', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                }).replace(/\//g, '.')} updated
               </div>
             )}
           </div>
@@ -391,7 +363,15 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
         {/* 第三行：徽章式订阅状态 + 管理按钮，与左边框对齐 */}
         {shouldShowSubscribeButton && (
           <div className="flex items-center gap-4">
-            {subscriptionLoading ? (
+            {!isLoggedIn ? (
+              <Button
+                type="primary"
+                className="rounded-xl"
+                onClick={() => setLoginPromptOpen(true)}
+              >
+                登录后订阅
+              </Button>
+            ) : subscriptionLoading ? (
               <Button loading>加载中...</Button>
             ) : (
               <>
@@ -400,9 +380,7 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
                   {subscriptionStatus?.hasSubscription ? (
                     <>
                       <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                      <span className="text-sm text-gray-600 font-medium">
-                        已订阅
-                      </span>
+                      <span className="text-sm text-gray-600 font-medium">已订阅</span>
                     </>
                   ) : (
                     <>
@@ -426,6 +404,7 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
         )}
       </div>
 
+
       {/* 订阅管理弹窗 */}
       <Modal
         title="订阅管理"
@@ -435,13 +414,13 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
         width={600}
         styles={{
           header: {
-            borderRadius: "8px 8px 0 0",
+            borderRadius: '8px 8px 0 0',
             marginBottom: 0,
-            paddingBottom: "8px",
+            paddingBottom: '8px'
           },
           body: {
-            padding: "0px",
-          },
+            padding: '0px'
+          }
         }}
       >
         <div className="px-6 py-4">
@@ -472,88 +451,61 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
               <div className="p-8 text-center">
                 <Spin size="large" />
               </div>
-            ) : subscriptionDetails.content &&
-              subscriptionDetails.content.length > 0 ? (
+            ) : subscriptionDetails.content && subscriptionDetails.content.length > 0 ? (
               <>
                 {/* 表格内容 */}
                 <div className="divide-y divide-gray-100">
                   {(searchKeyword.trim()
                     ? subscriptionDetails.content
-                    : subscriptionDetails.content.slice(
-                        (currentPage - 1) * pageSize,
-                        currentPage * pageSize
-                      )
-                  ).map(item => (
-                    <div
-                      key={item.consumerId}
-                      className="flex items-center px-4 py-3 hover:bg-gray-50"
-                    >
-                      {/* 消费者名称 - 40% */}
-                      <div className="flex-1 min-w-0 pr-4">
-                        <span className="text-sm text-gray-700 truncate block">
-                          {item.consumerName}
-                        </span>
-                      </div>
-                      {/* 状态 - 30% */}
-                      <div className="w-24 flex items-center pr-4">
-                        {item.status === "APPROVED" ? (
-                          <>
-                            <CheckCircleFilled
-                              className="text-green-500 mr-1"
-                              style={{ fontSize: "10px" }}
-                            />
-                            <span className="text-xs text-gray-700">
-                              已通过
-                            </span>
-                          </>
-                        ) : item.status === "PENDING" ? (
-                          <>
-                            <ClockCircleFilled
-                              className="text-blue-500 mr-1"
-                              style={{ fontSize: "10px" }}
-                            />
-                            <span className="text-xs text-gray-700">
-                              审核中
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <ExclamationCircleFilled
-                              className="text-red-500 mr-1"
-                              style={{ fontSize: "10px" }}
-                            />
-                            <span className="text-xs text-gray-700">
-                              已拒绝
-                            </span>
-                          </>
-                        )}
-                      </div>
+                    : subscriptionDetails.content.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                  ).map((item) => (
+                      <div key={item.consumerId} className="flex items-center px-4 py-3 hover:bg-gray-50">
+                        {/* 消费者名称 - 40% */}
+                        <div className="flex-1 min-w-0 pr-4">
+                          <span className="text-sm text-gray-700 truncate block">
+                            {item.consumerName}
+                          </span>
+                        </div>
+                        {/* 状态 - 30% */}
+                        <div className="w-24 flex items-center pr-4">
+                          {item.status === 'APPROVED' ? (
+                            <>
+                              <CheckCircleFilled className="text-green-500 mr-1" style={{fontSize: '10px'}} />
+                              <span className="text-xs text-gray-700">已通过</span>
+                            </>
+                          ) : item.status === 'PENDING' ? (
+                            <>
+                              <ClockCircleFilled className="text-blue-500 mr-1" style={{fontSize: '10px'}} />
+                              <span className="text-xs text-gray-700">审核中</span>
+                            </>
+                          ) : (
+                            <>
+                              <ExclamationCircleFilled className="text-red-500 mr-1" style={{fontSize: '10px'}} />
+                              <span className="text-xs text-gray-700">已拒绝</span>
+                            </>
+                          )}
+                        </div>
 
-                      {/* 操作 - 30% */}
-                      <div className="w-20">
-                        <Popconfirm
-                          title="确定要取消订阅吗？"
-                          onConfirm={() => handleUnsubscribe(item.consumerId)}
-                          okText="确认"
-                          cancelText="取消"
-                        >
-                          <Button
-                            type="link"
-                            danger
-                            size="small"
-                            className="p-0"
+                        {/* 操作 - 30% */}
+                        <div className="w-20">
+                          <Popconfirm
+                            title="确定要取消订阅吗？"
+                            onConfirm={() => handleUnsubscribe(item.consumerId)}
+                            okText="确认"
+                            cancelText="取消"
                           >
-                            取消订阅
-                          </Button>
-                        </Popconfirm>
+                            <Button type="link" danger size="small" className="p-0">
+                              取消订阅
+                            </Button>
+                          </Popconfirm>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </>
             ) : (
               <div className="p-8 text-center text-gray-500">
-                {searchKeyword ? "未找到匹配的订阅记录" : "暂无订阅记录"}
+                {searchKeyword ? '未找到匹配的订阅记录' : '暂无订阅记录'}
               </div>
             )}
           </div>
@@ -590,17 +542,15 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
                   }
                   // 无搜索时不需要重新查询，页面大小变化会自动重新渲染
                 }}
-                showTotal={total => `共 ${total} 条`}
-                pageSizeOptions={["5", "10", "20"]}
+                showTotal={(total) => `共 ${total} 条`}
+                pageSizeOptions={['5', '10', '20']}
                 hideOnSinglePage={false}
               />
             </div>
           )}
 
           {/* 申请订阅区域 - 移回底部 */}
-          <div
-            className={`border-t pt-3 ${subscriptionDetails.totalElements > 0 ? "mt-4" : "mt-2"}`}
-          >
+          <div className={`border-t pt-3 ${subscriptionDetails.totalElements > 0 ? 'mt-4' : 'mt-2'}`}>
             <div className="flex justify-end">
               {!isApplyingSubscription ? (
                 <Button
@@ -620,46 +570,34 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
                       </label>
                       <Select
                         placeholder="搜索或选择消费者"
-                        style={{ width: "100%" }}
+                        style={{ width: '100%' }}
                         value={selectedConsumerId}
                         onChange={setSelectedConsumerId}
                         showSearch
                         loading={consumersLoading}
                         filterOption={(input, option) =>
-                          (option?.children as unknown as string)
-                            ?.toLowerCase()
-                            .includes(input.toLowerCase())
+                          (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
                         }
-                        notFoundContent={
-                          consumersLoading ? "加载中..." : "暂无消费者数据"
-                        }
+                        notFoundContent={consumersLoading ? '加载中...' : '暂无消费者数据'}
                       >
                         {consumers
                           .filter(consumer => {
                             // 过滤掉已经订阅的consumer
-                            const isAlreadySubscribed =
-                              subscriptionStatus?.subscribedConsumers?.some(
-                                item =>
-                                  item.consumer.consumerId ===
-                                  consumer.consumerId
-                              );
+                            const isAlreadySubscribed = subscriptionStatus?.subscribedConsumers?.some(
+                              item => item.consumer.consumerId === consumer.consumerId
+                            );
                             return !isAlreadySubscribed;
                           })
                           .map(consumer => (
-                            <Select.Option
-                              key={consumer.consumerId}
-                              value={consumer.consumerId}
-                            >
+                            <Select.Option key={consumer.consumerId} value={consumer.consumerId}>
                               {consumer.name}
                             </Select.Option>
-                          ))}
+                          ))
+                        }
                       </Select>
                     </div>
                     <div className="flex justify-end gap-2">
-                      <Button
-                        className="rounded-xl"
-                        onClick={cancelApplyingSubscription}
-                      >
+                      <Button className="rounded-xl" onClick={cancelApplyingSubscription}>
                         取消
                       </Button>
                       <Button
@@ -679,6 +617,11 @@ export const ProductHeader: React.FC<ProductHeaderProps> = ({
           </div>
         </div>
       </Modal>
+      <LoginPrompt
+        open={loginPromptOpen}
+        onClose={() => setLoginPromptOpen(false)}
+        contextMessage="登录后即可订阅产品，获取 API 访问凭证"
+      />
     </>
   );
-};
+});

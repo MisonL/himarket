@@ -3,23 +3,20 @@ import { useLocation } from "react-router-dom";
 import { message as antdMessage } from "antd";
 import { Layout } from "../components/Layout";
 import { Sidebar } from "../components/chat/Sidebar";
+import { WelcomeView } from "../components/WelcomeView";
+import { LoginPrompt } from "../components/LoginPrompt";
+import { useAuth } from "../hooks/useAuth";
 import { generateConversationId, generateQuestionId } from "../lib/uuid";
-import { handleSSEStream } from "../lib/sse";
-import APIs, {
-  type IProductConversations,
-  type IProductDetail,
-  type IAttachment,
-} from "../lib/apis";
-import type {
-  IModelConversation,
-  IMessageChunk,
-  IMcpToolCall,
-  IMcpToolResponse,
-} from "../types";
+import { handleSSEStream, } from "../lib/sse";
+import APIs, { type IProductConversations, type IProductDetail, type IAttachment } from "../lib/apis";
+import type { IModelConversation, IMessageChunk, IMcpToolCall, IMcpToolResponse } from "../types";
 import { ChatArea } from "../components/chat/Area";
+
 
 function Chat() {
   const location = useLocation();
+  const { isLoggedIn } = useAuth();
+  const [loginPromptOpen, setLoginPromptOpen] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [selectedModel, setSelectedModel] = useState<IProductDetail>();
   const [useStream] = useState(true); // 默认使用流式响应
@@ -27,9 +24,7 @@ function Chat() {
   const [chatType, setChatType] = useState<"TEXT" | "Image">("TEXT");
   // 多模型对比的初始化数据（用于从历史会话加载）
 
-  const [modelConversation, setModelConversation] = useState<
-    IModelConversation[]
-  >([]);
+  const [modelConversation, setModelConversation] = useState<IModelConversation[]>([]);
   const [isMcpExecuting, setIsMcpExecuting] = useState(false);
 
   const [generating, setGenerating] = useState(false);
@@ -62,13 +57,10 @@ function Chat() {
             size: 1,
             ["modelFilter.category"]: chatType,
           });
-          if (
-            response.code === "SUCCESS" &&
-            response.data?.content?.length > 0
-          ) {
+          if (response.code === "SUCCESS" && response.data?.content?.length > 0) {
             setSelectedModel(response.data.content[0]);
           } else {
-            setSelectedModel(undefined);
+             setSelectedModel(undefined);
           }
         } catch (error) {
           console.error("Failed to load default model:", error);
@@ -78,13 +70,7 @@ function Chat() {
     }
   }, [location, chatType]);
 
-  const handleSendMessage = async (
-    content: string,
-    mcps: IProductDetail[],
-    enableWebSearch: boolean,
-    modelMap: Map<string, IProductDetail>,
-    attachments: IAttachment[] = []
-  ) => {
+  const handleSendMessage = async (content: string, mcps: IProductDetail[], enableWebSearch: boolean, modelMap: Map<string, IProductDetail>, attachments: IAttachment[] = []) => {
     if (!selectedModel) {
       antdMessage.error("请先选择一个模型");
       return;
@@ -96,11 +82,8 @@ function Chat() {
       if (!sessionId) {
         const sessionResponse = await APIs.createSession({
           talkType: "MODEL",
-          name:
-            content.length > 20 ? content.substring(0, 20) + "..." : content, // 只在超过20个字符时添加省略号
-          products: modelConversation.length
-            ? modelConversation.map(v => v.id)
-            : [selectedModel.productId],
+          name: content.length > 20 ? content.substring(0, 20) + "..." : content, // 只在超过20个字符时添加省略号
+          products: modelConversation.length ? modelConversation.map(v => v.id) : [selectedModel.productId],
         });
 
         if (sessionResponse.code === "SUCCESS") {
@@ -118,25 +101,23 @@ function Chat() {
       const conversationId = generateConversationId();
       const questionId = generateQuestionId();
 
+
       // 发送消息（sessionId 已确保不为 null）
       if (!sessionId) {
         throw new Error("会话ID不存在");
       }
 
-      const modelIds = modelConversation.length
-        ? modelConversation.map(model => model.id)
-        : [selectedModel.productId];
+      const modelIds = modelConversation.length ? modelConversation.map(model => model.id) : [selectedModel.productId];
       // const modelInsts = modelIds.map(id => modelMap.get(id));
 
       // 清除之前的 AbortController
       abortControllersRef.current = [];
 
-      const requests = modelIds.map(async modelId => {
+      const requests = modelIds.map(async (modelId) => {
         const abortController = new AbortController();
         abortControllersRef.current.push(abortController);
 
-        const isSupport =
-          modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
+        const isSupport = modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
         const messagePayload = {
           productId: modelId,
           sessionId,
@@ -150,7 +131,7 @@ function Chat() {
           attachments: attachments.map(a => ({ attachmentId: a.attachmentId })),
         };
 
-        let fullContent = "";
+        let fullContent = '';
 
         setModelConversation(prev => {
           if (prev.length === 0) {
@@ -178,14 +159,14 @@ function Chat() {
                             totalTime: 0,
                             inputTokens: 0,
                             outputTokens: 0,
-                          },
-                        ],
-                      },
-                    ],
-                  },
-                ],
-              },
-            ];
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           }
           return prev.map(model => {
             if (model.id !== modelId) return model;
@@ -211,33 +192,34 @@ function Chat() {
                           totalTime: 0,
                           inputTokens: 0,
                           outputTokens: 0,
-                        },
+                        }
                       ],
-                    },
-                  ],
-                },
-              ],
-            };
-          });
-        });
+                    }
+                  ]
+                }
+              ]
+            }
+          })
+        })
+
 
         const streamUrl = APIs.getChatMessageStreamUrl();
-        const accessToken = localStorage.getItem("access_token");
+        const accessToken = localStorage.getItem('access_token');
 
         await handleSSEStream(
           streamUrl,
           {
-            method: "POST",
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
-              Authorization: accessToken ? `Bearer ${accessToken}` : "",
+              'Content-Type': 'application/json',
+              'Authorization': accessToken ? `Bearer ${accessToken}` : '',
             },
             body: JSON.stringify(messagePayload),
           },
           {
-            onToolCall: toolCall => {
+            onToolCall: (toolCall) => {
               setIsMcpExecuting(true);
-              setModelConversation(prev => {
+              setModelConversation((prev) => {
                 return prev.map(model => {
                   if (model.id !== modelId) return model;
                   return {
@@ -251,32 +233,26 @@ function Chat() {
                             // 创建 tool_call chunk
                             const toolCallChunk: IMessageChunk = {
                               id: `chunk-tc-${toolCall.id}`,
-                              type: "tool_call",
-                              toolCall: toolCall,
+                              type: 'tool_call',
+                              toolCall: toolCall
                             };
                             return {
                               ...question,
-                              mcpToolCalls: [
-                                ...(question.mcpToolCalls || []),
-                                toolCall,
-                              ],
-                              messageChunks: [
-                                ...(question.messageChunks || []),
-                                toolCallChunk,
-                              ],
+                              mcpToolCalls: [...(question.mcpToolCalls || []), toolCall],
+                              messageChunks: [...(question.messageChunks || []), toolCallChunk]
                             };
                           }
                           return question;
-                        }),
+                        })
                       };
-                    }),
+                    })
                   };
                 });
               });
             },
-            onToolResponse: toolResponse => {
+            onToolResponse: (toolResponse) => {
               setIsMcpExecuting(false);
-              setModelConversation(prev => {
+              setModelConversation((prev) => {
                 return prev.map(model => {
                   if (model.id !== modelId) return model;
                   return {
@@ -290,32 +266,26 @@ function Chat() {
                             // 创建 tool_result chunk
                             const toolResultChunk: IMessageChunk = {
                               id: `chunk-tr-${toolResponse.id}`,
-                              type: "tool_result",
-                              toolResult: toolResponse,
+                              type: 'tool_result',
+                              toolResult: toolResponse
                             };
                             return {
                               ...question,
-                              mcpToolResponses: [
-                                ...(question.mcpToolResponses || []),
-                                toolResponse,
-                              ],
-                              messageChunks: [
-                                ...(question.messageChunks || []),
-                                toolResultChunk,
-                              ],
+                              mcpToolResponses: [...(question.mcpToolResponses || []), toolResponse],
+                              messageChunks: [...(question.messageChunks || []), toolResultChunk]
                             };
                           }
                           return question;
-                        }),
+                        })
                       };
-                    }),
+                    })
                   };
                 });
               });
             },
-            onChunk: chunk => {
+            onChunk: (chunk) => {
               fullContent += chunk;
-              setModelConversation(prev => {
+              setModelConversation((prev) => {
                 return prev.map(model => {
                   if (model.id !== modelId) return model;
                   return {
@@ -331,23 +301,20 @@ function Chat() {
                             const lastChunk = chunks[chunks.length - 1];
                             let newChunks: IMessageChunk[];
 
-                            if (lastChunk && lastChunk.type === "text") {
+                            if (lastChunk && lastChunk.type === 'text') {
                               // 追加到最后一个 text chunk
                               newChunks = chunks.map((c, i) =>
                                 i === chunks.length - 1
-                                  ? { ...c, content: (c.content || "") + chunk }
+                                  ? { ...c, content: (c.content || '') + chunk }
                                   : c
                               );
                             } else {
                               // 创建新的 text chunk
-                              newChunks = [
-                                ...chunks,
-                                {
-                                  id: `chunk-text-${Date.now()}`,
-                                  type: "text" as const,
-                                  content: chunk,
-                                },
-                              ];
+                              newChunks = [...chunks, {
+                                id: `chunk-text-${Date.now()}`,
+                                type: 'text' as const,
+                                content: chunk
+                              }];
                             }
 
                             return {
@@ -361,22 +328,22 @@ function Chat() {
                                   totalTime: 0,
                                   inputTokens: 0,
                                   outputTokens: 0,
-                                },
-                              ],
-                            };
+                                }
+                              ]
+                            }
                           } else {
-                            return question;
+                            return question
                           }
-                        }),
-                      };
-                    }),
-                  };
-                });
-              });
+                        })
+                      }
+                    })
+                  }
+                })
+              })
             },
             onComplete: (_content, _chatId, usage) => {
               setIsMcpExecuting(false);
-              setModelConversation(prev => {
+              setModelConversation((prev) => {
                 return prev.map(model => {
                   if (model.id !== modelId) return model;
                   return {
@@ -396,22 +363,22 @@ function Chat() {
                                   totalTime: usage?.elapsedTime || 0,
                                   inputTokens: usage?.inputTokens || 0,
                                   outputTokens: usage?.outputTokens || 0,
-                                },
-                              ],
-                            };
+                                }
+                              ]
+                            }
                           } else {
-                            return question;
+                            return question
                           }
-                        }),
-                      };
-                    }),
-                  };
-                });
-              });
+                        })
+                      }
+                    })
+                  }
+                })
+              })
             },
-            onError: errorMsg => {
+            onError: (errorMsg) => {
               setIsMcpExecuting(false);
-              setModelConversation(prev => {
+              setModelConversation((prev) => {
                 return prev.map(model => {
                   if (model.id !== modelId) return model;
                   return {
@@ -432,18 +399,18 @@ function Chat() {
                                   totalTime: 0,
                                   inputTokens: 0,
                                   outputTokens: 0,
-                                },
-                              ],
-                            };
+                                }
+                              ]
+                            }
                           } else {
-                            return question;
+                            return question
                           }
-                        }),
-                      };
-                    }),
-                  };
-                });
-              });
+                        })
+                      }
+                    })
+                  }
+                })
+              })
             },
           },
           abortController.signal
@@ -455,8 +422,9 @@ function Chat() {
       await Promise.allSettled(requests);
       setGenerating(false);
       abortControllersRef.current = [];
+
     } catch (error) {
-      setModelConversation(prev => {
+      setModelConversation((prev) => {
         return prev.map(model => {
           return {
             ...model,
@@ -476,17 +444,17 @@ function Chat() {
                           totalTime: 0,
                           inputTokens: 0,
                           outputTokens: 0,
-                        },
-                      ],
-                    };
+                        }
+                      ]
+                    }
                   } else {
-                    return question;
+                    return question
                   }
-                }),
-              };
-            }),
-          };
-        });
+                })
+              }
+            })
+          }
+        })
       });
       setGenerating(false);
       console.error("Failed to send message:", error);
@@ -495,23 +463,12 @@ function Chat() {
 
   // 重新生成答案
   const handleGenerateMessage = async ({
-    modelId,
-    conversationId,
-    questionId,
-    content,
-    mcps,
-    enableWebSearch,
-    modelMap,
-    attachments = [],
+    modelId, conversationId, questionId, content,
+    mcps, enableWebSearch, modelMap, attachments = []
   }: {
-    modelId: string;
-    conversationId: string;
-    questionId: string;
-    content: string;
-    mcps: IProductDetail[];
-    enableWebSearch: boolean;
-    modelMap: Map<string, IProductDetail>;
-    attachments?: IAttachment[];
+    modelId: string, conversationId: string, questionId: string, content: string,
+    mcps: IProductDetail[], enableWebSearch: boolean, modelMap: Map<string, IProductDetail>,
+    attachments?: IAttachment[]
   }) => {
     setGenerating(true);
 
@@ -519,22 +476,18 @@ function Chat() {
     const abortController = new AbortController();
     abortControllersRef.current = [abortController];
 
-    const isSupportWebSearch =
-      modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
+    const isSupportWebSearch = modelMap.get(modelId)?.feature?.modelFeature?.webSearch || false;
     try {
       const messagePayload = {
-        productId: modelId,
-        sessionId: currentSessionId,
-        conversationId,
-        questionId,
-        question: content,
-        stream: true,
+        productId: modelId, sessionId: currentSessionId,
+        conversationId, questionId,
+        question: content, stream: true,
         needMemory: true,
         mcpProducts: mcps.map(mcp => mcp.productId),
         enableWebSearch: enableWebSearch ? isSupportWebSearch : false,
         attachments: attachments.map(a => ({ attachmentId: a.attachmentId })),
       };
-      let fullContent = "";
+      let fullContent = '';
       let lastIdx = -1;
 
       // 加载 loading
@@ -547,266 +500,249 @@ function Chat() {
               return {
                 ...con,
                 loading: con.id === conversationId,
-                questions: con.questions.map(question => ({
-                  ...question,
-                  isNewQuestion:
-                    question.id === questionId ? true : question.isNewQuestion,
-                })),
+                questions: con.questions.map(question => (
+                  {
+                    ...question,
+                    isNewQuestion: question.id === questionId ? true : question.isNewQuestion
+                  }
+                ))
               };
-            }),
-          };
-        });
-      });
+            })
+          }
+        })
+      })
 
       const streamUrl = APIs.getChatMessageStreamUrl();
-      const accessToken = localStorage.getItem("access_token");
+      const accessToken = localStorage.getItem('access_token');
+
 
       await handleSSEStream(
         streamUrl,
         {
-          method: "POST",
+          method: 'POST',
           headers: {
-            "Content-Type": "application/json",
-            Authorization: accessToken ? `Bearer ${accessToken}` : "",
+            'Content-Type': 'application/json',
+            'Authorization': accessToken ? `Bearer ${accessToken}` : '',
           },
           body: JSON.stringify(messagePayload),
+        }, {
+        onToolCall: (toolCall) => {
+          setIsMcpExecuting(true);
+          setModelConversation((prev) => {
+            return prev.map(model => {
+              if (model.id !== modelId) return model;
+              return {
+                ...model,
+                conversations: model.conversations.map(con => {
+                  if (con.id !== conversationId) return con;
+                  return {
+                    ...con,
+                    questions: con.questions.map(question => {
+                      if (question.id === questionId) {
+                        // 创建 tool_call chunk
+                        const toolCallChunk: IMessageChunk = {
+                          id: `chunk-tc-${toolCall.id}`,
+                          type: 'tool_call',
+                          toolCall: toolCall
+                        };
+                        return {
+                          ...question,
+                          mcpToolCalls: [...(question.mcpToolCalls || []), toolCall],
+                          messageChunks: [...(question.messageChunks || []), toolCallChunk]
+                        };
+                      }
+                      return question;
+                    })
+                  };
+                })
+              };
+            });
+          });
         },
-        {
-          onToolCall: toolCall => {
-            setIsMcpExecuting(true);
-            setModelConversation(prev => {
-              return prev.map(model => {
-                if (model.id !== modelId) return model;
-                return {
-                  ...model,
-                  conversations: model.conversations.map(con => {
-                    if (con.id !== conversationId) return con;
-                    return {
-                      ...con,
-                      questions: con.questions.map(question => {
-                        if (question.id === questionId) {
-                          // 创建 tool_call chunk
-                          const toolCallChunk: IMessageChunk = {
-                            id: `chunk-tc-${toolCall.id}`,
-                            type: "tool_call",
-                            toolCall: toolCall,
-                          };
-                          return {
-                            ...question,
-                            mcpToolCalls: [
-                              ...(question.mcpToolCalls || []),
-                              toolCall,
-                            ],
-                            messageChunks: [
-                              ...(question.messageChunks || []),
-                              toolCallChunk,
-                            ],
-                          };
-                        }
-                        return question;
-                      }),
-                    };
-                  }),
-                };
-              });
-            });
-          },
-          onToolResponse: toolResponse => {
-            setIsMcpExecuting(false);
-            setModelConversation(prev => {
-              return prev.map(model => {
-                if (model.id !== modelId) return model;
-                return {
-                  ...model,
-                  conversations: model.conversations.map(con => {
-                    if (con.id !== conversationId) return con;
-                    return {
-                      ...con,
-                      questions: con.questions.map(question => {
-                        if (question.id === questionId) {
-                          // 创建 tool_result chunk
-                          const toolResultChunk: IMessageChunk = {
-                            id: `chunk-tr-${toolResponse.id}`,
-                            type: "tool_result",
-                            toolResult: toolResponse,
-                          };
-                          return {
-                            ...question,
-                            mcpToolResponses: [
-                              ...(question.mcpToolResponses || []),
-                              toolResponse,
-                            ],
-                            messageChunks: [
-                              ...(question.messageChunks || []),
-                              toolResultChunk,
-                            ],
-                          };
-                        }
-                        return question;
-                      }),
-                    };
-                  }),
-                };
-              });
-            });
-          },
-          onChunk: chunk => {
-            fullContent += chunk;
-            setModelConversation(prev => {
-              return prev.map(model => {
-                if (model.id !== modelId) return model;
-                return {
-                  ...model,
-                  conversations: model.conversations.map(con => {
-                    if (con.id !== conversationId) return con;
-                    return {
-                      ...con,
-                      loading: false,
-                      questions: con.questions.map(question => {
-                        if (question.id !== questionId) return question;
-
-                        // 更新 messageChunks：合并或创建 text chunk
-                        const chunks = question.messageChunks || [];
-                        const lastChunk = chunks[chunks.length - 1];
-                        let newChunks: IMessageChunk[];
-
-                        if (lastChunk && lastChunk.type === "text") {
-                          // 追加到最后一个 text chunk
-                          newChunks = chunks.map((c, i) =>
-                            i === chunks.length - 1
-                              ? { ...c, content: (c.content || "") + chunk }
-                              : c
-                          );
-                        } else {
-                          // 创建新的 text chunk
-                          newChunks = [
-                            ...chunks,
-                            {
-                              id: `chunk-text-${Date.now()}`,
-                              type: "text" as const,
-                              content: chunk,
-                            },
-                          ];
-                        }
-
-                        const ans =
-                          lastIdx !== -1
-                            ? question.answers.map((answer, idx) => {
-                                if (idx !== question.answers.length - 1)
-                                  return answer;
-                                return {
-                                  ...answer,
-                                  content: fullContent,
-                                };
-                              })
-                            : [
-                                ...question.answers,
-                                {
-                                  errorMsg: "",
-                                  content: fullContent,
-                                  firstTokenTime: 0,
-                                  totalTime: 0,
-                                  inputTokens: 0,
-                                  outputTokens: 0,
-                                },
-                              ];
-                        if (lastIdx === -1) {
-                          lastIdx = question.answers.length + 1;
-                        }
-                        return {
-                          ...question,
-                          messageChunks: newChunks,
-                          activeAnswerIndex: ans.length - 1,
-                          answers: ans,
+        onToolResponse: (toolResponse) => {
+          setIsMcpExecuting(false);
+          setModelConversation((prev) => {
+            return prev.map(model => {
+              if (model.id !== modelId) return model;
+              return {
+                ...model,
+                conversations: model.conversations.map(con => {
+                  if (con.id !== conversationId) return con;
+                  return {
+                    ...con,
+                    questions: con.questions.map(question => {
+                      if (question.id === questionId) {
+                        // 创建 tool_result chunk
+                        const toolResultChunk: IMessageChunk = {
+                          id: `chunk-tr-${toolResponse.id}`,
+                          type: 'tool_result',
+                          toolResult: toolResponse
                         };
-                      }),
-                    };
-                  }),
-                };
-              });
-            });
-          },
-          onComplete: (_content, _chatId, usage) => {
-            setIsMcpExecuting(false);
-            setModelConversation(prev => {
-              return prev.map(model => {
-                if (model.id !== modelId) return model;
-                return {
-                  ...model,
-                  conversations: model.conversations.map(con => {
-                    if (con.id !== conversationId) return con;
-                    return {
-                      ...con,
-                      loading: false,
-                      questions: con.questions.map(question => {
-                        if (question.id !== questionId) return question;
                         return {
                           ...question,
-                          activeAnswerIndex: question.answers.length - 1,
-                          answers: question.answers.map((answer, idx) => {
-                            if (idx === question.answers.length - 1) {
-                              return {
-                                errorMsg: answer.errorMsg,
-                                content: fullContent,
-                                firstTokenTime: usage?.firstByteTimeout || 0,
-                                totalTime: usage?.elapsedTime || 0,
-                                inputTokens: usage?.inputTokens || 0,
-                                outputTokens: usage?.outputTokens || 0,
-                              };
-                            }
-                            return answer;
-                          }),
+                          mcpToolResponses: [...(question.mcpToolResponses || []), toolResponse],
+                          messageChunks: [...(question.messageChunks || []), toolResultChunk]
                         };
-                      }),
-                    };
-                  }),
-                };
-              });
+                      }
+                      return question;
+                    })
+                  };
+                })
+              };
             });
-            setGenerating(false);
-          },
-          onError: errorMsg => {
-            setIsMcpExecuting(false);
-            setModelConversation(prev => {
-              return prev.map(model => {
-                return {
-                  ...model,
-                  conversations: model.conversations.map(con => {
-                    if (con.id !== conversationId) return con;
-                    return {
-                      ...con,
-                      loading: false,
-                      questions: con.questions.map(question => {
-                        if (question.id !== questionId) return question;
+          });
+        },
+        onChunk: (chunk) => {
+          fullContent += chunk;
+          setModelConversation((prev) => {
+            return prev.map(model => {
+              if (model.id !== modelId) return model;
+              return {
+                ...model,
+                conversations: model.conversations.map(con => {
+                  if (con.id !== conversationId) return con;
+                  return {
+                    ...con,
+                    loading: false,
+                    questions: con.questions.map(question => {
+                      if (question.id !== questionId) return question;
+
+                      // 更新 messageChunks：合并或创建 text chunk
+                      const chunks = question.messageChunks || [];
+                      const lastChunk = chunks[chunks.length - 1];
+                      let newChunks: IMessageChunk[];
+
+                      if (lastChunk && lastChunk.type === 'text') {
+                        // 追加到最后一个 text chunk
+                        newChunks = chunks.map((c, i) =>
+                          i === chunks.length - 1
+                            ? { ...c, content: (c.content || '') + chunk }
+                            : c
+                        );
+                      } else {
+                        // 创建新的 text chunk
+                        newChunks = [...chunks, {
+                          id: `chunk-text-${Date.now()}`,
+                          type: 'text' as const,
+                          content: chunk
+                        }];
+                      }
+
+                      const ans = lastIdx !== -1 ? question.answers.map((answer, idx) => {
+                        if (idx !== question.answers.length - 1) return answer;
                         return {
-                          ...question,
-                          answers: [
-                            ...question.answers,
-                            {
-                              errorMsg,
+                          ...answer,
+                          content: fullContent,
+                        }
+                      }) : [
+                        ...question.answers,
+                        {
+                          errorMsg: "",
+                          content: fullContent,
+                          firstTokenTime: 0,
+                          totalTime: 0,
+                          inputTokens: 0,
+                          outputTokens: 0,
+                        }
+                      ]
+                      if (lastIdx === -1) {
+                        lastIdx = question.answers.length + 1;
+                      }
+                      return {
+                        ...question,
+                        messageChunks: newChunks,
+                        activeAnswerIndex: ans.length - 1,
+                        answers: ans
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          })
+        },
+        onComplete: (_content, _chatId, usage) => {
+          setIsMcpExecuting(false);
+          setModelConversation((prev) => {
+            return prev.map(model => {
+              if (model.id !== modelId) return model;
+              return {
+                ...model,
+                conversations: model.conversations.map(con => {
+                  if (con.id !== conversationId) return con;
+                  return {
+                    ...con,
+                    loading: false,
+                    questions: con.questions.map(question => {
+                      if (question.id !== questionId) return question;
+                      return {
+                        ...question,
+                        activeAnswerIndex: question.answers.length - 1,
+                        answers: question.answers.map((answer, idx) => {
+                          if (idx === question.answers.length - 1) {
+                            return {
+                              errorMsg: answer.errorMsg,
                               content: fullContent,
-                              firstTokenTime: 0,
-                              totalTime: 0,
-                              inputTokens: 0,
-                              outputTokens: 0,
-                            },
-                          ],
-                        };
-                      }),
-                    };
-                  }),
-                };
-              });
-            });
-            setGenerating(false);
-          },
+                              firstTokenTime: usage?.firstByteTimeout || 0,
+                              totalTime: usage?.elapsedTime || 0,
+                              inputTokens: usage?.inputTokens || 0,
+                              outputTokens: usage?.outputTokens || 0,
+                            }
+                          }
+                          return answer;
+                        })
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          });
+          setGenerating(false);
         },
-        abortController.signal
-      );
+        onError: (errorMsg) => {
+          setIsMcpExecuting(false);
+          setModelConversation((prev) => {
+            return prev.map(model => {
+              return {
+                ...model,
+                conversations: model.conversations.map(con => {
+                  if (con.id !== conversationId) return con;
+                  return {
+                    ...con,
+                    loading: false,
+                    questions: con.questions.map(question => {
+                      if (question.id !== questionId) return question;
+                      return {
+                        ...question,
+                        answers: [
+                          ...question.answers,
+                          {
+                            errorMsg,
+                            content: fullContent,
+                            firstTokenTime: 0,
+                            totalTime: 0,
+                            inputTokens: 0,
+                            outputTokens: 0,
+                          }
+                        ]
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          });
+          setGenerating(false)
+        }
+      },
+      abortController.signal
+      )
     } catch (error) {
       setGenerating(false);
-      console.error("Failed to generate message:", error);
+      console.error("Failed to generate message:", error)
     }
+
   };
 
   const handleNewChat = () => {
@@ -822,49 +758,40 @@ function Chat() {
     setModelConversation([]);
   };
 
-  const onChangeActiveAnswer = (
-    modelId: string,
-    conversationId: string,
-    questionId: string,
-    direction: "prev" | "next"
-  ) => {
-    setModelConversation(prev =>
-      prev.map(model => {
-        if (model.id === modelId) {
-          return {
-            ...model,
-            conversations: model.conversations.map(conversation => {
-              if (conversation.id === conversationId) {
-                return {
-                  ...conversation,
-                  questions: conversation.questions.map(question => {
-                    if (question.id === questionId) {
-                      let newIndex = question.activeAnswerIndex;
-                      if (direction === "prev" && newIndex > 0) {
-                        newIndex = newIndex - 1;
-                      } else if (
-                        direction === "next" &&
-                        newIndex < question.answers.length - 1
-                      ) {
-                        newIndex = newIndex + 1;
-                      }
-                      return {
-                        ...question,
-                        activeAnswerIndex: newIndex,
-                      };
+  const onChangeActiveAnswer = (modelId: string, conversationId: string, questionId: string, direction: 'prev' | 'next') => {
+    setModelConversation(prev => prev.map(model => {
+      if (model.id === modelId) {
+        return {
+          ...model,
+          conversations: model.conversations.map(conversation => {
+            if (conversation.id === conversationId) {
+              return {
+                ...conversation,
+                questions: conversation.questions.map(question => {
+                  if (question.id === questionId) {
+                    let newIndex = question.activeAnswerIndex;
+                    if (direction === 'prev' && newIndex > 0) {
+                      newIndex = newIndex - 1;
+                    } else if (direction === 'next' && newIndex < question.answers.length - 1) {
+                      newIndex = newIndex + 1;
                     }
-                    return question;
-                  }),
-                };
-              }
-              return conversation;
-            }),
-          };
-        }
-        return model;
-      })
-    );
-  };
+                    return {
+                      ...question,
+                      activeAnswerIndex: newIndex,
+                    };
+                  }
+                  return question;
+                }),
+              };
+            }
+            return conversation;
+          }),
+        };
+      }
+      return model;
+    }));
+  }
+
 
   // 加载会话的历史聊天记录
   const handleSelectSession = async (sessionId: string) => {
@@ -904,10 +831,7 @@ function Chat() {
                     id: tc.id,
                     type: "function",
                     name: tc.name,
-                    arguments:
-                      typeof tc.arguments === "string"
-                        ? tc.arguments
-                        : JSON.stringify(tc.arguments),
+                    arguments: typeof tc.arguments === 'string' ? tc.arguments : JSON.stringify(tc.arguments),
                     mcpServerName: tc.mcpServerName,
                   }));
 
@@ -926,12 +850,8 @@ function Chat() {
                     activeAnswerIndex,
                     isNewQuestion: false,
                     attachments: question.attachments,
-                    mcpToolCalls:
-                      mcpToolCalls.length > 0 ? mcpToolCalls : undefined,
-                    mcpToolResponses:
-                      mcpToolResponses.length > 0
-                        ? mcpToolResponses
-                        : undefined,
+                    mcpToolCalls: mcpToolCalls.length > 0 ? mcpToolCalls : undefined,
+                    mcpToolResponses: mcpToolResponses.length > 0 ? mcpToolResponses : undefined,
                     answers: question.answers.map(answer => {
                       return {
                         errorMsg: "",
@@ -941,14 +861,14 @@ function Chat() {
                         totalTime: answer.usage?.elapsedTime || 0,
                         inputTokens: answer.usage?.inputTokens || 0,
                         outputTokens: answer.usage?.outputTokens || 0,
-                      };
-                    }),
-                  };
-                }),
-              };
-            }),
-          };
-        });
+                      }
+                    })
+                  }
+                })
+              }
+            })
+          }
+        })
         setModelConversation(m);
         // setGenerating(false)
         return;
@@ -976,9 +896,9 @@ function Chat() {
             id,
             name: "",
             conversations: [],
-          };
+          }
         }),
-      ]);
+      ])
     } else {
       setModelConversation(prev => {
         return [
@@ -988,7 +908,7 @@ function Chat() {
               id: model.id,
               name: "",
               conversations: [],
-            };
+            }
           }),
           ...modelIds.map(id => {
             return {
@@ -996,49 +916,61 @@ function Chat() {
               id,
               name: "",
               conversations: [],
-            };
+            }
           }),
-        ];
-      });
+        ]
+      })
     }
-  };
+  }
 
   const closeModel = (modelId: string) => {
     setModelConversation(prev => {
       return prev.filter(model => model.id !== modelId);
-    });
-  };
+    })
+  }
+
 
   return (
     <Layout>
-      <div className="flex h-[calc(100vh-96px)] bg-transparent">
-        <Sidebar
-          currentSessionId={currentSessionId}
-          onNewChat={handleNewChat}
-          onSelectSession={handleSelectSession}
-          refreshTrigger={sidebarRefreshTrigger}
-          selectedType={chatType}
-          onSelectType={type => {
-            setChatType(type);
-            handleNewChat();
-          }}
-        />
-        <ChatArea
-          isMcpExecuting={isMcpExecuting}
-          modelConversations={modelConversation}
-          currentSessionId={currentSessionId}
-          onChangeActiveAnswer={onChangeActiveAnswer}
-          onSendMessage={handleSendMessage}
-          onSelectProduct={handleSelectProduct}
-          selectedModel={selectedModel}
-          handleGenerateMessage={handleGenerateMessage}
-          addModels={addModels}
-          closeModel={closeModel}
-          generating={generating}
-          chatType={chatType}
-          onStop={handleStop}
-        />
-      </div>
+      {!isLoggedIn ? (
+        <>
+          <WelcomeView type="chat" />
+          <LoginPrompt
+            open={loginPromptOpen}
+            onClose={() => setLoginPromptOpen(false)}
+            contextMessage="登录后即可与 AI 模型对话，体验智能问答能力"
+          />
+        </>
+      ) : (
+        <div className="flex h-[calc(100vh-96px)] bg-transparent">
+          <Sidebar
+            currentSessionId={currentSessionId}
+            onNewChat={handleNewChat}
+            onSelectSession={handleSelectSession}
+            refreshTrigger={sidebarRefreshTrigger}
+            selectedType={chatType}
+            onSelectType={(type) => {
+              setChatType(type);
+              handleNewChat();
+            }}
+          />
+          <ChatArea
+            isMcpExecuting={isMcpExecuting}
+            modelConversations={modelConversation}
+            currentSessionId={currentSessionId}
+            onChangeActiveAnswer={onChangeActiveAnswer}
+            onSendMessage={handleSendMessage}
+            onSelectProduct={handleSelectProduct}
+            selectedModel={selectedModel}
+            handleGenerateMessage={handleGenerateMessage}
+            addModels={addModels}
+            closeModel={closeModel}
+            generating={generating}
+            chatType={chatType}
+            onStop={handleStop}
+          />
+        </div>
+      )}
     </Layout>
   );
 }
