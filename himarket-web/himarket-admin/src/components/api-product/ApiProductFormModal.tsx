@@ -68,15 +68,15 @@ export default function ApiProductFormModal({
     if (isEditMode && initialData && initialData.name) {
       // 延迟设置表单值，确保表单组件已完全渲染
       setTimeout(() => {
-        form.setFieldsValue({
-          name: initialData.name,
-          description: initialData.description,
-          type: initialData.type,
-          autoApprove: initialData.autoApprove,
-          feature: initialData.feature,
-          skillConfig: initialData.skillConfig,
-        });
-      }, 300);
+      form.setFieldsValue({
+        name: initialData.name,
+        description: initialData.description,
+        type: initialData.type,
+        autoApprove: initialData.autoApprove,
+        feature: initialData.feature,
+        skillConfig: initialData.skillConfig,
+      });
+    }, 300);
 
       // 处理 icon 字段
       if (initialData.icon) {

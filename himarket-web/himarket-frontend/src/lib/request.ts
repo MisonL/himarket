@@ -13,14 +13,23 @@ export interface RespI<T> {
   data: T;
 }
 
-/** Public page paths that allow anonymous access — 401/403 errors are silently ignored */
-const PUBLIC_PATHS = ['/models', '/mcp', '/agents', '/apis', '/skills', '/chat', '/coding', '/quest'];
+const PUBLIC_PATHS = [
+  "/models",
+  "/mcp",
+  "/agents",
+  "/apis",
+  "/skills",
+  "/chat",
+  "/coding",
+  "/quest",
+];
 
-/** Check if current page is a public page that allows anonymous browsing */
 function isPublicPage(): boolean {
   const pathname = window.location.pathname;
-  if (pathname === '/') return true;
-  return PUBLIC_PATHS.some(path => pathname === path || pathname.startsWith(path + '/'));
+  if (pathname === "/") return true;
+  return PUBLIC_PATHS.some(
+    path => pathname === path || pathname.startsWith(`${path}/`)
+  );
 }
 
 const request: AxiosInstance = axios.create({
@@ -32,14 +41,13 @@ const request: AxiosInstance = axios.create({
   withCredentials: true,
   paramsSerializer: params => {
     return qs.stringify(params, {
-      arrayFormat: "repeat", // 数组格式: ids=1&ids=2（而不是 ids[]=1）
-      skipNulls: true, // 跳过 null 和 undefined 值
-      encode: true, // 确保特殊字符被正确编码
+      arrayFormat: "repeat",
+      skipNulls: true,
+      encode: true,
     });
   },
 });
 
-// 请求拦截器
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const accessToken = localStorage.getItem("access_token");
@@ -54,18 +62,15 @@ request.interceptors.request.use(
   }
 );
 
-// 响应拦截器
 request.interceptors.response.use(
   (response: AxiosResponse) => {
     return response.data;
   },
   error => {
     const status = error.response?.status;
-
     switch (status) {
       case 401:
         if (isPublicPage()) {
-          // 公开页面静默处理，不跳转、不清除 Token
           break;
         }
         message.error("未登录或登录已过期，请重新登录");

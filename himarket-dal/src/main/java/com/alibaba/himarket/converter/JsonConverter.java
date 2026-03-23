@@ -32,7 +32,9 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public abstract class JsonConverter<T> implements AttributeConverter<T, String> {
 
     /**
@@ -114,15 +116,16 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
         if (obj.getClass().isArray()) {
             int len = Array.getLength(obj);
             for (int i = 0; i < len; i++) {
-                handleEncryption(Array.get(obj, i), isEncrypt);
+                Object element = Array.get(obj, i);
+                if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
+                    handleEncryption(element, isEncrypt);
+                }
             }
             return;
         }
 
-        // Process Collection elements directly to avoid StackOverflowError caused by
-        // circular references in JDK collection internals (e.g. LinkedHashMap.Entry.before/after)
-        if (obj instanceof Collection<?>) {
-            for (Object element : (Collection<?>) obj) {
+        if (obj instanceof Collection<?> collection) {
+            for (Object element : collection) {
                 if (element != null && !ClassUtil.isSimpleValueType(element.getClass())) {
                     handleEncryption(element, isEncrypt);
                 }
@@ -139,7 +142,6 @@ public abstract class JsonConverter<T> implements AttributeConverter<T, String> 
             return;
         }
 
-        // Avoid reflecting JDK internals on Java 17+ (e.g., ArrayList.elementData).
         String className = obj.getClass().getName();
         if (className.startsWith("java.")
                 || className.startsWith("javax.")
