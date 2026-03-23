@@ -19,7 +19,6 @@ const APIs = {
 };
 export default APIs;
 
-// 也可以单独导出，方便按需引入
 export * from "./product";
 export * from "./consumer";
 export * from "./developer";

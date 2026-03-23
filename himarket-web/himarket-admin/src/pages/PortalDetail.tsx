@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { Button, Dropdown, MenuProps, Spin, Modal, message } from "antd";
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Button, Dropdown, MenuProps, Spin, Modal, message } from 'antd'
 import {
   MoreOutlined,
   LeftOutlined,
@@ -9,50 +9,50 @@ import {
   TeamOutlined,
   SafetyOutlined,
   CloudOutlined,
-  AppstoreOutlined,
-} from "@ant-design/icons";
-import { PortalOverview } from "@/components/portal/PortalOverview";
-import { PortalPublishedApis } from "@/components/portal/PortalPublishedApis";
-import { PortalDevelopers } from "@/components/portal/PortalDevelopers";
-import { PortalConsumers } from "@/components/portal/PortalConsumers";
-import { PortalDashboard } from "@/components/portal/PortalDashboard";
-import { PortalSecurity } from "@/components/portal/PortalSecurity";
-import { PortalDomain } from "@/components/portal/PortalDomain";
-import { PortalMenuSettings } from "@/components/portal/PortalMenuSettings";
-import PortalFormModal from "@/components/portal/PortalFormModal";
-import { portalApi } from "@/lib/api";
-import { Portal } from "@/types";
+  AppstoreOutlined
+} from '@ant-design/icons'
+import { PortalOverview } from '@/components/portal/PortalOverview'
+import { PortalPublishedApis } from '@/components/portal/PortalPublishedApis'
+import { PortalDevelopers } from '@/components/portal/PortalDevelopers'
+import { PortalConsumers } from '@/components/portal/PortalConsumers'
+import { PortalDashboard } from '@/components/portal/PortalDashboard'
+import { PortalSecurity } from '@/components/portal/PortalSecurity'
+import { PortalDomain } from '@/components/portal/PortalDomain'
+import { PortalMenuSettings } from '@/components/portal/PortalMenuSettings'
+import PortalFormModal from '@/components/portal/PortalFormModal'
+import { portalApi } from '@/lib/api'
+import { Portal } from '@/types'
 
 const menuItems = [
   {
     key: "overview",
     label: "Overview",
     icon: EyeOutlined,
-    description: "Portal概览",
+    description: "Portal概览"
   },
   {
     key: "published-apis",
     label: "Products",
     icon: ApiOutlined,
-    description: "已发布的API产品",
+    description: "已发布的API产品"
   },
   {
     key: "developers",
     label: "Developers",
     icon: TeamOutlined,
-    description: "开发者管理",
+    description: "开发者管理"
   },
   {
     key: "security",
     label: "Security",
     icon: SafetyOutlined,
-    description: "安全设置",
+    description: "安全设置"
   },
   {
     key: "domain",
     label: "Domain",
     icon: CloudOutlined,
-    description: "域名管理",
+    description: "域名管理"
   },
   {
     key: "menu",
@@ -72,92 +72,91 @@ const menuItems = [
   //   icon: DashboardOutlined,
   //   description: "监控面板"
   // }
-];
+]
 
 export default function PortalDetail() {
-  const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [portal, setPortal] = useState<Portal | null>(null);
-  const [loading, setLoading] = useState(true); // 初始状态为 loading
-  const [error, setError] = useState<string | null>(null);
-  const [editModalVisible, setEditModalVisible] = useState(false);
+  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [portal, setPortal] = useState<Portal | null>(null)
+  const [loading, setLoading] = useState(true) // 初始状态为 loading
+  const [error, setError] = useState<string | null>(null)
+  const [editModalVisible, setEditModalVisible] = useState(false)
 
   // 从URL查询参数获取当前tab，默认为overview
-  const currentTab = searchParams.get("tab") || "overview";
+  const currentTab = searchParams.get('tab') || 'overview'
 
   const fetchPortalData = async () => {
     try {
-      setLoading(true);
-      const portalId =
-        searchParams.get("id") || "portal-6882e06f4fd0c963020e3485";
-      const response = (await portalApi.getPortalDetail(portalId)) as any;
-      if (response && response.code === "SUCCESS") {
-        setPortal(response.data);
+      setLoading(true)
+      const portalId = searchParams.get('id') || 'portal-6882e06f4fd0c963020e3485'
+      const response = await portalApi.getPortalDetail(portalId) as any
+      if (response && response.code === 'SUCCESS') {
+        setPortal(response.data)
       } else {
-        setError(response?.message || "获取Portal信息失败");
+        setError(response?.message || '获取Portal信息失败')
       }
     } catch (err) {
-      console.error("获取Portal信息失败:", err);
-      setError("获取Portal信息失败");
+      console.error('获取Portal信息失败:', err)
+      setError('获取Portal信息失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   useEffect(() => {
-    fetchPortalData();
-  }, []);
+    fetchPortalData()
+  }, [])
 
   const handleBackToPortals = () => {
-    navigate("/portals");
-  };
+    navigate('/portals')
+  }
 
   // 处理tab切换，同时更新URL查询参数
   const handleTabChange = (tabKey: string) => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.set("tab", tabKey);
-    setSearchParams(newSearchParams);
-  };
+    const newSearchParams = new URLSearchParams(searchParams)
+    newSearchParams.set('tab', tabKey)
+    setSearchParams(newSearchParams)
+  }
 
   const handleEdit = () => {
-    setEditModalVisible(true);
-  };
+    setEditModalVisible(true)
+  }
 
   const handleEditSuccess = () => {
-    setEditModalVisible(false);
-    fetchPortalData();
-  };
+    setEditModalVisible(false)
+    fetchPortalData()
+  }
 
   const handleEditCancel = () => {
-    setEditModalVisible(false);
-  };
+    setEditModalVisible(false)
+  }
 
   const renderContent = () => {
-    if (!portal) return null;
+    if (!portal) return null
 
     switch (currentTab) {
       case "overview":
-        return <PortalOverview portal={portal} onEdit={handleEdit} />;
+        return <PortalOverview portal={portal} onEdit={handleEdit} />
       case "published-apis":
-        return <PortalPublishedApis portal={portal} />;
+        return <PortalPublishedApis portal={portal} />
       case "developers":
-        return <PortalDevelopers portal={portal} />;
+        return <PortalDevelopers portal={portal} />
       case "security":
-        return <PortalSecurity portal={portal} onRefresh={fetchPortalData} />;
+        return <PortalSecurity portal={portal} onRefresh={fetchPortalData} />
       case "domain":
-        return <PortalDomain portal={portal} onRefresh={fetchPortalData} />;
+        return <PortalDomain portal={portal} onRefresh={fetchPortalData} />
       case "menu":
-        return <PortalMenuSettings portal={portal} onRefresh={fetchPortalData} />;
+        return <PortalMenuSettings portal={portal} onRefresh={fetchPortalData} />
       case "consumers":
-        return <PortalConsumers portal={portal} />;
+        return <PortalConsumers portal={portal} />
       case "dashboard":
-        return <PortalDashboard portal={portal} />;
+        return <PortalDashboard portal={portal} />
       default:
-        return <PortalOverview portal={portal} onEdit={handleEdit} />;
+        return <PortalOverview portal={portal} onEdit={handleEdit} />
     }
-  };
+  }
 
-  const dropdownItems: MenuProps["items"] = [
+  const dropdownItems: MenuProps['items'] = [
     {
       key: "delete",
       label: "删除",
@@ -172,36 +171,27 @@ export default function PortalDetail() {
         });
       },
     },
-  ];
+  ]
   const handleDeletePortal = () => {
-    return portalApi
-      .deletePortal(searchParams.get("id") || "")
-      .then(() => {
-        message.success("删除成功");
-        navigate("/portals");
-      })
-      .catch(error => {
-        message.error(error?.response?.data?.message || "删除失败，请稍后重试");
-        throw error; // 重新抛出错误，让Modal保持loading状态
-      });
-  };
+    return portalApi.deletePortal(searchParams.get('id') || '').then(() => {
+      message.success('删除成功')
+      navigate('/portals')
+    }).catch((error) => {
+      message.error(error?.response?.data?.message || '删除失败，请稍后重试')
+      throw error; // 重新抛出错误，让Modal保持loading状态
+    })
+  }
 
   if (error || !portal) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
-          {error && (
-            <>
-              <p className=" mb-4">{error || "Portal信息不存在"}</p>
-              <Button onClick={() => navigate("/portals")}>
-                返回Portal列表
-              </Button>
-            </>
-          )}
+          {error && <><p className=" mb-4">{error || 'Portal信息不存在'}</p>
+          <Button onClick={() => navigate('/portals')}>返回Portal列表</Button></>}
           {!error && <Spin fullscreen spinning={loading} />}
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -224,8 +214,8 @@ export default function PortalDetail() {
         {/* Portal 信息 */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
-            <p className="font-medium text-sm mb-0">{portal.name}</p>
-            <Dropdown menu={{ items: dropdownItems }} trigger={["click"]}>
+            <p className='font-medium text-sm mb-0'>{portal.name}</p>
+            <Dropdown menu={{ items: dropdownItems }} trigger={['click']}>
               <Button type="text" icon={<MoreOutlined />} size="small" />
             </Dropdown>
           </div>
@@ -233,8 +223,8 @@ export default function PortalDetail() {
 
         {/* 导航菜单 */}
         <nav className="flex-1 p-4 space-y-2">
-          {menuItems.map(item => {
-            const Icon = item.icon;
+          {menuItems.map((item) => {
+            const Icon = item.icon
             return (
               <button
                 key={item.key}
@@ -248,18 +238,18 @@ export default function PortalDetail() {
                 <Icon className="h-4 w-4 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="font-medium">{item.label}</div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {item.description}
-                  </div>
+                  <div className="text-xs text-gray-500 mt-1">{item.description}</div>
                 </div>
               </button>
-            );
+            )
           })}
         </nav>
       </div>
 
       {/* 主内容区域 */}
-      <div className="flex-1 overflow-auto">{renderContent()}</div>
+      <div className="flex-1 overflow-auto">
+      {renderContent()}
+      </div>
 
       {portal && (
         <PortalFormModal
@@ -270,5 +260,5 @@ export default function PortalDetail() {
         />
       )}
     </div>
-  );
+  )
 }
