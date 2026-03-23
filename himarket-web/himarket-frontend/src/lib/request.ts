@@ -13,6 +13,25 @@ export interface RespI<T> {
   data: T;
 }
 
+const PUBLIC_PATHS = [
+  "/models",
+  "/mcp",
+  "/agents",
+  "/apis",
+  "/skills",
+  "/chat",
+  "/coding",
+  "/quest",
+];
+
+function isPublicPage(): boolean {
+  const pathname = window.location.pathname;
+  if (pathname === "/") return true;
+  return PUBLIC_PATHS.some(
+    path => pathname === path || pathname.startsWith(`${path}/`)
+  );
+}
+
 const request: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 10000,
@@ -22,14 +41,13 @@ const request: AxiosInstance = axios.create({
   withCredentials: true,
   paramsSerializer: params => {
     return qs.stringify(params, {
-      arrayFormat: "repeat", // 数组格式: ids=1&ids=2（而不是 ids[]=1）
-      skipNulls: true, // 跳过 null 和 undefined 值
-      encode: true, // 确保特殊字符被正确编码
+      arrayFormat: "repeat",
+      skipNulls: true,
+      encode: true,
     });
   },
 });
 
-// 请求拦截器
 request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const accessToken = localStorage.getItem("access_token");
@@ -44,7 +62,6 @@ request.interceptors.request.use(
   }
 );
 
-// 响应拦截器
 request.interceptors.response.use(
   (response: AxiosResponse) => {
     return response.data;
@@ -53,11 +70,12 @@ request.interceptors.response.use(
     const status = error.response?.status;
     switch (status) {
       case 401:
+        if (isPublicPage()) {
+          break;
+        }
         message.error("未登录或登录已过期，请重新登录");
-        // 清除token信息
         localStorage.removeItem("access_token");
         if (window.location.pathname !== "/login") {
-          // 将当前页面路径作为returnUrl参数传递给登录页
           const returnUrl = encodeURIComponent(
             window.location.pathname +
               window.location.search +
@@ -67,10 +85,11 @@ request.interceptors.response.use(
         }
         break;
       case 403:
-        // 清除token信息
+        if (isPublicPage()) {
+          break;
+        }
         localStorage.removeItem("access_token");
         if (window.location.pathname !== "/login") {
-          // 将当前页面路径作为returnUrl参数传递给登录页
           const returnUrl = encodeURIComponent(
             window.location.pathname +
               window.location.search +
