@@ -61,6 +61,16 @@ public class ContextHolder {
         throw new AuthenticationCredentialsNotFoundException("User ID not found in authentication");
     }
 
+    public String getCurrentTokenDigest() {
+        Authentication authentication = getAuthenticationFromContext();
+        Object credentials = authentication.getCredentials();
+        if (credentials instanceof String tokenDigest) {
+            return tokenDigest;
+        }
+        throw new AuthenticationCredentialsNotFoundException(
+                "Token digest not found in authentication");
+    }
+
     /**
      * Get current user type
      *
