@@ -128,7 +128,8 @@ User login configuration:
 + Username/Password Login: Traditional username and password method (enabled by default)
 + OIDC / CAS Login: Supports third-party identity authentication (such as enterprise SSO)
 + **Zero-Touch Config**: Supports one-click configuration via `.env` file for faster deployment.
-+ **Advanced UX**: Integrated live search in security settings to quickly filter parameters.+ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
++ **Advanced UX**: Integrated live search in security settings to quickly filter parameters.
++ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
 + **CAS Attribute Synchronization**: Supports automatic synchronization of developer `email` and `display_name` attributes from the CAS Server to ensure real-time identity consistency.
 
 ### Security
@@ -145,7 +146,7 @@ HiMarket supports multiple authentication methods to adapt to different enterpri
 *   **Enterprise Integration**: Supports integration with Active Directory or standard LDAP servers.
 *   **Auto Provisioning**: When a user logs in via LDAP for the first time, HiMarket automatically creates a developer account based on LDAP attributes.
 *   **Configuration**: Supports `serverUrl`, `baseDn`, `bindDn`, and custom `userSearchFilter`.
-    - **Single Logout (SLO)**: Supports SAML LogoutRequest to ensure prompt local logout when IdP sessions terminate.
+*   **Single Logout (SLO)**: Supports SAML LogoutRequest to ensure prompt local logout when IdP sessions terminate.
 
 Approval process configuration:
 

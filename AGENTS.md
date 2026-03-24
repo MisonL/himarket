@@ -43,6 +43,7 @@ CAS behavior can be tuned via `application.yml` or environment variables:
 - `auth.cas.login-code-ttl`: Expiration for the temporary login code (default `60s`).
 - `auth.cas.session-lease-buffer`: Buffer subtracted from CAS ticket expiration to set local token TTL (default `5m`). Ensure this is aligned with CAS server session expiration policies.
 - `auth.cas.max-sessions-per-user`: Maximum active CAS sessions allowed per developer (default `10`).
+- `auth.cas.remember-me-token-ttl`: Local token TTL used when CAS returns `longTermAuthenticationRequestTokenUsed=true` (default `14d`).
 - Remember Me: Enabled when `longTermAuthenticationRequestTokenUsed=true` is present in the CAS ticket validation response.
 ### LDAP Configuration Reference
 LDAP settings can be managed via the Admin UI or `application.yml`:
