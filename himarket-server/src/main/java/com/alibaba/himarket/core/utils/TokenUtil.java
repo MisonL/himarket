@@ -45,7 +45,8 @@ import java.util.regex.Pattern;
 
 public class TokenUtil {
 
-    private static final Pattern SHORT_DURATION_PATTERN = Pattern.compile("\\d+[smhd]");
+    private static final Pattern SHORT_DURATION_PATTERN =
+            Pattern.compile("\\d+[smhd]", Pattern.CASE_INSENSITIVE);
 
     private static String getJwtSecret() {
         String jwtSecret = resolveProperty("jwt.secret");
