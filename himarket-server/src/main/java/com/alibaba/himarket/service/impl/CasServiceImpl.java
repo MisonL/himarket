@@ -120,10 +120,11 @@ public class CasServiceImpl implements CasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String developerId = createOrGetDeveloper(userInfo, config);
-        long expirationPolicy =
-                Convert.toLong(
-                        userInfo.get("longTermAuthenticationRequestTokenUsed"),
-                        IdpConstants.DEFAULT_EXPIRATION_MILLIS);
+        long expirationPolicy = IdpConstants.DEFAULT_EXPIRATION_MILLIS;
+        if (cn.hutool.core.convert.Convert.toBool(
+                userInfo.get("longTermAuthenticationRequestTokenUsed"), false)) {
+            expirationPolicy = 14 * IdpConstants.DEFAULT_EXPIRATION_MILLIS;
+        }
 
         String code =
                 issueLoginCode(
@@ -163,11 +164,14 @@ public class CasServiceImpl implements CasService {
 
         // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
-        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
+        if (loginContext.getTokenExpiresIn() != null) {
+            maxSafetyExpiresIn = loginContext.getTokenExpiresIn();
+        }
+
+        java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn =
-                    Math.max(0, IdpConstants.SECONDS_PER_DAY - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn = Math.max(0, maxSafetyExpiresIn - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 
@@ -430,6 +434,7 @@ public class CasServiceImpl implements CasService {
         context.setUserId(developerId);
         context.setSessionIndex(sessionIndex);
         context.setProxyGrantingTicketIou(proxyGrantingTicketIou);
+        context.setTokenExpiresIn(lease.toSeconds());
 
         authSessionStore.saveCasLoginContext(code, context, lease);
         return code;

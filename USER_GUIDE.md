@@ -131,6 +131,22 @@ User login configuration:
 + **Advanced UX**: Integrated live search in security settings to quickly filter parameters.+ LDAP Authentication: Supports integration with Active Directory or standard LDAP servers for auto-provisioning.
 + **CAS Attribute Synchronization**: Supports automatic synchronization of developer `email` and `display_name` attributes from the CAS Server to ensure real-time identity consistency.
 
+### Security
+
+HiMarket supports multiple authentication methods to adapt to different enterprise integration needs:
+
+#### CAS Single Sign-On (SSO)
+*   **Remember Me**: When checked on the CAS login page, HiMarket follows the CAS Server's long-term session policy (up to 14 days).
+*   **Dynamic Attribute Sync**: Automatically synchronizes the user's `displayName` and `email` from CAS attributes on every login.
+*   **Single Logout (SLO)**: Supports SAML and CAS format Back-channel logout requests.
+*   **Multi-value Attribute Parsing**: Fully supports parsing multi-value attributes in SAML responses.
+
+#### LDAP Authentication
+*   **Enterprise Integration**: Supports integration with Active Directory or standard LDAP servers.
+*   **Auto Provisioning**: When a user logs in via LDAP for the first time, HiMarket automatically creates a developer account based on LDAP attributes.
+*   **Configuration**: Supports `serverUrl`, `baseDn`, `bindDn`, and custom `userSearchFilter`.
+    - **Single Logout (SLO)**: Supports SAML LogoutRequest to ensure prompt local logout when IdP sessions terminate.
+
 Approval process configuration:
 
 + Developer Registration Approval: Choose whether to automatically approve developer registration applications

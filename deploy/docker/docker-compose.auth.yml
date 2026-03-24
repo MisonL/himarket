@@ -5,7 +5,7 @@ networks:
 services:
   cas:
     image: ${CAS_IMAGE:-apereo/cas:7.0.0}
-    platform: ${CAS_PLATFORM:-linux/arm64}
+    platform: ${CAS_PLATFORM:-linux/amd64}
     container_name: himarket-cas
     entrypoint:
       - sh
