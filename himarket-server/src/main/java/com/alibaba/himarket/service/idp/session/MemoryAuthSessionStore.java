@@ -22,9 +22,11 @@ package com.alibaba.himarket.service.idp.session;
 import com.alibaba.himarket.core.utils.TokenUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 public class MemoryAuthSessionStore implements AuthSessionStore {
 
@@ -38,13 +40,18 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
     private final Map<String, SessionArtifacts> sessionArtifacts = new ConcurrentHashMap<>();
 
-    private final Map<String, String> tokenSessions = new ConcurrentHashMap<>();
+    private final Cache<String, TokenSessionBinding> tokenSessions;
 
     public MemoryAuthSessionStore(Duration loginCodeTtl) {
         this.loginCodes =
                 Caffeine.newBuilder().expireAfterWrite(loginCodeTtl).maximumSize(10000).build();
         this.proxyGrantingTickets =
                 Caffeine.newBuilder().expireAfterWrite(loginCodeTtl).maximumSize(10000).build();
+        this.tokenSessions =
+                Caffeine.newBuilder()
+                        .expireAfter(new TokenSessionExpiry())
+                        .maximumSize(10000)
+                        .build();
     }
 
     @Override
@@ -67,8 +74,9 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
                 sessionArtifacts.computeIfAbsent(
                         sessionKey, ignored -> new SessionArtifacts(userId));
         String tokenDigest = TokenUtil.getTokenDigest(token);
-        bucket.addToken(tokenDigest, TokenUtil.getTokenExpireTime(token));
-        tokenSessions.put(tokenDigest, sessionKey);
+        long expireAt = TokenUtil.getTokenExpireTime(token);
+        bucket.addToken(tokenDigest, expireAt);
+        tokenSessions.put(tokenDigest, new TokenSessionBinding(sessionKey, expireAt));
 
         userSessions
                 .computeIfAbsent(userKey, ignored -> ConcurrentHashMap.newKeySet())
@@ -94,10 +102,10 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
         int revoked = 0;
         for (Map.Entry<String, Long> entry : bucket.snapshot().entrySet()) {
-            tokenSessions.remove(entry.getKey());
             revokeTokenDigest(entry.getKey(), entry.getValue());
             revoked++;
         }
+        bucket.snapshotTokenDigests().forEach(tokenSessions::invalidate);
         return revoked;
     }
 
@@ -173,8 +181,12 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
     @Override
     public String getCasProxyGrantingTicket(
             CasSessionScope scope, String provider, String userId, String tokenDigest) {
-        String sessionKey = tokenSessions.get(tokenDigest);
-        if (sessionKey == null || !sessionKey.startsWith(scope.name() + ":")) {
+        TokenSessionBinding binding = tokenSessions.getIfPresent(tokenDigest);
+        if (binding == null) {
+            return null;
+        }
+        String sessionKey = binding.getSessionKey();
+        if (!sessionKey.startsWith(scope.name() + ":")) {
             return null;
         }
         SessionArtifacts artifacts = sessionArtifacts.get(sessionKey);
@@ -257,12 +269,64 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
             return Map.copyOf(tokens);
         }
 
+        private java.util.Set<String> snapshotTokenDigests() {
+            return java.util.Set.copyOf(tokens.keySet());
+        }
+
         private void addProxyGrantingTicket(String provider, String pgtId) {
             proxyGrantingTickets.put(provider, pgtId);
         }
 
         private String getProxyGrantingTicket(String provider) {
             return proxyGrantingTickets.get(provider);
+        }
+    }
+
+    private static final class TokenSessionBinding {
+
+        private final String sessionKey;
+
+        private final long expireAt;
+
+        private TokenSessionBinding(String sessionKey, long expireAt) {
+            this.sessionKey = sessionKey;
+            this.expireAt = expireAt;
+        }
+
+        private String getSessionKey() {
+            return sessionKey;
+        }
+
+        private long getExpireAt() {
+            return expireAt;
+        }
+    }
+
+    private static final class TokenSessionExpiry implements Expiry<String, TokenSessionBinding> {
+
+        @Override
+        public long expireAfterCreate(String key, TokenSessionBinding value, long currentTime) {
+            return remainingNanos(value.getExpireAt());
+        }
+
+        @Override
+        public long expireAfterUpdate(
+                String key, TokenSessionBinding value, long currentTime, long currentDuration) {
+            return remainingNanos(value.getExpireAt());
+        }
+
+        @Override
+        public long expireAfterRead(
+                String key, TokenSessionBinding value, long currentTime, long currentDuration) {
+            return currentDuration;
+        }
+
+        private long remainingNanos(long expireAt) {
+            long remainingMillis = expireAt - System.currentTimeMillis();
+            if (remainingMillis <= 0) {
+                return 0;
+            }
+            return TimeUnit.MILLISECONDS.toNanos(remainingMillis);
         }
     }
 }

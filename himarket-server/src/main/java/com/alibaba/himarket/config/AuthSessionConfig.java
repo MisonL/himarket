@@ -88,7 +88,7 @@ public class AuthSessionConfig {
         }
 
         public Duration getRememberMeTokenTtl() {
-            return rememberMeTokenTtl;
+            return rememberMeTokenTtl == null ? Duration.ofDays(14) : rememberMeTokenTtl;
         }
 
         public void setRememberMeTokenTtl(Duration rememberMeTokenTtl) {
