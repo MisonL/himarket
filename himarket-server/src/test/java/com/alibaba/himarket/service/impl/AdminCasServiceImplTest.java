@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
@@ -28,7 +29,6 @@ import com.alibaba.himarket.config.AdminAuthConfig;
 import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
-import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.entity.Administrator;
 import com.alibaba.himarket.repository.AdministratorRepository;
@@ -64,7 +64,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class AdminCasServiceImplTest {
@@ -80,8 +79,8 @@ class AdminCasServiceImplTest {
         if (server != null) {
             server.stop(0);
         }
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", null);
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 0L);
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -114,8 +113,8 @@ class AdminCasServiceImplTest {
         when(administratorRepository.findByUsername("admin"))
                 .thenReturn(Optional.of(administrator));
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "admin-cas-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "admin-cas-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -312,7 +311,7 @@ class AdminCasServiceImplTest {
         server.createContext(
                 "/cas/p3/serviceValidate",
                 new ValidateHandler(
-                        expectedServiceHolder, expectedPgtUrlHolder, "admin", "PGTIOU-1"));
+                        expectedServiceHolder, null, expectedPgtUrlHolder, "admin", "PGTIOU-1"));
         server.createContext("/cas/proxy", new ProxyHandler("PGT-ADMIN-1", "PT-ADMIN-1"));
         server.start();
 
@@ -341,8 +340,8 @@ class AdminCasServiceImplTest {
                 .thenReturn(Optional.of(administrator));
         when(contextHolder.getUser()).thenReturn("admin-1");
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "admin-cas-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "admin-cas-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -434,6 +433,81 @@ class AdminCasServiceImplTest {
                 () -> service.issueProxyTicket("cas", "https://forbidden.example.com/service"));
     }
 
+    @Test
+    void exchangeCodeShouldKeepLatestAdminSessionsWithinConfiguredLimit() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        String[] expectedTicketHolder = new String[1];
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new ValidateHandler(
+                        expectedServiceHolder, expectedTicketHolder, new String[1], "admin", null));
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        casConfig.setIdentityMapping(identityMapping());
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com/");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        Administrator administrator =
+                Administrator.builder()
+                        .adminId("admin-1")
+                        .username("admin")
+                        .passwordHash("x")
+                        .build();
+        when(administratorRepository.findByUsername("admin"))
+                .thenReturn(Optional.of(administrator));
+
+        System.setProperty("jwt.secret", "admin-cas-secret");
+        System.setProperty("jwt.expiration", "3600000");
+
+        AuthSessionConfig authSessionConfig = new AuthSessionConfig();
+        authSessionConfig.getCas().setMaxSessionsPerUser(2);
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(authSessionConfig.getCas().getLoginCodeTtl());
+        AdminCasServiceImpl service =
+                new AdminCasServiceImpl(
+                        adminAuthConfig,
+                        authSessionConfig,
+                        administratorRepository,
+                        contextHolder,
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
+                                adminAuthConfig),
+                        new IdpStateCodec());
+
+        String token1 =
+                loginAdmin(service, expectedServiceHolder, expectedTicketHolder, "ST-ADMIN-1");
+        String token2 =
+                loginAdmin(service, expectedServiceHolder, expectedTicketHolder, "ST-ADMIN-2");
+        String token3 =
+                loginAdmin(service, expectedServiceHolder, expectedTicketHolder, "ST-ADMIN-3");
+
+        assertEquals(
+                0,
+                authSessionStore.revokeOverflowUserSessions(
+                        com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                        "admin-1",
+                        2));
+        assertEquals(true, authSessionStore.isTokenRevoked(token1));
+        assertFalse(authSessionStore.isTokenRevoked(token2));
+        assertFalse(authSessionStore.isTokenRevoked(token3));
+    }
+
     private IdentityMapping identityMapping() {
         IdentityMapping identityMapping = new IdentityMapping();
         identityMapping.setUserIdField("user");
@@ -464,22 +538,47 @@ class AdminCasServiceImplTest {
                 + "</samlp:LogoutRequest>";
     }
 
+    private String loginAdmin(
+            AdminCasServiceImpl service,
+            String[] expectedServiceHolder,
+            String[] expectedTicketHolder,
+            String ticket)
+            throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setScheme("http");
+        request.setServerName("ignored.local");
+        request.setServerPort(server.getAddress().getPort());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        var authorizeResult = service.buildAuthorizationResult("cas", "/api/v1", null, request);
+        String state = authorizeResult.getState();
+        expectedServiceHolder[0] = buildServiceUrl(authorizeResult);
+        expectedTicketHolder[0] = ticket;
+        request.setCookies(new Cookie(IdpConstants.ADMIN_CAS_STATE_COOKIE_NAME, state));
+        String redirectUrl = service.handleCallback(ticket, state, request, response);
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+        return service.exchangeCode(code).getAccessToken();
+    }
+
     private static class ValidateHandler implements HttpHandler {
 
         private final String[] expectedServiceHolder;
 
+        private final String[] expectedTicketHolder;
+
         private final String[] expectedPgtUrlHolder;
 
         private ValidateHandler(String[] expectedServiceHolder, String user) {
-            this(expectedServiceHolder, new String[1], user, null);
+            this(expectedServiceHolder, null, new String[1], user, null);
         }
 
         private ValidateHandler(
                 String[] expectedServiceHolder,
+                String[] expectedTicketHolder,
                 String[] expectedPgtUrlHolder,
                 String user,
                 String pgtIou) {
             this.expectedServiceHolder = expectedServiceHolder;
+            this.expectedTicketHolder = expectedTicketHolder;
             this.expectedPgtUrlHolder = expectedPgtUrlHolder;
             this.user = user;
             this.pgtIou = pgtIou;
@@ -495,7 +594,9 @@ class AdminCasServiceImplTest {
             String service = extract(query, IdpConstants.SERVICE);
             String ticket = extract(query, IdpConstants.TICKET);
             String pgtUrl = extract(query, IdpConstants.PGT_URL);
-            if (!expectedServiceHolder[0].equals(service) || !"ST-ADMIN-1".equals(ticket)) {
+            String expectedTicket =
+                    expectedTicketHolder == null ? "ST-ADMIN-1" : expectedTicketHolder[0];
+            if (!expectedServiceHolder[0].equals(service) || !expectedTicket.equals(ticket)) {
                 writeFailure(
                         exchange,
                         "Unexpected CAS validate request service="
@@ -503,7 +604,9 @@ class AdminCasServiceImplTest {
                                 + ", ticket="
                                 + ticket
                                 + ", expectedService="
-                                + expectedServiceHolder[0]);
+                                + expectedServiceHolder[0]
+                                + ", expectedTicket="
+                                + expectedTicket);
                 return;
             }
             if (expectedPgtUrlHolder[0] != null && !expectedPgtUrlHolder[0].equals(pgtUrl)) {

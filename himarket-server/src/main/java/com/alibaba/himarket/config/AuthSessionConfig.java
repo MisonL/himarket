@@ -67,6 +67,8 @@ public class AuthSessionConfig {
 
         private int maxSessionsPerUser = 10;
 
+        private Duration rememberMeTokenTtl = Duration.ofDays(14);
+
         private Duration sessionLeaseBuffer = Duration.ofMinutes(5);
 
         public Duration getLoginCodeTtl() {
@@ -83,6 +85,14 @@ public class AuthSessionConfig {
 
         public void setMaxSessionsPerUser(int maxSessionsPerUser) {
             this.maxSessionsPerUser = maxSessionsPerUser;
+        }
+
+        public Duration getRememberMeTokenTtl() {
+            return rememberMeTokenTtl;
+        }
+
+        public void setRememberMeTokenTtl(Duration rememberMeTokenTtl) {
+            this.rememberMeTokenTtl = rememberMeTokenTtl;
         }
 
         public Duration getSessionLeaseBuffer() {

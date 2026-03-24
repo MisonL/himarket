@@ -103,9 +103,9 @@ public class LdapAuthenticator {
             return first;
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (NamingException e) {
             log.error("LDAP search failed, provider={}", config.getProvider(), e);
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "LDAP authentication failed");
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "LDAP search failed");
         } finally {
             closeQuietly(ctx);
         }
@@ -146,7 +146,7 @@ public class LdapAuthenticator {
         }
         try {
             ctx.close();
-        } catch (Exception e) {
+        } catch (NamingException e) {
             log.debug("Failed to close LDAP context", e);
         }
     }
@@ -158,7 +158,7 @@ public class LdapAuthenticator {
                 throw new IllegalArgumentException("Empty DN");
             }
             return dn;
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | UnsupportedOperationException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "LDAP user DN is missing");
         }
     }
@@ -181,8 +181,9 @@ public class LdapAuthenticator {
                     attributes.put(id, value);
                 }
             }
-        } catch (Exception e) {
-            log.warn("Failed to extract LDAP attributes", e);
+        } catch (NamingException e) {
+            log.error("Failed to extract LDAP attributes", e);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Failed to read LDAP attributes");
         }
         return attributes;
     }

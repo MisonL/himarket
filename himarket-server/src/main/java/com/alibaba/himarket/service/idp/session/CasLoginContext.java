@@ -19,24 +19,56 @@
 
 package com.alibaba.himarket.service.idp.session;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+public final class CasLoginContext {
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class CasLoginContext {
+    private final CasSessionScope scope;
 
-    private CasSessionScope scope;
+    private final String provider;
 
-    private String provider;
+    private final String userId;
 
-    private String userId;
+    private final String sessionIndex;
 
-    private String sessionIndex;
+    private final String proxyGrantingTicketIou;
 
-    private String proxyGrantingTicketIou;
+    private final Long tokenExpiresIn;
 
-    private Long tokenExpiresIn;
+    public CasLoginContext(
+            CasSessionScope scope,
+            String provider,
+            String userId,
+            String sessionIndex,
+            String proxyGrantingTicketIou,
+            Long tokenExpiresIn) {
+        this.scope = scope;
+        this.provider = provider;
+        this.userId = userId;
+        this.sessionIndex = sessionIndex;
+        this.proxyGrantingTicketIou = proxyGrantingTicketIou;
+        this.tokenExpiresIn = tokenExpiresIn;
+    }
+
+    public CasSessionScope getScope() {
+        return scope;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getSessionIndex() {
+        return sessionIndex;
+    }
+
+    public String getProxyGrantingTicketIou() {
+        return proxyGrantingTicketIou;
+    }
+
+    public Long getTokenExpiresIn() {
+        return tokenExpiresIn;
+    }
 }

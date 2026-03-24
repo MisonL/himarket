@@ -23,8 +23,12 @@ import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.core.utils.TokenUtil;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 
 public class RedisAuthSessionStore implements AuthSessionStore {
 
@@ -54,7 +58,10 @@ public class RedisAuthSessionStore implements AuthSessionStore {
     @Override
     public CasLoginContext consumeCasLoginContext(String code) {
         String value = redisTemplate.opsForValue().getAndDelete(loginCodeKey(code));
-        return value == null ? null : JSONUtil.toBean(value, CasLoginContext.class);
+        if (value == null) {
+            return null;
+        }
+        return parseCasLoginContext(value);
     }
 
     @Override
@@ -68,7 +75,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         extendSessionKey(key, expireAt);
 
         String userKey = userSessionsKey(scope, userId);
-        redisTemplate.opsForSet().add(userKey, sessionIndex);
+        redisTemplate.opsForZSet().add(userKey, sessionIndex, System.currentTimeMillis());
         extendSessionKey(userKey, expireAt);
     }
 
@@ -106,7 +113,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         }
 
         if (userId != null) {
-            redisTemplate.opsForSet().remove(userSessionsKey(scope, userId), sessionIndex);
+            redisTemplate.opsForZSet().remove(userSessionsKey(scope, userId), sessionIndex);
         }
 
         return revoked;
@@ -115,7 +122,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
     @Override
     public int revokeUserSessions(CasSessionScope scope, String userId) {
         String userKey = userSessionsKey(scope, userId);
-        Set<String> sessionIndices = redisTemplate.opsForSet().members(userKey);
+        Set<String> sessionIndices = redisTemplate.opsForZSet().range(userKey, 0, -1);
         redisTemplate.delete(userKey);
         if (sessionIndices == null || sessionIndices.isEmpty()) {
             return 0;
@@ -123,6 +130,38 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         int totalRevoked = 0;
         for (String sessionIndex : sessionIndices) {
             totalRevoked += revokeCasSession(scope, sessionIndex);
+        }
+        return totalRevoked;
+    }
+
+    @Override
+    public int revokeOverflowUserSessions(CasSessionScope scope, String userId, int maxSessions) {
+        if (maxSessions <= 0) {
+            return revokeUserSessions(scope, userId);
+        }
+
+        String userKey = userSessionsKey(scope, userId);
+        Long sessionCount = redisTemplate.opsForZSet().zCard(userKey);
+        if (sessionCount == null || sessionCount <= maxSessions) {
+            return 0;
+        }
+
+        Set<ZSetOperations.TypedTuple<String>> sessionEntries =
+                redisTemplate.opsForZSet().rangeWithScores(userKey, 0, -1);
+        if (sessionEntries == null || sessionEntries.size() <= maxSessions) {
+            return 0;
+        }
+
+        List<String> orderedSessionIndices = new ArrayList<>();
+        sessionEntries.stream()
+                .sorted(
+                        Comparator.comparingDouble(
+                                entry -> entry.getScore() == null ? 0D : entry.getScore()))
+                .forEach(entry -> orderedSessionIndices.add(entry.getValue()));
+
+        int totalRevoked = 0;
+        for (int i = 0; i < orderedSessionIndices.size() - maxSessions; i++) {
+            totalRevoked += revokeCasSession(scope, orderedSessionIndices.get(i));
         }
         return totalRevoked;
     }
@@ -150,7 +189,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         redisTemplate.opsForSet().add(sessionKey, "user:" + userId);
 
         String userKey = userSessionsKey(scope, userId);
-        redisTemplate.opsForSet().add(userKey, sessionIndex);
+        redisTemplate.opsForZSet().add(userKey, sessionIndex, System.currentTimeMillis());
     }
 
     @Override
@@ -192,6 +231,18 @@ public class RedisAuthSessionStore implements AuthSessionStore {
 
     private String loginCodeKey(String code) {
         return LOGIN_CODE_PREFIX + code;
+    }
+
+    private CasLoginContext parseCasLoginContext(String value) {
+        cn.hutool.json.JSONObject jsonObject = JSONUtil.parseObj(value);
+        String scopeValue = jsonObject.getStr("scope");
+        return new CasLoginContext(
+                scopeValue == null ? null : CasSessionScope.valueOf(scopeValue),
+                jsonObject.getStr("provider"),
+                jsonObject.getStr("userId"),
+                jsonObject.getStr("sessionIndex"),
+                jsonObject.getStr("proxyGrantingTicketIou"),
+                jsonObject.getLong("tokenExpiresIn"));
     }
 
     private String sessionKey(CasSessionScope scope, String sessionIndex) {
