@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.security.ContextHolder;
-import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
@@ -68,7 +67,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class OAuth2ServiceImplJwtBearerTest {
@@ -88,8 +86,8 @@ class OAuth2ServiceImplJwtBearerTest {
         if (server != null) {
             server.stop(0);
         }
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", null);
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 0L);
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -109,8 +107,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service =
                 new OAuth2ServiceImpl(

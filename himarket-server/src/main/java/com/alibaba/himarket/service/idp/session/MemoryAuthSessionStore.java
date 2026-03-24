@@ -115,6 +115,36 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
     }
 
     @Override
+    public int revokeOverflowUserSessions(CasSessionScope scope, String userId, int maxSessions) {
+        if (maxSessions <= 0) {
+            return revokeUserSessions(scope, userId);
+        }
+
+        String userKey = buildUserKey(scope, userId);
+        java.util.Set<String> sessions = userSessions.get(userKey);
+        if (sessions == null || sessions.size() <= maxSessions) {
+            return 0;
+        }
+
+        java.util.List<String> orderedSessions =
+                sessions.stream()
+                        .sorted(
+                                java.util.Comparator.comparingLong(
+                                        sessionKey ->
+                                                resolveCreatedAtMillis(
+                                                        sessionArtifacts.get(sessionKey))))
+                        .toList();
+
+        int totalRevoked = 0;
+        for (int i = 0; i < orderedSessions.size() - maxSessions; i++) {
+            String sessionKey = orderedSessions.get(i);
+            String sessionIndex = sessionKey.substring(sessionKey.indexOf(':') + 1);
+            totalRevoked += revokeCasSession(scope, sessionIndex);
+        }
+        return totalRevoked;
+    }
+
+    @Override
     public void saveCasProxyGrantingTicket(String pgtIou, String pgtId, Duration ttl) {
         proxyGrantingTickets.put(pgtIou, pgtId);
     }
@@ -183,9 +213,18 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
         return scope.name() + ":u:" + userId;
     }
 
+    private long resolveCreatedAtMillis(SessionArtifacts artifacts) {
+        if (artifacts == null) {
+            return Long.MIN_VALUE;
+        }
+        return artifacts.getCreatedAtMillis();
+    }
+
     private static final class SessionArtifacts {
 
         private final String userId;
+
+        private final long createdAtMillis;
 
         private final Map<String, Long> tokens = new ConcurrentHashMap<>();
 
@@ -193,10 +232,15 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
         public SessionArtifacts(String userId) {
             this.userId = userId;
+            this.createdAtMillis = System.currentTimeMillis();
         }
 
         public String getUserId() {
             return userId;
+        }
+
+        public long getCreatedAtMillis() {
+            return createdAtMillis;
         }
 
         private void addToken(String tokenDigest, long expireAt) {

@@ -28,6 +28,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,14 +71,7 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
             String xRealIp = request.getHeader("X-Real-IP");
             String xForwardedFor = request.getHeader("X-Forwarded-For");
 
-            String domain = null;
-            if (origin != null) {
-                try {
-                    URI uri = new URI(origin);
-                    domain = uri.getHost();
-                } catch (Exception ignored) {
-                }
-            }
+            String domain = resolveOriginDomain(origin);
 
             log.debug(
                     "Domain resolution - Origin: {}, Host: {}, X-Forwarded-Host: {}, ServerName:"
@@ -104,14 +98,7 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
                 }
             }
             String portalId = null;
-            try {
-                portalId = portalService.resolvePortal(domain);
-            } catch (Exception e) {
-                log.warn(
-                        "Failed to resolve portal for domain: {}, error: {}",
-                        domain,
-                        e.getMessage());
-            }
+            portalId = resolvePortalId(domain);
 
             if (StrUtil.isNotBlank(portalId)) {
                 contextHolder.savePortal(portalId);
@@ -119,14 +106,10 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
             } else {
                 log.debug("No portal found for domain: {}", domain);
                 if (!requiresStrictPortalResolution(request)) {
-                    try {
-                        String defaultPortalId = portalService.getDefaultPortal();
-                        if (StrUtil.isNotBlank(defaultPortalId)) {
-                            contextHolder.savePortal(defaultPortalId);
-                            log.debug("Use default portal: {}", defaultPortalId);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Failed to get default portal, error: {}", e.getMessage());
+                    String defaultPortalId = getDefaultPortalId();
+                    if (StrUtil.isNotBlank(defaultPortalId)) {
+                        contextHolder.savePortal(defaultPortalId);
+                        log.debug("Use default portal: {}", defaultPortalId);
                     }
                 } else {
                     log.debug(
@@ -160,9 +143,38 @@ public class PortalResolvingFilter extends OncePerRequestFilter {
             if (firstHost.contains("://")) {
                 return URI.create(firstHost).getHost();
             }
-        } catch (Exception ignored) {
+        } catch (IllegalArgumentException e) {
+            log.debug("Ignore invalid forwarded host: {}", hostValue, e);
         }
 
         return StrUtil.trim(StrUtil.subBefore(firstHost, ":", false));
+    }
+
+    private String resolveOriginDomain(String origin) {
+        if (StrUtil.isBlank(origin)) {
+            return null;
+        }
+        try {
+            return new URI(origin).getHost();
+        } catch (URISyntaxException | IllegalArgumentException e) {
+            log.debug("Ignore invalid origin header: {}", origin, e);
+            return null;
+        }
+    }
+
+    private String resolvePortalId(String domain) throws ServletException {
+        try {
+            return portalService.resolvePortal(domain);
+        } catch (RuntimeException e) {
+            throw new ServletException("Failed to resolve portal for domain: " + domain, e);
+        }
+    }
+
+    private String getDefaultPortalId() throws ServletException {
+        try {
+            return portalService.getDefaultPortal();
+        } catch (RuntimeException e) {
+            throw new ServletException("Failed to load default portal", e);
+        }
     }
 }

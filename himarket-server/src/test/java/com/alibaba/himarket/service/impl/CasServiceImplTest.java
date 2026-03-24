@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,7 +29,6 @@ import static org.mockito.Mockito.when;
 import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
-import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
@@ -70,7 +70,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class CasServiceImplTest {
@@ -88,8 +87,8 @@ class CasServiceImplTest {
         if (server != null) {
             server.stop(0);
         }
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", null);
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 0L);
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -124,8 +123,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         CasServiceImpl casService =
                 new CasServiceImpl(
@@ -338,8 +337,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -535,6 +534,7 @@ class CasServiceImplTest {
                 "/cas/p3/serviceValidate",
                 new ValidateHandler(
                         expectedServiceHolder,
+                        null,
                         expectedPgtUrlHolder,
                         "alice",
                         "alice@example.com",
@@ -568,8 +568,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -663,6 +663,86 @@ class CasServiceImplTest {
                 () -> casService.issueProxyTicket("cas", "https://forbidden.example.com/service"));
     }
 
+    @Test
+    void exchangeCodeShouldKeepLatestSessionsWithinConfiguredLimit() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        String[] expectedTicketHolder = new String[1];
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new ValidateHandler(
+                        expectedServiceHolder,
+                        expectedTicketHolder,
+                        new String[1],
+                        "alice",
+                        "alice@example.com",
+                        null));
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        casConfig.setIdentityMapping(defaultIdentityMapping());
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        when(developerService.getExternalDeveloper("cas", "alice")).thenReturn(null);
+
+        DeveloperResult developerResult = new DeveloperResult();
+        developerResult.setDeveloperId("dev-1");
+        when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
+
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
+
+        AuthSessionConfig authSessionConfig = new AuthSessionConfig();
+        authSessionConfig.getCas().setMaxSessionsPerUser(2);
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(authSessionConfig.getCas().getLoginCodeTtl());
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        authSessionConfig,
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        String token1 =
+                loginDeveloper(casService, expectedServiceHolder, expectedTicketHolder, "ST-1");
+        String token2 =
+                loginDeveloper(casService, expectedServiceHolder, expectedTicketHolder, "ST-2");
+        String token3 =
+                loginDeveloper(casService, expectedServiceHolder, expectedTicketHolder, "ST-3");
+
+        assertEquals(
+                0,
+                authSessionStore.revokeOverflowUserSessions(
+                        com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                        "dev-1",
+                        2));
+        assertEquals(true, authSessionStore.isTokenRevoked(token1));
+        assertFalse(authSessionStore.isTokenRevoked(token2));
+        assertFalse(authSessionStore.isTokenRevoked(token3));
+    }
+
     private MockHttpServletRequest buildRequest(int port) {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setScheme("http");
@@ -690,6 +770,29 @@ class CasServiceImplTest {
         return null;
     }
 
+    private String loginDeveloper(
+            CasServiceImpl casService,
+            String[] expectedServiceHolder,
+            String[] expectedTicketHolder,
+            String ticket)
+            throws Exception {
+        MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        IdpAuthorizeResult authorizeResult =
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request);
+        String serviceUrl =
+                splitQueryValue(
+                        URI.create(authorizeResult.getRedirectUrl()).getRawQuery(), "service");
+        expectedServiceHolder[0] = serviceUrl;
+        expectedTicketHolder[0] = ticket;
+        request.setCookies(
+                new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, authorizeResult.getState()));
+        String redirectUrl =
+                casService.handleCallback(ticket, authorizeResult.getState(), request, response);
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+        return casService.exchangeCode(code).getAccessToken();
+    }
+
     private String logoutRequest(String sessionIndex) {
         return "<samlp:LogoutRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\">"
                 + "<samlp:SessionIndex>"
@@ -702,21 +805,25 @@ class CasServiceImplTest {
 
         private final String[] expectedServiceHolder;
 
+        private final String[] expectedTicketHolder;
+
         private final String[] expectedPgtUrlHolder;
 
         private final byte[] successBody;
 
         private ValidateHandler(String[] expectedServiceHolder, String user, String mail) {
-            this(expectedServiceHolder, new String[1], user, mail, null);
+            this(expectedServiceHolder, null, new String[1], user, mail, null);
         }
 
         private ValidateHandler(
                 String[] expectedServiceHolder,
+                String[] expectedTicketHolder,
                 String[] expectedPgtUrlHolder,
                 String user,
                 String mail,
                 String proxyGrantingTicket) {
             this.expectedServiceHolder = expectedServiceHolder;
+            this.expectedTicketHolder = expectedTicketHolder;
             this.expectedPgtUrlHolder = expectedPgtUrlHolder;
             this.successBody =
                     ("<cas:serviceResponse xmlns:cas=\"http://www.yale.edu/tp/cas\">"
@@ -748,7 +855,8 @@ class CasServiceImplTest {
             String service = extract(query, "service");
             String ticket = extract(query, "ticket");
             String pgtUrl = extract(query, IdpConstants.PGT_URL);
-            if (!expectedServiceHolder[0].equals(service) || !"ST-1".equals(ticket)) {
+            String expectedTicket = expectedTicketHolder == null ? "ST-1" : expectedTicketHolder[0];
+            if (!expectedServiceHolder[0].equals(service) || !expectedTicket.equals(ticket)) {
                 writeFailure(
                         exchange,
                         "Unexpected CAS validate request service="
@@ -756,7 +864,9 @@ class CasServiceImplTest {
                                 + ", ticket="
                                 + ticket
                                 + ", expectedService="
-                                + expectedServiceHolder[0]);
+                                + expectedServiceHolder[0]
+                                + ", expectedTicket="
+                                + expectedTicket);
                 return;
             }
             if (expectedPgtUrlHolder[0] != null && !expectedPgtUrlHolder[0].equals(pgtUrl)) {
