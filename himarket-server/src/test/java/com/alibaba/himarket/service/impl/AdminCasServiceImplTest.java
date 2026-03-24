@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.alibaba.himarket.config.AdminAuthConfig;
@@ -378,12 +379,83 @@ class AdminCasServiceImplTest {
         String redirectUrl = service.handleCallback("ST-ADMIN-1", state, request, response);
         service.handleProxyCallback("PGTIOU-1", "PGT-ADMIN-1");
         String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
-        service.exchangeCode(code);
+        var authResult = service.exchangeCode(code);
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(
+                        com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(
+                                authResult.getAccessToken()));
 
         assertEquals(
                 "PT-ADMIN-1",
                 service.issueProxyTicket("cas", "https://target.example.com/service")
                         .getProxyTicket());
+    }
+
+    @Test
+    void issueProxyTicketShouldUseCurrentAdminSessionOnly() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        casConfig.setProxy(proxyConfig);
+
+        AdminAuthConfig adminAuthConfig = new AdminAuthConfig();
+        adminAuthConfig.setFrontendRedirectUrl("https://admin.example.com/");
+        adminAuthConfig.setCasConfigs(List.of(casConfig));
+
+        when(contextHolder.getUser()).thenReturn("admin-1");
+        System.setProperty("jwt.secret", "admin-cas-secret");
+        System.setProperty("jwt.expiration", "3600000");
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        String token1 = com.alibaba.himarket.core.utils.TokenUtil.generateAdminToken("admin-1");
+        String token2 = com.alibaba.himarket.core.utils.TokenUtil.generateAdminToken("admin-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                "admin-1",
+                "ST-ADMIN-1",
+                token1);
+        authSessionStore.bindCasProxyGrantingTicket(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                "cas",
+                "admin-1",
+                "ST-ADMIN-1",
+                "PGT-ADMIN-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                "admin-1",
+                "ST-ADMIN-2",
+                token2);
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(token2));
+
+        AdminCasServiceImpl service =
+                new AdminCasServiceImpl(
+                        adminAuthConfig,
+                        new AuthSessionConfig(),
+                        administratorRepository,
+                        contextHolder,
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new com.alibaba.himarket.service.idp.AdminFrontendUrlResolver(
+                                adminAuthConfig),
+                        new IdpStateCodec());
+
+        com.alibaba.himarket.core.exception.BusinessException exception =
+                assertThrows(
+                        com.alibaba.himarket.core.exception.BusinessException.class,
+                        () ->
+                                service.issueProxyTicket(
+                                        "cas", "https://target.example.com/service"));
+        assertTrue(exception.getMessage().contains("current admin session"));
     }
 
     @Test
@@ -402,15 +474,25 @@ class AdminCasServiceImplTest {
         adminAuthConfig.setCasConfigs(List.of(casConfig));
 
         when(contextHolder.getUser()).thenReturn("admin-1");
+        System.setProperty("jwt.secret", "admin-cas-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        String token = com.alibaba.himarket.core.utils.TokenUtil.generateAdminToken("admin-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
+                "admin-1",
+                "ST-ADMIN-1",
+                token);
         authSessionStore.bindCasProxyGrantingTicket(
                 com.alibaba.himarket.service.idp.session.CasSessionScope.ADMIN,
                 "cas",
                 "admin-1",
                 "ST-ADMIN-1",
                 "PGT-ADMIN-1");
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(token));
         AdminCasServiceImpl service =
                 new AdminCasServiceImpl(
                         adminAuthConfig,

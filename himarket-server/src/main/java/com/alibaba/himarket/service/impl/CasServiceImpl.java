@@ -179,7 +179,10 @@ public class CasServiceImpl implements CasService {
         assertProxyEnabled(config);
         String proxyGrantingTicket =
                 authSessionStore.getCasProxyGrantingTicket(
-                        CasSessionScope.DEVELOPER, provider, contextHolder.getUser());
+                        CasSessionScope.DEVELOPER,
+                        provider,
+                        contextHolder.getUser(),
+                        contextHolder.getCurrentTokenDigest());
         if (StrUtil.isBlank(proxyGrantingTicket)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,

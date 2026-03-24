@@ -38,7 +38,7 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
     private final Map<String, SessionArtifacts> sessionArtifacts = new ConcurrentHashMap<>();
 
-    private final Map<String, String> userProxyGrantingTickets = new ConcurrentHashMap<>();
+    private final Map<String, String> tokenSessions = new ConcurrentHashMap<>();
 
     public MemoryAuthSessionStore(Duration loginCodeTtl) {
         this.loginCodes =
@@ -66,7 +66,9 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
         SessionArtifacts bucket =
                 sessionArtifacts.computeIfAbsent(
                         sessionKey, ignored -> new SessionArtifacts(userId));
-        bucket.addToken(TokenUtil.getTokenDigest(token), TokenUtil.getTokenExpireTime(token));
+        String tokenDigest = TokenUtil.getTokenDigest(token);
+        bucket.addToken(tokenDigest, TokenUtil.getTokenExpireTime(token));
+        tokenSessions.put(tokenDigest, sessionKey);
 
         userSessions
                 .computeIfAbsent(userKey, ignored -> ConcurrentHashMap.newKeySet())
@@ -90,9 +92,9 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
             }
         }
 
-        bucket.snapshotProxyKeys().forEach(userProxyGrantingTickets::remove);
         int revoked = 0;
         for (Map.Entry<String, Long> entry : bucket.snapshot().entrySet()) {
+            tokenSessions.remove(entry.getKey());
             revokeTokenDigest(entry.getKey(), entry.getValue());
             revoked++;
         }
@@ -161,18 +163,25 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
             String userId,
             String sessionIndex,
             String pgtId) {
-        String principalKey = buildPrincipalKey(scope, provider, userId);
-        userProxyGrantingTickets.put(principalKey, pgtId);
         sessionArtifacts
                 .computeIfAbsent(
                         buildSessionKey(scope, sessionIndex),
                         ignored -> new SessionArtifacts(userId))
-                .addProxyKey(principalKey);
+                .addProxyGrantingTicket(provider, pgtId);
     }
 
     @Override
-    public String getCasProxyGrantingTicket(CasSessionScope scope, String provider, String userId) {
-        return userProxyGrantingTickets.get(buildPrincipalKey(scope, provider, userId));
+    public String getCasProxyGrantingTicket(
+            CasSessionScope scope, String provider, String userId, String tokenDigest) {
+        String sessionKey = tokenSessions.get(tokenDigest);
+        if (sessionKey == null || !sessionKey.startsWith(scope.name() + ":")) {
+            return null;
+        }
+        SessionArtifacts artifacts = sessionArtifacts.get(sessionKey);
+        if (artifacts == null || !userId.equals(artifacts.getUserId())) {
+            return null;
+        }
+        return artifacts.getProxyGrantingTicket(provider);
     }
 
     @Override
@@ -205,10 +214,6 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
         return scope.name() + ":" + sessionIndex;
     }
 
-    private String buildPrincipalKey(CasSessionScope scope, String provider, String userId) {
-        return scope.name() + ":" + provider + ":" + userId;
-    }
-
     private String buildUserKey(CasSessionScope scope, String userId) {
         return scope.name() + ":u:" + userId;
     }
@@ -228,7 +233,7 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
 
         private final Map<String, Long> tokens = new ConcurrentHashMap<>();
 
-        private final Map<String, Boolean> proxyKeys = new ConcurrentHashMap<>();
+        private final Map<String, String> proxyGrantingTickets = new ConcurrentHashMap<>();
 
         public SessionArtifacts(String userId) {
             this.userId = userId;
@@ -247,17 +252,17 @@ public class MemoryAuthSessionStore implements AuthSessionStore {
             tokens.put(tokenDigest, expireAt);
         }
 
-        private void addProxyKey(String proxyKey) {
-            proxyKeys.put(proxyKey, Boolean.TRUE);
-        }
-
         private Map<String, Long> snapshot() {
             tokens.entrySet().removeIf(entry -> entry.getValue() <= System.currentTimeMillis());
             return Map.copyOf(tokens);
         }
 
-        private java.util.Set<String> snapshotProxyKeys() {
-            return java.util.Set.copyOf(proxyKeys.keySet());
+        private void addProxyGrantingTicket(String provider, String pgtId) {
+            proxyGrantingTickets.put(provider, pgtId);
+        }
+
+        private String getProxyGrantingTicket(String provider) {
+            return proxyGrantingTickets.get(provider);
         }
     }
 }

@@ -47,7 +47,8 @@ public interface AuthSessionStore {
             String sessionIndex,
             String pgtId);
 
-    String getCasProxyGrantingTicket(CasSessionScope scope, String provider, String userId);
+    String getCasProxyGrantingTicket(
+            CasSessionScope scope, String provider, String userId, String tokenDigest);
 
     void revokeToken(String token);
 
