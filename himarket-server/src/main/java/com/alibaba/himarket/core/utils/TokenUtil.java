@@ -220,12 +220,7 @@ public class TokenUtil {
     }
 
     private static String resolveProperty(String key) {
-        String value = null;
-        try {
-            value = SpringUtil.getProperty(key);
-        } catch (RuntimeException ignored) {
-            value = null;
-        }
+        String value = SpringUtil.getProperty(key);
         if (StrUtil.isBlank(value)) {
             value = System.getProperty(key);
         }

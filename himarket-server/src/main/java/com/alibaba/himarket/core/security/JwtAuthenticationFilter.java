@@ -19,6 +19,9 @@
 
 package com.alibaba.himarket.core.security;
 
+import cn.hutool.core.exceptions.UtilException;
+import cn.hutool.json.JSONException;
+import cn.hutool.jwt.JWTException;
 import com.alibaba.himarket.core.constant.CommonConstants;
 import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.service.idp.session.AuthSessionStore;
@@ -51,27 +54,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NotNull FilterChain chain)
             throws IOException, ServletException {
 
-        try {
-            String token = TokenUtil.getTokenFromRequest(request);
-            if (token != null) {
-                if (authSessionStore.isTokenRevoked(token)) {
-                    log.debug("Token revoked: {}", token);
-                } else {
-                    try {
-                        authenticateRequest(token);
-                    } catch (Exception e) {
-                        log.debug("Token auth failed: {}", e.getMessage());
-                    }
+        String token = TokenUtil.getTokenFromRequest(request);
+        if (token != null) {
+            if (authSessionStore.isTokenRevoked(token)) {
+                log.debug("Token revoked: {}", token);
+            } else {
+                try {
+                    authenticateRequest(token);
+                } catch (IllegalArgumentException ex) {
+                    log.debug("Token auth failed: {}", ex.getMessage());
                 }
             }
-        } catch (Exception e) {
-            log.debug("Token error: {}", e.getMessage());
         }
         chain.doFilter(request, response);
     }
 
     private void authenticateRequest(String token) {
-        User user = TokenUtil.parseUser(token);
+        User user = parseAuthenticatedUser(token);
         // Set authentication
         String role = CommonConstants.ROLE_PREFIX + user.getUserType().name();
         Authentication authentication =
@@ -80,5 +79,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         TokenUtil.getTokenDigest(token),
                         Collections.singletonList(new SimpleGrantedAuthority(role)));
         SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private User parseAuthenticatedUser(String token) {
+        try {
+            return TokenUtil.parseUser(token);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (UtilException | JSONException | JWTException ex) {
+            throw new IllegalArgumentException("Invalid token", ex);
+        }
     }
 }
