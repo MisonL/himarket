@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service.idp.session;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,8 +60,11 @@ class RedisAuthSessionStoreTest {
 
     @Test
     void getCasProxyGrantingTicketShouldResolveCurrentSession() {
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         when(valueOperations.get("hm:auth:cas:token-session:token-digest")).thenReturn("ST-2");
+        when(setOperations.members("hm:auth:cas:session:DEVELOPER:ST-2"))
+                .thenReturn(Set.of("user:dev-1"));
         when(valueOperations.get("hm:auth:cas:pgt:DEVELOPER:cas:dev-1:ST-2"))
                 .thenReturn("PGT-DEV-2");
 
@@ -70,5 +74,21 @@ class RedisAuthSessionStoreTest {
                 "PGT-DEV-2",
                 store.getCasProxyGrantingTicket(
                         CasSessionScope.DEVELOPER, "cas", "dev-1", "token-digest"));
+    }
+
+    @Test
+    void getCasProxyGrantingTicketShouldRejectMismatchedSessionOwner() {
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("hm:auth:cas:token-session:token-digest")).thenReturn("ST-2");
+        when(setOperations.members("hm:auth:cas:session:DEVELOPER:ST-2"))
+                .thenReturn(Set.of("user:dev-2"));
+
+        RedisAuthSessionStore store = new RedisAuthSessionStore(redisTemplate);
+
+        assertNull(
+                store.getCasProxyGrantingTicket(
+                        CasSessionScope.DEVELOPER, "cas", "dev-1", "token-digest"));
+        verify(valueOperations, never()).get("hm:auth:cas:pgt:DEVELOPER:cas:dev-1:ST-2");
     }
 }

@@ -21,6 +21,7 @@ package com.alibaba.himarket.core.utils;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import cn.hutool.jwt.JWT;
 import cn.hutool.jwt.JWTUtil;
@@ -67,5 +68,15 @@ class TokenUtilTest {
         assertEquals(UserType.ADMIN, secondUser.getUserType());
         assertEquals("admin-1", secondUser.getUserId());
         assertEquals("admin-1", secondJwt.getPayload(CommonConstants.USER_ID).toString());
+    }
+
+    @Test
+    void shouldSupportUppercaseShortDurationExpiration() {
+        System.setProperty("jwt.expiration", "14D");
+
+        String token = TokenUtil.generateDeveloperToken("dev-1");
+
+        long ttlMillis = TokenUtil.getTokenExpireTime(token) - System.currentTimeMillis();
+        assertTrue(ttlMillis > java.time.Duration.ofDays(13).toMillis());
     }
 }

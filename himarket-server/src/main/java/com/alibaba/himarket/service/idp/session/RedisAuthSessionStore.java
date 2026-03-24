@@ -196,6 +196,10 @@ public class RedisAuthSessionStore implements AuthSessionStore {
         if (sessionIndex == null) {
             return null;
         }
+        Set<String> entries = redisTemplate.opsForSet().members(sessionKey(scope, sessionIndex));
+        if (entries == null || !entries.contains("user:" + userId)) {
+            return null;
+        }
         return redisTemplate
                 .opsForValue()
                 .get(proxyGrantingTicketKey(scope, provider, userId, sessionIndex));
