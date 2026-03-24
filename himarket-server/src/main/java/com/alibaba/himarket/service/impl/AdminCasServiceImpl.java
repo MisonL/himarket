@@ -177,7 +177,10 @@ public class AdminCasServiceImpl implements AdminCasService {
         assertProxyEnabled(config);
         String proxyGrantingTicket =
                 authSessionStore.getCasProxyGrantingTicket(
-                        CasSessionScope.ADMIN, provider, contextHolder.getUser());
+                        CasSessionScope.ADMIN,
+                        provider,
+                        contextHolder.getUser(),
+                        contextHolder.getCurrentTokenDigest());
         if (StrUtil.isBlank(proxyGrantingTicket)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,

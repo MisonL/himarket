@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -604,13 +605,87 @@ class CasServiceImplTest {
         String redirectUrl = casService.handleCallback("ST-1", state, request, response);
         casService.handleProxyCallback("PGTIOU-1", "PGT-DEV-1");
         String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
-        casService.exchangeCode(code);
+        AuthResult authResult = casService.exchangeCode(code);
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(
+                        com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(
+                                authResult.getAccessToken()));
 
         assertEquals(
                 "PT-DEV-1",
                 casService
                         .issueProxyTicket("cas", "https://target.example.com/service")
                         .getProxyTicket());
+    }
+
+    @Test
+    void issueProxyTicketShouldUseCurrentDeveloperSessionOnly() {
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl("https://cas.example.com/cas");
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        casConfig.setProxy(proxyConfig);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(contextHolder.getUser()).thenReturn("dev-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        String token1 = com.alibaba.himarket.core.utils.TokenUtil.generateDeveloperToken("dev-1");
+        String token2 = com.alibaba.himarket.core.utils.TokenUtil.generateDeveloperToken("dev-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                "dev-1",
+                "ST-1",
+                token1);
+        authSessionStore.bindCasProxyGrantingTicket(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                "cas",
+                "dev-1",
+                "ST-1",
+                "PGT-DEV-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                "dev-1",
+                "ST-2",
+                token2);
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(token2));
+
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+
+        com.alibaba.himarket.core.exception.BusinessException exception =
+                assertThrows(
+                        com.alibaba.himarket.core.exception.BusinessException.class,
+                        () ->
+                                casService.issueProxyTicket(
+                                        "cas", "https://target.example.com/service"));
+        assertTrue(exception.getMessage().contains("current developer session"));
     }
 
     @Test
@@ -633,15 +708,25 @@ class CasServiceImplTest {
         when(contextHolder.getPortal()).thenReturn("portal-1");
         when(contextHolder.getUser()).thenReturn("dev-1");
         when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        String token = com.alibaba.himarket.core.utils.TokenUtil.generateDeveloperToken("dev-1");
+        authSessionStore.bindCasSessionToken(
+                com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
+                "dev-1",
+                "ST-1",
+                token);
         authSessionStore.bindCasProxyGrantingTicket(
                 com.alibaba.himarket.service.idp.session.CasSessionScope.DEVELOPER,
                 "cas",
                 "dev-1",
                 "ST-1",
                 "PGT-DEV-1");
+        when(contextHolder.getCurrentTokenDigest())
+                .thenReturn(com.alibaba.himarket.core.utils.TokenUtil.getTokenDigest(token));
         CasServiceImpl casService =
                 new CasServiceImpl(
                         portalService,
