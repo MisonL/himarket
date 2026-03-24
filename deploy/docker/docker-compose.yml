@@ -1,6 +1,9 @@
 networks:
   himarket-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 172.24.0.0/16
 
 services:
   # ============================================================
@@ -176,7 +179,7 @@ services:
   # 第五层：前端 —— 等 Server healthy 后启动
   # ============================================================
 
-  # Himarket Admin
+  # Admin Frontend
   himarket-admin:
     image: ${HIMARKET_ADMIN_IMAGE:-opensource-registry.cn-hangzhou.cr.aliyuncs.com/higress-group/himarket-admin:latest}
     pull_policy: always

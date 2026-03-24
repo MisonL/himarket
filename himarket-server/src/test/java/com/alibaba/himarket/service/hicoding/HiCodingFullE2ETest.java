@@ -1606,10 +1606,9 @@ class HiCodingFullE2ETest {
 
     // ── 工具方法 ──
 
-    @SuppressWarnings("deprecation")
     private boolean isServerRunning() {
         try {
-            var conn = new java.net.URL(BASE_URL + "/cli-providers").openConnection();
+            var conn = java.net.URI.create(BASE_URL + "/cli-providers").toURL().openConnection();
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
             conn.connect();

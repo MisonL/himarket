@@ -66,7 +66,7 @@ import org.springframework.stereotype.Service;
 /** ADP AI网关操作器 */
 @Service
 @Slf4j
-public class AdpAIGatewayOperator extends GatewayOperator {
+public class AdpAIGatewayOperator extends GatewayOperator<AdpAIGatewayClient> {
 
     @Override
     public PageResult<APIResult> fetchHTTPAPIs(Gateway gateway, int page, int size) {
@@ -403,19 +403,6 @@ public class AdpAIGatewayOperator extends GatewayOperator {
         } finally {
             client.close();
         }
-    }
-
-    /** 根据网关实例访问信息构建域名列表 */
-    private List<DomainResult> buildDomainsFromAccessInfo(
-            AdpGatewayInstanceResult.AdpGatewayInstanceData data) {
-        // 兼容 listInstances 调用：取第一条记录的 accessMode
-        if (data != null && data.getRecords() != null && !data.getRecords().isEmpty()) {
-            AdpGatewayInstanceResult.AdpGatewayInstance instance = data.getRecords().get(0);
-            if (instance.getAccessMode() != null) {
-                return buildDomainsFromAccessModes(instance.getAccessMode());
-            }
-        }
-        return new ArrayList<>();
     }
 
     private List<DomainResult> buildDomainsFromAccessModes(

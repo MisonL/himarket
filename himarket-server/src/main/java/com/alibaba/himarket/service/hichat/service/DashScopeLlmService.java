@@ -31,11 +31,9 @@ import io.agentscope.core.model.GenerateOptions;
 import io.agentscope.core.model.Model;
 import java.net.URI;
 import java.util.List;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class DashScopeLlmService extends AbstractLlmService {
 
     public DashScopeLlmService(GatewayService gatewayService, ChatBotManager chatBotManager) {

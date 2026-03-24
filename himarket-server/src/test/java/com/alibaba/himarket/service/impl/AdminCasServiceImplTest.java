@@ -527,9 +527,6 @@ class AdminCasServiceImplTest {
                                                     + pgtIou
                                                     + "</cas:proxyGrantingTicket>")
                                     + "<cas:attributes>"
-                                    + "<cas:user>"
-                                    + user
-                                    + "</cas:user>"
                                     + "</cas:attributes>"
                                     + "</cas:authenticationSuccess>"
                                     + "</cas:serviceResponse>")

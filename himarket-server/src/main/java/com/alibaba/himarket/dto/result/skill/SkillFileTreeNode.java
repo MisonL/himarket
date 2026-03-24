@@ -20,9 +20,17 @@
 package com.alibaba.himarket.dto.result.skill;
 
 import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class SkillFileTreeNode {
 
     /** File or directory name */
@@ -42,4 +50,52 @@ public class SkillFileTreeNode {
 
     /** Child nodes (only for directory nodes) */
     private List<SkillFileTreeNode> children;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getEncoding() {
+        return encoding;
+    }
+
+    public void setEncoding(String encoding) {
+        this.encoding = encoding;
+    }
+
+    public Integer getSize() {
+        return size;
+    }
+
+    public void setSize(Integer size) {
+        this.size = size;
+    }
+
+    public List<SkillFileTreeNode> getChildren() {
+        return children;
+    }
+
+    public void setChildren(List<SkillFileTreeNode> children) {
+        this.children = children;
+    }
 }

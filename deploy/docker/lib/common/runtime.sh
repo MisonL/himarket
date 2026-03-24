@@ -8,10 +8,13 @@ prepare_cas_modules() {
     log "cas modules ready"
     return 0
   fi
-  require_cmd mvn
+  if [[ ! -x "${REPO_DIR}/mvnw" ]]; then
+    err "mvnw is not available"
+    exit 1
+  fi
   mkdir -p "${CAS_MODULES_LIB_DIR}"
   log "prepare cas modules"
-  mvn -q -f "${CAS_MODULES_DIR}/pom.xml" dependency:copy-dependencies \
+  "${REPO_DIR}/mvnw" -q -f "${CAS_MODULES_DIR}/pom.xml" dependency:copy-dependencies \
     -DincludeScope=runtime \
     -DoutputDirectory="${CAS_MODULES_LIB_DIR}"
   if [[ ! -f "${sentinel}" || ! -f "${mfa_sentinel}" || ! -f "${delegated_sentinel}" ]]; then
@@ -195,6 +198,42 @@ load_auth_harness_env() {
     . "${ENV_FILE}"
     set +a
   fi
+  if [[ -z "${JWT_SECRET:-}" ]]; then
+    local generated_jwt_secret
+    if command -v openssl >/dev/null 2>&1; then
+      generated_jwt_secret="$(openssl rand -hex 32)"
+    else
+      generated_jwt_secret="$(LC_ALL=C tr -dc 'a-f0-9' </dev/urandom | head -c 64)"
+    fi
+
+    python3 - "${ENV_FILE}" "${generated_jwt_secret}" <<'PY'
+import pathlib
+import sys
+
+env_path = pathlib.Path(sys.argv[1])
+value = sys.argv[2]
+
+lines = []
+if env_path.exists():
+    lines = env_path.read_text().splitlines()
+
+updated = False
+result = []
+for line in lines:
+    if line.startswith("JWT_SECRET="):
+        result.append(f"JWT_SECRET={value}")
+        updated = True
+    else:
+        result.append(line)
+
+if not updated:
+    result.append(f"JWT_SECRET={value}")
+
+env_path.write_text("\n".join(result) + "\n")
+PY
+    export JWT_SECRET="${generated_jwt_secret}"
+    log "generated JWT_SECRET in ${ENV_FILE}"
+  fi
 }
 
 init_runtime_context() {
@@ -221,13 +260,23 @@ maybe_build_artifacts() {
   log "build himarket server jar"
   local java_home="${JAVA_HOME:-}"
   if [[ -z "${java_home}" && -x "/usr/libexec/java_home" ]]; then
-    java_home="$(/usr/libexec/java_home -v 21 2>/dev/null || /usr/libexec/java_home 2>/dev/null || true)"
+    java_home="$(/usr/libexec/java_home -v 17 2>/dev/null || true)"
+  fi
+  if [[ -z "${java_home}" ]]; then
+    for candidate in \
+      "/usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home" \
+      "/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"; do
+      if [[ -x "${candidate}/bin/java" ]]; then
+        java_home="${candidate}"
+        break
+      fi
+    done
   fi
   if [[ -z "${java_home}" ]]; then
     err "JAVA_HOME is not set and java_home is not available"
     exit 1
   fi
-  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" mvn -pl himarket-bootstrap -am package -DskipTests)
+  (cd "${REPO_DIR}" && JAVA_HOME="${java_home}" ./mvnw -pl himarket-bootstrap -am clean package -DskipTests)
   require_cmd npm
   log "build himarket frontend dist"
   (cd "${REPO_DIR}/himarket-web/himarket-frontend" && npm run build)

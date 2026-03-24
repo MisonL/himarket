@@ -1,5 +1,7 @@
 import type { Product } from "./index";
 
+export type CredentialType = "API_KEY" | "HMAC" | "JWT";
+
 export interface Consumer {
   consumerId: string;
   name: string;
@@ -7,6 +9,7 @@ export interface Consumer {
   status?: string;
   createAt?: string;
   enabled?: boolean;
+  credentialType?: CredentialType;
 }
 
 export type ConsumerCredential = HMACCredential | APIKeyCredential;
@@ -22,23 +25,43 @@ export interface APIKeyCredential {
   mode?: "SYSTEM" | "CUSTOM";
 }
 
+export interface JWTFromHeader {
+  name?: string;
+  valuePrefix?: string;
+}
+
+export interface JWTClaimToHeader {
+  claim?: string;
+  header?: string;
+  override?: boolean;
+}
+
+export interface JWTCredentialConfig {
+  issuer?: string;
+  jwks?: string;
+  fromHeaders?: JWTFromHeader[];
+  fromParams?: string[];
+  fromCookies?: string[];
+  claimsToHeaders?: JWTClaimToHeader[];
+  clockSkewSeconds?: number;
+  keepToken?: boolean;
+}
+
+export interface APIKeyCredentialConfig {
+  credentials?: APIKeyCredential[];
+  source?: string;
+  key?: string;
+}
+
+export interface HMACCredentialConfig {
+  credentials?: HMACCredential[];
+}
+
 export interface ConsumerCredentialResult {
-  apiKeyConfig?: {
-    credentials?: Array<{
-      apiKey?: string;
-      mode?: "SYSTEM" | "CUSTOM";
-    }>;
-    source?: string;
-    key?: string;
-  };
-  hmacConfig?: {
-    credentials?: Array<{
-      ak?: string;
-      sk?: string;
-      mode?: "SYSTEM" | "CUSTOM";
-    }>;
-  };
-  jwtConfig?: Record<string, unknown>;
+  credentialType?: CredentialType;
+  apiKeyConfig?: APIKeyCredentialConfig;
+  hmacConfig?: HMACCredentialConfig;
+  jwtConfig?: JWTCredentialConfig;
 }
 
 export interface Subscription {
@@ -54,20 +77,8 @@ export interface Subscription {
 }
 
 export interface CreateCredentialParam {
-  apiKeyConfig?: {
-    credentials?: Array<{
-      apiKey?: string;
-      mode?: "SYSTEM" | "CUSTOM";
-    }>;
-    source?: string;
-    key?: string;
-  };
-  hmacConfig?: {
-    credentials?: Array<{
-      ak?: string;
-      sk?: string;
-      mode?: "SYSTEM" | "CUSTOM";
-    }>;
-  };
-  jwtConfig?: Record<string, unknown>;
+  credentialType?: CredentialType;
+  apiKeyConfig?: APIKeyCredentialConfig;
+  hmacConfig?: HMACCredentialConfig;
+  jwtConfig?: JWTCredentialConfig;
 }

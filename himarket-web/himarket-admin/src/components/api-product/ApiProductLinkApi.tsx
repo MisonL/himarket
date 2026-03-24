@@ -3,16 +3,12 @@ import {
   Button,
   Modal,
   Form,
-  Select,
   message,
-  Collapse,
-  Tabs,
 } from "antd";
 import {
   PlusOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
-  CopyOutlined,
 } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import type {
@@ -668,7 +664,7 @@ export function ApiProductLinkApi({
 
   // TODO
   const handleModalOk = () => {
-    form.validateFields().then(values => {
+    form.validateFields().then((values: any) => {
       const { sourceType, gatewayId, nacosId, apiId } = values;
       const selectedApi = apiList.find((item: any) => {
         if ("apiId" in item) {

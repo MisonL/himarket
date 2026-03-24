@@ -1,7 +1,9 @@
 package com.alibaba.himarket.service.hicoding.session;
 
 import java.util.List;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * CLI 会话配置，前端传入的纯标识符 DTO。
@@ -9,6 +11,8 @@ import lombok.Data;
  * 通过 WebSocket 消息传递给后端。
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CliSessionConfig {
 
     /** 市场模型产品 ID（可选） */
@@ -24,6 +28,8 @@ public class CliSessionConfig {
     private String authToken;
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class McpServerEntry {
         /** MCP 产品 ID */
         private String productId;
@@ -33,6 +39,8 @@ public class CliSessionConfig {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class SkillEntry {
         /** Skill 产品 ID */
         private String productId;

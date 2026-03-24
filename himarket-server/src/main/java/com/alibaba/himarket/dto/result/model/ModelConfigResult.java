@@ -21,6 +21,7 @@ package com.alibaba.himarket.dto.result.model;
 
 import com.alibaba.himarket.dto.result.httpapi.HttpRouteResult;
 import com.alibaba.himarket.dto.result.httpapi.ServiceResult;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import java.util.List;
 import lombok.Builder;
 import lombok.Data;
@@ -29,6 +30,8 @@ import lombok.Data;
 public class ModelConfigResult {
 
     private ModelAPIConfig modelAPIConfig;
+
+    private ConsumerCredentialType requiredCredentialType;
 
     @Data
     @Builder

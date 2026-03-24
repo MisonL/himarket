@@ -22,6 +22,7 @@ package com.alibaba.himarket.dto.result.mcp;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.himarket.dto.result.common.DomainResult;
 import com.alibaba.himarket.support.chat.mcp.MCPTransportConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.MCPTransportMode;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,8 @@ public class MCPConfigResult {
     protected MCPServerConfig mcpServerConfig;
 
     protected String tools;
+
+    protected ConsumerCredentialType requiredCredentialType;
 
     protected McpMetadata meta;
 

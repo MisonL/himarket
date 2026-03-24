@@ -13,7 +13,6 @@ import com.alibaba.himarket.entity.CodingSession;
 import com.alibaba.himarket.repository.CodingSessionRepository;
 import com.alibaba.himarket.service.CodingSessionService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class CodingSessionServiceImpl implements CodingSessionService {
 

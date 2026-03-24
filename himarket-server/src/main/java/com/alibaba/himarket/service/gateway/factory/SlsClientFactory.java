@@ -26,9 +26,6 @@ import com.alibaba.himarket.support.enums.SlsAuthType;
 import com.aliyun.openservices.log.Client;
 import com.aliyun.openservices.log.common.auth.Credentials;
 import com.aliyun.openservices.log.common.auth.DefaultCredentials;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -41,10 +38,6 @@ import org.springframework.util.StringUtils;
 public class SlsClientFactory {
 
     private final SlsConfig slsConfig;
-
-    /** STS模式的Client缓存（按userId缓存，25分钟过期） Client创建成本较高，应该缓存复用 */
-    private final Cache<String, Client> stsClientCache =
-            Caffeine.newBuilder().maximumSize(1000).expireAfterWrite(25, TimeUnit.MINUTES).build();
 
     /**
      * 根据配置创建SLS客户端

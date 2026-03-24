@@ -1,16 +1,40 @@
 services:
+  himarket-mcp-mock:
+    build:
+      context: ./mcp-mock
+    image: himarket-mcp-mock:dev
+    container_name: himarket-mcp-mock
+    environment:
+      - PORT=3000
+      - MCP_SERVER_NAMES=hm-mcp-key,hm-mcp-hmac,hm-mcp-jwt
+    ports:
+      - "8093:3000"
+    networks:
+      - himarket-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: always
+
   himarket-server:
     build:
       context: ../../himarket-bootstrap
       args:
         INSTALL_ARTHAS: "false"
     image: himarket-server-local:dev
+    networks:
+      himarket-network:
+        ipv4_address: 172.24.0.11
     environment:
       - DB_HOST=${DB_HOST:-mysql}
       - DB_PORT=${DB_PORT:-3306}
       - DB_NAME=${DB_NAME:-portal_db}
       - DB_USERNAME=${DB_USERNAME:-portal_user}
-      - DB_PASSWORD=${DB_PASSWORD:-portal_pass}
+      - DB_PASSWORD=${DB_PASSWORD:-himarket_app_2024}
+      - JWT_SECRET=${JWT_SECRET:-himarket_local_jwt_secret}
       - AUTH_SESSION_STORE_TYPE=${AUTH_SESSION_STORE_TYPE:-REDIS}
       - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis-stack-server}
       - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
@@ -29,7 +53,7 @@ services:
       # Internal URL for server-to-server ticket validation.
       - ADMIN_AUTH_CAS_CONFIGS_0_VALIDATE_ENDPOINT=http://cas:8080/cas/p3/serviceValidate
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_ENABLED=true
-      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://himarket-server:8080/admins/cas/proxy-callback
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://172.24.0.11:8080/admins/cas/proxy-callback
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_TARGET_SERVICE_PATTERN=^http://localhost:5174/.*$
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_PROXY_ENDPOINT=http://cas:8080/cas/proxy
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_POLICY_MODE=REST
@@ -161,6 +185,13 @@ services:
       - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_DN=cn=admin,dc=example,dc=org
       - ADMIN_AUTH_LDAP_CONFIGS_0_BIND_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin}
       - ADMIN_AUTH_LDAP_CONFIGS_0_USER_SEARCH_FILTER=(uid={0})
+    depends_on:
+      mysql:
+        condition: service_healthy
+      sandbox-shared:
+        condition: service_started
+      himarket-mcp-mock:
+        condition: service_healthy
 
   himarket-admin:
     build:

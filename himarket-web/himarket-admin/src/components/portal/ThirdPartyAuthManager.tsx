@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Form, Modal, message } from "antd";
 import { PlusOutlined, ExclamationCircleOutlined } from "@ant-design/icons";
-import { ThirdPartyAuthConfig, AuthenticationType } from "@/types";
+import { ThirdPartyAuthConfig } from "@/types";
 import { portalApi } from "@/lib/api";
 import { ThirdPartyAuthConfigModal } from "./third-party-auth/ThirdPartyAuthConfigModal";
 import { ThirdPartyAuthTabs } from "./third-party-auth/ThirdPartyAuthTabs";
@@ -15,6 +15,14 @@ import { buildDefaultFormValues } from "./third-party-auth/defaultFormValues";
 import { buildFormFieldsFromConfig } from "./third-party-auth/formValueReaders";
 import { buildConfigFromFormValues } from "./third-party-auth/formValueWriters";
 
+// 强制本地定义认证类型字符串，防止枚举引用异常
+const AUTH_TYPES = {
+  OIDC: "OIDC",
+  CAS: "CAS",
+  LDAP: "LDAP",
+  OAUTH2: "OAUTH2",
+};
+
 interface ThirdPartyAuthManagerProps {
   portalId?: string;
   configs: ThirdPartyAuthConfig[];
@@ -23,7 +31,7 @@ interface ThirdPartyAuthManagerProps {
 
 export function ThirdPartyAuthManager({
   portalId,
-  configs,
+  configs = [],
   onSave,
 }: ThirdPartyAuthManagerProps) {
   const [form] = Form.useForm();
@@ -32,9 +40,7 @@ export function ThirdPartyAuthManager({
   const [editingConfig, setEditingConfig] =
     useState<ThirdPartyAuthConfig | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
-  const [selectedType, setSelectedType] = useState<AuthenticationType | null>(
-    null
-  );
+  const [selectedType, setSelectedType] = useState<string | null>(null);
 
   // 添加新配置
   const handleAdd = () => {
@@ -130,7 +136,7 @@ export function ThirdPartyAuthManager({
       setLoading(true);
 
       const values = await form.validateFields();
-      const newConfig = buildConfigFromFormValues(selectedType, values);
+      const newConfig = buildConfigFromFormValues(selectedType as any, values);
 
       let updatedConfigs;
       if (editingConfig) {
@@ -183,18 +189,17 @@ export function ThirdPartyAuthManager({
     onDelete: handleDelete,
   });
 
-  // 按类型分组配置
   const oidcConfigs = configs.filter(
-    config => config.type === AuthenticationType.OIDC
+    config => String(config.type) === AUTH_TYPES.OIDC
   );
   const casConfigs = configs.filter(
-    config => config.type === AuthenticationType.CAS
+    config => String(config.type) === AUTH_TYPES.CAS
   );
   const ldapConfigs = configs.filter(
-    config => config.type === AuthenticationType.LDAP
+    config => String(config.type) === AUTH_TYPES.LDAP
   );
   const oauth2Configs = configs.filter(
-    config => config.type === AuthenticationType.OAUTH2
+    config => String(config.type) === AUTH_TYPES.OAUTH2
   );
 
   return (

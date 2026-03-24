@@ -1,108 +1,117 @@
-import { Form, Input, Switch } from "antd";
+import { Form, Input, Switch, Tooltip, Divider } from "antd";
+import { QuestionCircleOutlined } from "@ant-design/icons";
 
 export function CasAccessStrategySection() {
   return (
-    <div className="grid grid-cols-2 gap-4">
-      <Form.Item
-        name="accessStrategyEnabled"
-        label="允许访问"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategySsoEnabled"
-        label="允许 SSO"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <Form.Item
+          name="accessStrategyEnabled"
+          label={
+            <span>
+              启用访问策略&nbsp;
+              <Tooltip title="[这是什么]: 是否对此 Portal 开启额外的准入规则检查。[什么时候用]: 如果你希望对不同 Portal 设置不同的访问门槛（如只有特定部门能进），请开启。">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+          valuePropName="checked"
+          initialValue={true}
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="accessStrategySsoEnabled"
+          label={
+            <span>
+              SSO 参与检查&nbsp;
+              <Tooltip title="[这是什么]: 是否允许此 Service 参与 CAS 的单点登录会话。[什么时候用]: 建议开启。关闭后，即使用户在别处登录过 CAS，进入此 Portal 仍需重新认证。">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+          valuePropName="checked"
+          initialValue={true}
+        >
+          <Switch />
+        </Form.Item>
+      </div>
+
       <Form.Item
         name="accessStrategyUnauthorizedRedirectUrl"
-        label="Unauthorized Redirect URL"
+        label={
+          <span>
+            未授权重定向地址&nbsp;
+            <Tooltip title="[这是什么]: 当用户 CAS 验证通过但没有权限进入此 Portal 时，跳转的提示页面。[什么时候用]: 用于引导无权限用户去申请权限。">
+              <QuestionCircleOutlined />
+            </Tooltip>
+          </span>
+        }
       >
-        <Input placeholder="如: https://portal.example.com/forbidden" />
+        <Input placeholder="如: https://example.com/no-access" />
       </Form.Item>
-      <Form.Item
-        name="accessStrategyStartingDateTime"
-        label="Access Start DateTime"
-      >
-        <Input placeholder="如: 2026-01-01T09:00:00" />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategyEndingDateTime"
-        label="Access End DateTime"
-      >
-        <Input placeholder="如: 2026-12-31T18:00:00" />
-      </Form.Item>
-      <Form.Item name="accessStrategyZoneId" label="Access Strategy ZoneId">
-        <Input placeholder="如: Asia/Shanghai" />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategyRequireAllAttributes"
-        label="Require All Attributes"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategyCaseInsensitive"
-        label="Access Strategy Case Insensitive"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategyRequiredAttributes"
-        label="Required Attributes"
-        extra='JSON 对象，值可为字符串或字符串数组，例如 {"memberOf":["internal","ops"]}'
-      >
-        <Input.TextArea
-          rows={4}
-          placeholder='如: {"memberOf":["internal","ops"]}'
-        />
-      </Form.Item>
-      <Form.Item
-        name="accessStrategyRejectedAttributes"
-        label="Rejected Attributes"
-        extra='JSON 对象，值可为字符串或字符串数组，例如 {"status":["disabled"]}'
-      >
-        <Input.TextArea rows={4} placeholder='如: {"status":["disabled"]}' />
-      </Form.Item>
-      <Form.Item
-        name="delegatedAllowedProviders"
-        label="Delegated Providers"
-        extra="逗号分隔，例如 GithubClient,OidcClient。"
-      >
-        <Input placeholder="如: GithubClient, OidcClient" />
-      </Form.Item>
-      <Form.Item
-        name="delegatedPermitUndefined"
-        label="允许未声明 Delegated Provider"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item
-        name="delegatedExclusive"
-        label="Delegated Exclusive"
-        valuePropName="checked"
-      >
-        <Switch />
-      </Form.Item>
-      <Form.Item name="httpRequestIpAddressPattern" label="IP Address Regex">
-        <Input placeholder="如: ^127\\.0\\.0\\.1$" />
-      </Form.Item>
-      <Form.Item name="httpRequestUserAgentPattern" label="User-Agent Regex">
-        <Input placeholder="如: ^curl/.*$" />
-      </Form.Item>
-      <Form.Item
-        name="httpRequestHeaders"
-        label="Required Headers"
-        extra='JSON 对象，例如 {"X-Portal-Scope":"admin"}'
-      >
-        <Input.TextArea rows={4} placeholder='如: {"X-Portal-Scope":"admin"}' />
-      </Form.Item>
+
+      <Divider plain>时间与属性限制</Divider>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Form.Item
+          name="accessStrategyStartingDateTime"
+          label={
+            <span>
+              开始访问时间&nbsp;
+              <Tooltip title="[这是什么]: 此对接配置生效的起始时间。[什么时候用]: 针对限时开放的活动门户设置。格式如: 2024-01-01T00:00:00Z">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+        >
+          <Input placeholder="ISO 格式时间" />
+        </Form.Item>
+        <Form.Item
+          name="accessStrategyEndingDateTime"
+          label={
+            <span>
+              截止访问时间&nbsp;
+              <Tooltip title="[这是什么]: 此对接配置失效的截止时间。[什么时候用]: 配合开始时间，定义一个访问窗口。">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+        >
+          <Input placeholder="ISO 格式时间" />
+        </Form.Item>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Form.Item
+          name="accessStrategyRequireAllAttributes"
+          label={
+            <span>
+              满足所有属性&nbsp;
+              <Tooltip title="[这是什么]: 当配置了多个'必要属性'时，是否要求用户必须全部满足。[什么时候用]: 设置为'是'代表'与'逻辑，设置为'否'代表'或'逻辑。">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+          valuePropName="checked"
+        >
+          <Switch />
+        </Form.Item>
+        <Form.Item
+          name="accessStrategyCaseInsensitive"
+          label={
+            <span>
+              属性大小写不敏感&nbsp;
+              <Tooltip title="[这是什么]: 匹配用户属性值时是否区分大小写。[什么时候用]: 建议开启，防止因数据源录入不规范导致的拦截。">
+                <QuestionCircleOutlined />
+              </Tooltip>
+            </span>
+          }
+          valuePropName="checked"
+        >
+          <Switch />
+        </Form.Item>
+      </div>
     </div>
   );
 }

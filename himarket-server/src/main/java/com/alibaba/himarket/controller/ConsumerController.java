@@ -33,7 +33,6 @@ import com.alibaba.himarket.dto.result.consumer.ConsumerCredentialResult;
 import com.alibaba.himarket.dto.result.consumer.ConsumerResult;
 import com.alibaba.himarket.dto.result.product.SubscriptionResult;
 import com.alibaba.himarket.service.ConsumerService;
-import com.alibaba.himarket.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -50,8 +49,6 @@ import org.springframework.web.bind.annotation.*;
 public class ConsumerController {
 
     private final ConsumerService consumerService;
-
-    private final ProductService productService;
 
     @Operation(summary = "获取Consumer列表")
     @GetMapping

@@ -24,14 +24,26 @@ import com.alibaba.himarket.entity.ConsumerCredential;
 import com.alibaba.himarket.support.consumer.ApiKeyConfig;
 import com.alibaba.himarket.support.consumer.HmacConfig;
 import com.alibaba.himarket.support.consumer.JwtConfig;
+import com.alibaba.himarket.support.enums.ConsumerCredentialType;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Data;
 
 @Data
 public class UpdateCredentialParam implements InputConverter<ConsumerCredential> {
+
+    private ConsumerCredentialType credentialType;
 
     private ApiKeyConfig apiKeyConfig;
 
     private HmacConfig hmacConfig;
 
     private JwtConfig jwtConfig;
+
+    @AssertTrue(message = "凭证信息不能为空")
+    private boolean isValid() {
+        return credentialType != null
+                || apiKeyConfig != null
+                || hmacConfig != null
+                || jwtConfig != null;
+    }
 }

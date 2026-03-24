@@ -42,15 +42,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "API产品管理", description = "提供API产品的创建、更新、删除、查询、订阅等管理功能")
 @RestController
-@RequestMapping("/products")
-@Slf4j
 @RequiredArgsConstructor
+@RequestMapping({"", "/products"})
 public class ProductController {
 
     private final ProductService productService;

@@ -22,7 +22,6 @@ package com.alibaba.himarket.core.advice;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.core.response.Response;
 import java.lang.reflect.Method;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -46,7 +45,6 @@ import reactor.core.publisher.Mono;
  * handled by ExceptionAdvice (avoid double wrapping)
  */
 @RestControllerAdvice
-@Slf4j
 public class ResponseAdvice implements ResponseBodyAdvice<Object> {
 
     @Override

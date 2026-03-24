@@ -55,7 +55,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -66,7 +65,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 @Transactional
 public class DeveloperServiceImpl implements DeveloperService {
 
@@ -360,5 +358,29 @@ public class DeveloperServiceImpl implements DeveloperService {
                         .description("Developer's primary consumer")
                         .build(),
                 developerId);
+    }
+
+    @Override
+    public void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email) {
+        externalRepository
+                .findByProviderAndSubject(provider, subject)
+                .ifPresent(
+                        externalIdentity -> {
+                            boolean changed = false;
+                            Developer developer = externalIdentity.getDeveloper();
+                            if (!StrUtil.equals(developer.getEmail(), email)) {
+                                developer.setEmail(email);
+                                changed = true;
+                            }
+                            if (!StrUtil.equals(externalIdentity.getDisplayName(), displayName)) {
+                                externalIdentity.setDisplayName(displayName);
+                                changed = true;
+                            }
+                            if (changed) {
+                                developerRepository.save(developer);
+                                externalRepository.save(externalIdentity);
+                            }
+                        });
     }
 }

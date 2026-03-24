@@ -56,7 +56,7 @@ git checkout -b feat/your-feature-name
 
 ```bash
 # 格式化 Java 代码（必需）
-mvn spotless:apply
+./mvnw spotless:apply
 
 # 如果修改了前端代码，也需要格式化
 cd himarket-web/himarket-admin
@@ -141,7 +141,7 @@ git push origin feat/your-feature-name
    - 这有助于我们追踪哪些问题正在被解决
 
 3. **Checklist**（必填）
-   - 确认你已运行 `mvn spotless:apply` 格式化代码
+   - 确认你已运行 `./mvnw spotless:apply` 格式化代码
    - 说明你是否添加了测试或更新了文档
    - 勾选适用的项目
 
@@ -161,7 +161,7 @@ Close #456
 
 ## Checklist
 
-- [x] Code has been formatted with `mvn spotless:apply`
+- [x] Code has been formatted with `./mvnw spotless:apply`
 - [x] Code is self-reviewed
 - [x] Tests added/updated (if applicable)
 - [x] Documentation updated (if applicable)
@@ -172,7 +172,7 @@ Close #456
 每个 PR 都会自动触发以下检查：
 
 1. **PR Check** - 验证 PR 标题和描述格式（必需 ✅）
-2. **Code Format Check** - 运行 `mvn spotless:check` 验证代码格式（必需 ✅）
+2. **Code Format Check** - 运行 `./mvnw spotless:check` 验证代码格式（必需 ✅）
 
 **所有检查必须通过**才能合并 PR。如果检查失败，机器人会评论并说明如何修复。
 
@@ -187,7 +187,7 @@ Close #456
 ### Java 代码
 
 **代码格式化（必需）：**
-- 提交前运行 `mvn spotless:apply` 自动格式化代码
+- 提交前运行 `./mvnw spotless:apply` 自动格式化代码
 - 确保项目代码风格一致
 - **CI 检查不通过**则无法合并
 
@@ -213,4 +213,3 @@ Close #456
 - **命名**：遵循格式 `V{版本}__{描述}.sql`
   - 示例：`V3__Add_product_feature.sql`
 - **测试**：提交前务必在干净的数据库上测试你的迁移
-

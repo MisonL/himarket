@@ -86,12 +86,12 @@ HiMarket system architecture consists of three layers:
 
 <br/>
 
-**Requirements:** JDK 17, Node.js 18+, Maven 3.6+, MySQL 8.0+
+**Requirements:** JDK 17, Node.js 18+, MySQL 8.0+; Maven uses the bundled Wrapper (`./mvnw`, 3.8.3)
 
 **Start Backend:**
 ```bash
 # Build project
-mvn clean package -DskipTests
+./mvnw clean package -DskipTests
 
 # Start backend service
 java --add-opens java.base/java.util=ALL-UNNAMED \
