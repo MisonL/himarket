@@ -41,43 +41,34 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public class TokenUtil {
 
-    private static String JWT_SECRET;
-
-    private static long JWT_EXPIRE_MILLIS;
+    private static final Pattern SHORT_DURATION_PATTERN = Pattern.compile("\\d+[smhd]");
 
     private static String getJwtSecret() {
-        if (JWT_SECRET == null) {
-            JWT_SECRET = SpringUtil.getProperty("jwt.secret");
+        String jwtSecret = resolveProperty("jwt.secret");
+        if (StrUtil.isBlank(jwtSecret)) {
+            throw new IllegalStateException("JWT secret cannot be empty");
         }
-
-        if (StrUtil.isBlank(JWT_SECRET)) {
-            throw new RuntimeException("JWT secret cannot be empty");
-        }
-        return JWT_SECRET;
+        return jwtSecret;
     }
 
     private static long getJwtExpireMillis() {
-        if (JWT_EXPIRE_MILLIS == 0) {
-            String expiration = SpringUtil.getProperty("jwt.expiration");
-            if (StrUtil.isBlank(expiration)) {
-                throw new RuntimeException("JWT expiration is empty");
-            }
-
-            if (expiration.matches("\\d+[smhd]")) {
-                String upper = expiration.toUpperCase();
-                if (upper.endsWith("D")) {
-                    JWT_EXPIRE_MILLIS = Duration.parse("P" + upper).toMillis();
-                } else {
-                    JWT_EXPIRE_MILLIS = Duration.parse("PT" + upper).toMillis();
-                }
-            } else {
-                JWT_EXPIRE_MILLIS = Long.parseLong(expiration);
-            }
+        String expiration = resolveProperty("jwt.expiration");
+        if (StrUtil.isBlank(expiration)) {
+            throw new IllegalStateException("JWT expiration is empty");
         }
-        return JWT_EXPIRE_MILLIS;
+
+        if (SHORT_DURATION_PATTERN.matcher(expiration).matches()) {
+            String upper = expiration.toUpperCase();
+            if (upper.endsWith("D")) {
+                return Duration.parse("P" + upper).toMillis();
+            }
+            return Duration.parse("PT" + upper).toMillis();
+        }
+        return Long.parseLong(expiration);
     }
 
     public static String generateAdminToken(String userId) {
@@ -206,6 +197,19 @@ public class TokenUtil {
 
     public static long getTokenExpiresIn() {
         return getJwtExpireMillis() / 1000;
+    }
+
+    private static String resolveProperty(String key) {
+        String value = null;
+        try {
+            value = SpringUtil.getProperty(key);
+        } catch (RuntimeException ignored) {
+            value = null;
+        }
+        if (StrUtil.isBlank(value)) {
+            value = System.getProperty(key);
+        }
+        return value;
     }
 
     private static AuthSessionStore authSessionStore() {

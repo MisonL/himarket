@@ -120,10 +120,7 @@ public class CasServiceImpl implements CasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String developerId = createOrGetDeveloper(userInfo, config);
-        long expirationPolicy =
-                Convert.toLong(
-                        userInfo.get("longTermAuthenticationRequestTokenUsed"),
-                        86400000L); // Default fallback 1 day
+        Long tokenExpiresIn = resolveTokenExpiresInSeconds(userInfo);
 
         String code =
                 issueLoginCode(
@@ -131,7 +128,7 @@ public class CasServiceImpl implements CasService {
                         developerId,
                         ticket,
                         resolveProxyGrantingTicketIou(config, userInfo),
-                        java.time.Duration.ofMillis(expirationPolicy));
+                        tokenExpiresIn);
         IdpStateCookie.clearCasStateCookie(request, response);
         return buildFrontendRedirectUrl(code);
     }
@@ -140,19 +137,6 @@ public class CasServiceImpl implements CasService {
     public AuthResult exchangeCode(String code) {
         CasLoginContext loginContext = consumeLoginContext(code);
 
-        // Systemic Governance: Enforce Max Sessions Per User
-        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
-        if (maxSessions > 0) {
-            authSessionStore.revokeUserSessions(loginContext.getScope(), loginContext.getUserId());
-            // Note: Currently implementing strict single-session or flush-all for security.
-            // In a production refined FIFO, we would only revoke the oldest one if count > max.
-            // For HiMarket systemic fix, we ensure the "Source of Truth" is singular per scope if
-            // needed,
-            // or simply delegate to the store to manage cap.
-            // Here we enforce the limit by revoking existing sessions for this user/scope before
-            // issuing new.
-        }
-
         String accessToken = TokenUtil.generateDeveloperToken(loginContext.getUserId());
         authSessionStore.bindCasSessionToken(
                 loginContext.getScope(),
@@ -160,13 +144,17 @@ public class CasServiceImpl implements CasService {
                 loginContext.getSessionIndex(),
                 accessToken);
         bindProxyGrantingTicket(loginContext);
+        enforceMaxSessions(loginContext);
 
-        // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
+        long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
+        if (loginContext.getTokenExpiresIn() != null) {
+            maxSafetyExpiresIn = loginContext.getTokenExpiresIn();
+        }
+
         java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
-        long maxSafetyExpiresIn = 86400; // Default 24h as a broad safety net
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn = Math.max(0, 86400 - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn = Math.max(0, maxSafetyExpiresIn - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 
@@ -421,17 +409,38 @@ public class CasServiceImpl implements CasService {
             String developerId,
             String sessionIndex,
             String proxyGrantingTicketIou,
-            java.time.Duration lease) {
+            Long tokenExpiresIn) {
         String code = cn.hutool.core.util.IdUtil.fastSimpleUUID();
-        CasLoginContext context = new CasLoginContext();
-        context.setScope(CasSessionScope.DEVELOPER);
-        context.setProvider(provider);
-        context.setUserId(developerId);
-        context.setSessionIndex(sessionIndex);
-        context.setProxyGrantingTicketIou(proxyGrantingTicketIou);
+        CasLoginContext context =
+                new CasLoginContext(
+                        CasSessionScope.DEVELOPER,
+                        provider,
+                        developerId,
+                        sessionIndex,
+                        proxyGrantingTicketIou,
+                        tokenExpiresIn);
 
-        authSessionStore.saveCasLoginContext(code, context, lease);
+        authSessionStore.saveCasLoginContext(
+                code, context, authSessionConfig.getCas().getLoginCodeTtl());
         return code;
+    }
+
+    private void enforceMaxSessions(CasLoginContext loginContext) {
+        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
+        if (maxSessions <= 0) {
+            return;
+        }
+        authSessionStore.revokeOverflowUserSessions(
+                loginContext.getScope(), loginContext.getUserId(), maxSessions);
+    }
+
+    private Long resolveTokenExpiresInSeconds(Map<String, Object> userInfo) {
+        boolean rememberMe =
+                Convert.toBool(userInfo.get("longTermAuthenticationRequestTokenUsed"), false);
+        if (!rememberMe) {
+            return null;
+        }
+        return authSessionConfig.getCas().getRememberMeTokenTtl().toSeconds();
     }
 
     private CasLoginContext consumeLoginContext(String code) {

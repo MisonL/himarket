@@ -119,12 +119,14 @@ public class AdminCasServiceImpl implements AdminCasService {
                         serviceUrl,
                         resolveProxyCallbackUrl(config, idpState.getApiPrefix()));
         String adminId = getAdminId(userInfo, config);
+        Long tokenExpiresIn = resolveTokenExpiresInSeconds(userInfo);
         String code =
                 issueLoginCode(
                         config.getProvider(),
                         adminId,
                         ticket,
-                        resolveProxyGrantingTicketIou(config, userInfo));
+                        resolveProxyGrantingTicketIou(config, userInfo),
+                        tokenExpiresIn);
         IdpStateCookie.clearAdminCasStateCookie(request, response);
         return buildFrontendRedirectUrl(code);
     }
@@ -133,12 +135,6 @@ public class AdminCasServiceImpl implements AdminCasService {
     public AuthResult exchangeCode(String code) {
         CasLoginContext loginContext = consumeLoginContext(code);
 
-        // Systemic Governance: Enforce Max Sessions Per User
-        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
-        if (maxSessions > 0) {
-            authSessionStore.revokeUserSessions(loginContext.getScope(), loginContext.getUserId());
-        }
-
         String accessToken = TokenUtil.generateAdminToken(loginContext.getUserId());
         authSessionStore.bindCasSessionToken(
                 loginContext.getScope(),
@@ -146,13 +142,17 @@ public class AdminCasServiceImpl implements AdminCasService {
                 loginContext.getSessionIndex(),
                 accessToken);
         bindProxyGrantingTicket(loginContext);
+        enforceMaxSessions(loginContext);
 
-        // Systemic Governance: Align Token TTL with Lease Buffer (Risk B)
         long defaultExpiresIn = TokenUtil.getTokenExpiresIn();
+        long maxSafetyExpiresIn = IdpConstants.SECONDS_PER_DAY;
+        if (loginContext.getTokenExpiresIn() != null) {
+            maxSafetyExpiresIn = loginContext.getTokenExpiresIn();
+        }
+
         java.time.Duration leaseBuffer = authSessionConfig.getCas().getSessionLeaseBuffer();
-        long maxSafetyExpiresIn = 86400; // Default 24h as a broad safety net
         if (leaseBuffer != null) {
-            maxSafetyExpiresIn = Math.max(0, 86400 - leaseBuffer.toSeconds());
+            maxSafetyExpiresIn = Math.max(0, maxSafetyExpiresIn - leaseBuffer.toSeconds());
         }
         long expiresIn = Math.min(defaultExpiresIn, maxSafetyExpiresIn);
 
@@ -397,7 +397,11 @@ public class AdminCasServiceImpl implements AdminCasService {
     }
 
     private String issueLoginCode(
-            String provider, String userId, String sessionIndex, String proxyGrantingTicketIou) {
+            String provider,
+            String userId,
+            String sessionIndex,
+            String proxyGrantingTicketIou,
+            Long tokenExpiresIn) {
         String code = IdUtil.fastSimpleUUID();
         authSessionStore.saveCasLoginContext(
                 code,
@@ -406,9 +410,28 @@ public class AdminCasServiceImpl implements AdminCasService {
                         provider,
                         userId,
                         sessionIndex,
-                        proxyGrantingTicketIou),
+                        proxyGrantingTicketIou,
+                        tokenExpiresIn),
                 authSessionConfig.getCas().getLoginCodeTtl());
         return code;
+    }
+
+    private void enforceMaxSessions(CasLoginContext loginContext) {
+        int maxSessions = authSessionConfig.getCas().getMaxSessionsPerUser();
+        if (maxSessions <= 0) {
+            return;
+        }
+        authSessionStore.revokeOverflowUserSessions(
+                loginContext.getScope(), loginContext.getUserId(), maxSessions);
+    }
+
+    private Long resolveTokenExpiresInSeconds(Map<String, Object> userInfo) {
+        boolean rememberMe =
+                Convert.toBool(userInfo.get("longTermAuthenticationRequestTokenUsed"), false);
+        if (!rememberMe) {
+            return null;
+        }
+        return authSessionConfig.getCas().getRememberMeTokenTtl().toSeconds();
     }
 
     private CasLoginContext consumeLoginContext(String code) {

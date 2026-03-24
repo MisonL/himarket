@@ -28,7 +28,6 @@ import com.alibaba.himarket.core.constant.CommonConstants;
 import com.alibaba.himarket.core.constant.JwtConstants;
 import com.alibaba.himarket.support.common.User;
 import com.alibaba.himarket.support.enums.UserType;
-import java.lang.reflect.Field;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,15 +35,15 @@ import org.junit.jupiter.api.Test;
 class TokenUtilTest {
 
     @BeforeEach
-    void setUp() throws Exception {
-        setStaticField("JWT_SECRET", "unit-test-secret");
-        setStaticField("JWT_EXPIRE_MILLIS", 60_000L);
+    void setUp() {
+        System.setProperty("jwt.secret", "unit-test-secret");
+        System.setProperty("jwt.expiration", "60000");
     }
 
     @AfterEach
-    void tearDown() throws Exception {
-        setStaticField("JWT_SECRET", null);
-        setStaticField("JWT_EXPIRE_MILLIS", 0L);
+    void tearDown() {
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -68,11 +67,5 @@ class TokenUtilTest {
         assertEquals(UserType.ADMIN, secondUser.getUserType());
         assertEquals("admin-1", secondUser.getUserId());
         assertEquals("admin-1", secondJwt.getPayload(CommonConstants.USER_ID).toString());
-    }
-
-    private void setStaticField(String fieldName, Object value) throws Exception {
-        Field field = TokenUtil.class.getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.set(null, value);
     }
 }
