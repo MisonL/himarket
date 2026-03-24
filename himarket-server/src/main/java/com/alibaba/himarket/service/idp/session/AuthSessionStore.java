@@ -34,6 +34,8 @@ public interface AuthSessionStore {
 
     int revokeUserSessions(CasSessionScope scope, String userId);
 
+    int revokeOverflowUserSessions(CasSessionScope scope, String userId, int maxSessions);
+
     void saveCasProxyGrantingTicket(String pgtIou, String pgtId, Duration ttl);
 
     String consumeCasProxyGrantingTicket(String pgtIou);

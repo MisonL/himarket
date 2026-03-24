@@ -41,6 +41,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriUtils;
 
@@ -71,9 +72,9 @@ public class CasTicketValidator {
             return parseResponse(validationConfig, response);
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (RestClientException | IllegalArgumentException e) {
             log.error("Failed to validate CAS ticket for provider {}", config.getProvider(), e);
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "CAS ticket validation failed");
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "CAS ticket validation failed");
         }
     }
 

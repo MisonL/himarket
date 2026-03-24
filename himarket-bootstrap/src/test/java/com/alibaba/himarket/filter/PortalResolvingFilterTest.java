@@ -19,6 +19,7 @@
 
 package com.alibaba.himarket.filter;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -146,6 +147,36 @@ class PortalResolvingFilterTest {
         filter.doFilter(request, response, filterChain);
 
         verify(contextHolder).savePortal("default-portal");
+        verify(contextHolder).clearPortal();
+    }
+
+    @Test
+    void shouldFailFastWhenPortalResolutionThrows() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/products");
+        request.addHeader("Host", "broken.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(portalService.resolvePortal("broken.example.com"))
+                .thenThrow(new IllegalStateException("boom"));
+
+        PortalResolvingFilter filter = new PortalResolvingFilter(portalService, contextHolder);
+
+        assertThrows(Exception.class, () -> filter.doFilter(request, response, filterChain));
+        verify(contextHolder).clearPortal();
+    }
+
+    @Test
+    void shouldFailFastWhenDefaultPortalLookupThrows() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/products");
+        request.addHeader("Host", "unknown.example.com");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        when(portalService.resolvePortal("unknown.example.com")).thenReturn(null);
+        when(portalService.getDefaultPortal()).thenThrow(new IllegalStateException("boom"));
+
+        PortalResolvingFilter filter = new PortalResolvingFilter(portalService, contextHolder);
+
+        assertThrows(Exception.class, () -> filter.doFilter(request, response, filterChain));
         verify(contextHolder).clearPortal();
     }
 }
