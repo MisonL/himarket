@@ -330,7 +330,7 @@ configure_portal_auth() {
           "grantType": "TRUSTED_HEADER",
           "trustedHeaderConfig": {
             "enabled": true,
-            "trustedProxyCidrs": ["127.0.0.1/32", "172.16.0.0/12", "192.168.0.0/16"],
+            "trustedProxyCidrs": ["127.0.0.1/32", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"],
             "userIdHeader": "X-Auth-User",
             "userNameHeader": "X-Auth-Name",
             "emailHeader": "X-Auth-Email",
