@@ -1,6 +1,6 @@
 {
   "@class": "org.apereo.cas.services.CasRegisteredService",
-  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/api(?:/[^/?#]+)*/(developers|admins)/cas/callback\\?provider=(cas|cas-saml1|cas1|cas2)(?:&.*)?$",
+  "serviceId": "^https?://(localhost|127\\.0\\.0\\.1)(:\\d+)?/(?:api(?:/[^/?#]+)*/(developers|admins)/cas/callback|oauth2/callback)\\?(?:.*&)?provider=(cas|cas-saml1|cas1|cas2|cas-jwt-validate-json|cas-jwt-validate-xml|cas-jwt-validate-saml|cas-jwt-ticket)(?:&.*)?$",
   "proxyPolicy": {
     "@class": "org.apereo.cas.services.RegexMatchingRegisteredServiceProxyPolicy",
     "pattern": "^http://(?:himarket-server:8080|172\\.24\\.0\\.11:8080)/(developers|admins)/cas/proxy-callback(?:\\?.*)?$",
@@ -33,6 +33,7 @@
       "java.util.ArrayList",
       [
         "cn",
+        "uid",
         "mail",
         "displayName",
         "user",

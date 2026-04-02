@@ -126,6 +126,48 @@ function signJwt(payload) {
   return `${signingInput}.${signature}`;
 }
 
+function buildEnterpriseJwtUser(user) {
+  return {
+    sub: user.preferred_username,
+    preferred_username: user.preferred_username,
+    email: user.email,
+    name: user.name
+  };
+}
+
+function buildEnterpriseJwt(user) {
+  const now = Math.floor(Date.now() / 1000);
+  return signJwt({
+    iss: issuer,
+    aud: "himarket-api",
+    iat: now,
+    exp: now + 300,
+    ...buildEnterpriseJwtUser(user)
+  });
+}
+
+function decodeJwtPayload(token) {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      return null;
+    }
+    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function resolveEnterpriseUserByTicket(ticket) {
+  if (!ticket) {
+    return null;
+  }
+  if (ticket.toLowerCase().includes("admin")) {
+    return users.get("admin") || null;
+  }
+  return users.get("alice") || null;
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", issuer);
 
@@ -246,16 +288,46 @@ const server = createServer(async (req, res) => {
       sendJson(res, 401, { error: "invalid_token" });
       return;
     }
-    const user = accessTokens.get(authorization.slice("Bearer ".length));
-    if (!user) {
+    const token = authorization.slice("Bearer ".length);
+    const user = accessTokens.get(token);
+    if (user) {
+      sendJson(res, 200, {
+        sub: user.sub,
+        preferred_username: user.preferred_username,
+        email: user.email,
+        name: user.name
+      });
+      return;
+    }
+    const jwtPayload = decodeJwtPayload(token);
+    if (!jwtPayload) {
       sendJson(res, 401, { error: "invalid_token" });
       return;
     }
     sendJson(res, 200, {
-      sub: user.sub,
-      preferred_username: user.preferred_username,
-      email: user.email,
-      name: user.name
+      sub: jwtPayload.sub,
+      preferred_username: jwtPayload.preferred_username || jwtPayload.sub,
+      email: jwtPayload.email,
+      name: jwtPayload.name || jwtPayload.preferred_username || jwtPayload.sub
+    });
+    return;
+  }
+
+  if (
+    (req.method === "GET" || req.method === "POST") &&
+    url.pathname === "/cas-ticket-exchange"
+  ) {
+    const params = req.method === "GET" ? url.searchParams : await parseBody(req);
+    const ticket = params.get("ticket") || "";
+    const user = resolveEnterpriseUserByTicket(ticket);
+    if (!user) {
+      sendJson(res, 400, { error: "invalid_ticket" });
+      return;
+    }
+    sendJson(res, 200, {
+      access_token: buildEnterpriseJwt(user),
+      token_type: "Bearer",
+      expires_in: 300
     });
     return;
   }

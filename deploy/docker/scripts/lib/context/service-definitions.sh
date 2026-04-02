@@ -9,6 +9,14 @@ verify_portal_cas_service_definitions() {
   curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas-mfa")' >/dev/null
   curl -fsS "http://localhost:8081/developers/cas/providers" | jq -e '.data[]? | select(.provider=="cas-delegated")' >/dev/null
 
+  log "verify developer oauth2 browser providers"
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="cas-jwt-validate-json" and .interactiveBrowserLogin==true)' >/dev/null
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="cas-jwt-validate-xml" and .interactiveBrowserLogin==true)' >/dev/null
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="cas-jwt-validate-saml" and .interactiveBrowserLogin==true)' >/dev/null
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="cas-jwt-ticket" and .interactiveBrowserLogin==true)' >/dev/null
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="jwt-bearer" and .directTokenLogin==true)' >/dev/null
+  curl -fsS "http://localhost:8081/developers/oauth2/providers" | jq -e '.data[]? | select(.provider=="trusted-header" and .trustedHeaderLogin==true)' >/dev/null
+
   log "preview portal cas service definition"
   local cas_definition
   cas_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}/cas/cas/service-definition")"

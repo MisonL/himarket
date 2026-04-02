@@ -1,6 +1,9 @@
 networks:
   himarket-network:
     driver: bridge
+    ipam:
+      config:
+        - subnet: 10.233.0.0/24
 
 services:
   # ============================================================

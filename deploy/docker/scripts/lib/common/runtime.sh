@@ -216,6 +216,32 @@ init_runtime_context() {
   JWK_DIR="${DATA_DIR}/jwt-bearer"
 }
 
+prepare_docker_shared_mounts() {
+  local shared_root="${DOCKER_SHARED_ROOT:-${HOME}/himarket-data/docker-shared}"
+  local mysql_shared_dir="${shared_root}/mysql-init"
+  local nacos_sql_shared_dir="${mysql_shared_dir}/nacos-sql"
+  local auth_shared_dir="${shared_root}/auth"
+  local cas_services_shared_dir="${auth_shared_dir}/cas/services"
+  local cas_modules_shared_dir="${auth_shared_dir}/cas/modules/lib"
+  local jwks_shared_dir="${shared_root}/jwt-bearer"
+
+  mkdir -p "${nacos_sql_shared_dir}"
+  mkdir -p "${cas_services_shared_dir}"
+  mkdir -p "${cas_modules_shared_dir}"
+  mkdir -p "${jwks_shared_dir}"
+  cp -f "${DOCKER_DIR}/init-nacos-db.sh" "${mysql_shared_dir}/init-nacos-db.sh"
+  cp -Rf "${REPO_DIR}/deploy/helm/nacos/sql/." "${nacos_sql_shared_dir}/"
+  cp -Rf "${DOCKER_DIR}/auth/cas/services/." "${cas_services_shared_dir}/"
+  cp -Rf "${CAS_MODULES_LIB_DIR}/." "${cas_modules_shared_dir}/"
+
+  export NACOS_INIT_SCRIPT_PATH="${mysql_shared_dir}/init-nacos-db.sh"
+  export NACOS_SQL_MOUNT_DIR="${nacos_sql_shared_dir}"
+  export CAS_SERVICES_SHARED_DIR="${cas_services_shared_dir}"
+  export CAS_MODULES_SHARED_DIR="${cas_modules_shared_dir}"
+  export JWKS_SHARED_DIR="${jwks_shared_dir}"
+  JWK_DIR="${JWKS_SHARED_DIR}"
+}
+
 maybe_build_artifacts() {
   if [[ "${SKIP_BUILD}" == "1" ]]; then
     log "skip build himarket server jar"
@@ -273,6 +299,7 @@ bootstrap_runtime() {
     exit 1
   fi
   init_runtime_context
+  prepare_docker_shared_mounts
   start_mock_oidc
   trap stop_mock_oidc EXIT
   maybe_build_artifacts

@@ -16,6 +16,7 @@ ALL_PHASES=(
   cas-delegated
   ldap
   jwt-bearer
+  oauth2-browser-cas
 )
 
 SELECTED_PHASES=()

@@ -5,6 +5,12 @@ services:
       args:
         INSTALL_ARTHAS: "false"
     image: himarket-server-local:dev
+    extra_hosts:
+      - "mock-oidc.local:host-gateway"
+      - "host.docker.internal:host-gateway"
+    networks:
+      himarket-network:
+        ipv4_address: 10.233.0.11
     environment:
       - DB_HOST=${DB_HOST:-mysql}
       - DB_PORT=${DB_PORT:-3306}
@@ -29,7 +35,7 @@ services:
       # Internal URL for server-to-server ticket validation.
       - ADMIN_AUTH_CAS_CONFIGS_0_VALIDATE_ENDPOINT=http://cas:8080/cas/p3/serviceValidate
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_ENABLED=true
-      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://himarket-server:8080/admins/cas/proxy-callback
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://10.233.0.11:8080/admins/cas/proxy-callback
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_TARGET_SERVICE_PATTERN=^http://localhost:5174/.*$
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_PROXY_ENDPOINT=http://cas:8080/cas/proxy
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_POLICY_MODE=REST

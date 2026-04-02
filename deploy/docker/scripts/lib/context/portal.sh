@@ -266,6 +266,79 @@ configure_portal_auth() {
             "audiences": ["himarket-api"]
           },
           "identityMapping": { "userIdField": "sub", "userNameField": "name", "emailField": "email" }
+        },
+        {
+          "provider": "cas-jwt-validate-json",
+          "name": "CAS JWT Validate JSON",
+          "enabled": true,
+          "grantType": "JWT_BEARER",
+          "jwtBearerConfig": {
+            "authorizationEndpoint": ($casServerUrl + "/login"),
+            "acquireMode": "TICKET_VALIDATE",
+            "ticketExchangeUrl": "http://cas:8080/cas/p3/serviceValidate?format=JSON",
+            "ticketExchangeMethod": "GET"
+          },
+          "identityMapping": { "userIdField": "sub", "userNameField": "name", "emailField": "email" }
+        },
+        {
+          "provider": "cas-jwt-validate-xml",
+          "name": "CAS JWT Validate XML",
+          "enabled": true,
+          "grantType": "JWT_BEARER",
+          "jwtBearerConfig": {
+            "authorizationEndpoint": ($casServerUrl + "/login"),
+            "acquireMode": "TICKET_VALIDATE",
+            "ticketExchangeUrl": "http://cas:8080/cas/serviceValidate",
+            "ticketExchangeMethod": "GET"
+          },
+          "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
+        },
+        {
+          "provider": "cas-jwt-validate-saml",
+          "name": "CAS JWT Validate SAML",
+          "enabled": true,
+          "grantType": "JWT_BEARER",
+          "jwtBearerConfig": {
+            "authorizationEndpoint": ($casServerUrl + "/login"),
+            "acquireMode": "TICKET_VALIDATE",
+            "ticketExchangeUrl": "http://cas:8080/cas/samlValidate"
+          },
+          "identityMapping": { "userIdField": "user", "userNameField": "user", "emailField": "mail" }
+        },
+        {
+          "provider": "cas-jwt-ticket",
+          "name": "CAS JWT Ticket Exchange",
+          "enabled": true,
+          "grantType": "JWT_BEARER",
+          "jwtBearerConfig": {
+            "authorizationEndpoint": ($casServerUrl + "/login"),
+            "issuer": "http://mock-oidc.local:8092",
+            "jwkSetUri": "http://mock-oidc.local:8092/jwks",
+            "audiences": ["himarket-api"],
+            "acquireMode": "TICKET_EXCHANGE",
+            "ticketExchangeUrl": "http://mock-oidc.local:8092/cas-ticket-exchange",
+            "ticketExchangeMethod": "POST",
+            "identitySource": "USERINFO",
+            "userInfoEndpoint": "http://mock-oidc.local:8092/userinfo"
+          },
+          "identityMapping": { "userIdField": "sub", "userNameField": "name", "emailField": "email" }
+        },
+        {
+          "provider": "trusted-header",
+          "name": "Trusted Header",
+          "enabled": true,
+          "grantType": "TRUSTED_HEADER",
+          "trustedHeaderConfig": {
+            "enabled": true,
+            "trustedProxyCidrs": ["127.0.0.1/32", "172.16.0.0/12", "192.168.0.0/16"],
+            "userIdHeader": "X-Auth-User",
+            "userNameHeader": "X-Auth-Name",
+            "emailHeader": "X-Auth-Email",
+            "groupsHeader": "X-Auth-Groups",
+            "rolesHeader": "X-Auth-Roles",
+            "valueSeparator": ","
+          },
+          "identityMapping": { "userIdField": "sub", "userNameField": "name", "emailField": "email" }
         }
       ]
     ')"
