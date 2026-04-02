@@ -17,47 +17,19 @@
  * under the License.
  */
 
-package com.alibaba.himarket.dto.result.idp;
+package com.alibaba.himarket.dto.params.idp;
 
-import lombok.Builder;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
-@Builder
-public class IdpResult {
+public class OAuth2BrowserLoginParam {
 
-    /**
-     * Provider
-     */
     private String provider;
 
-    /**
-     * Provider display name
-     */
-    private String name;
+    @NotBlank private String state;
 
-    /**
-     * Authentication type
-     */
-    private String type;
+    private String jwt;
 
-    /**
-     * Whether provider supports SLO redirection.
-     */
-    private Boolean sloEnabled;
-
-    /**
-     * Whether provider can be used directly as an interactive browser login option.
-     */
-    private Boolean interactiveBrowserLogin;
-
-    /**
-     * Whether provider accepts direct JWT login by API.
-     */
-    private Boolean directTokenLogin;
-
-    /**
-     * Whether provider supports trusted header login.
-     */
-    private Boolean trustedHeaderLogin;
+    private String ticket;
 }

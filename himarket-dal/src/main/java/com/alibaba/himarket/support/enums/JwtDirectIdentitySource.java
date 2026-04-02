@@ -17,47 +17,10 @@
  * under the License.
  */
 
-package com.alibaba.himarket.dto.result.idp;
+package com.alibaba.himarket.support.enums;
 
-import lombok.Builder;
-import lombok.Data;
+public enum JwtDirectIdentitySource {
+    CLAIMS,
 
-@Data
-@Builder
-public class IdpResult {
-
-    /**
-     * Provider
-     */
-    private String provider;
-
-    /**
-     * Provider display name
-     */
-    private String name;
-
-    /**
-     * Authentication type
-     */
-    private String type;
-
-    /**
-     * Whether provider supports SLO redirection.
-     */
-    private Boolean sloEnabled;
-
-    /**
-     * Whether provider can be used directly as an interactive browser login option.
-     */
-    private Boolean interactiveBrowserLogin;
-
-    /**
-     * Whether provider accepts direct JWT login by API.
-     */
-    private Boolean directTokenLogin;
-
-    /**
-     * Whether provider supports trusted header login.
-     */
-    private Boolean trustedHeaderLogin;
+    USERINFO
 }

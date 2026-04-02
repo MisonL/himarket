@@ -23,10 +23,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.alibaba.himarket.core.exception.BusinessException;
+import com.alibaba.himarket.support.enums.GrantType;
+import com.alibaba.himarket.support.enums.JwtDirectAcquireMode;
+import com.alibaba.himarket.support.enums.JwtDirectIdentitySource;
+import com.alibaba.himarket.support.enums.JwtDirectTokenSource;
 import com.alibaba.himarket.support.portal.AuthCodeConfig;
 import com.alibaba.himarket.support.portal.CasConfig;
+import com.alibaba.himarket.support.portal.JwtBearerConfig;
 import com.alibaba.himarket.support.portal.LdapConfig;
+import com.alibaba.himarket.support.portal.OAuth2Config;
 import com.alibaba.himarket.support.portal.OidcConfig;
+import com.alibaba.himarket.support.portal.TrustedHeaderConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
@@ -196,6 +203,187 @@ class IdpServiceImplTest {
         ldapConfig.setUserSearchFilter("(uid={0})");
 
         new IdpServiceImpl().validateLdapConfigs(List.of(ldapConfig));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldAcceptStandardJwtBearerConfigWithoutDirectFlow() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+
+        new IdpServiceImpl().validateOAuth2Configs(List.of(config));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldAcceptJwtDirectClaimsConfig() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        JwtBearerConfig jwtBearerConfig = config.getJwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setAcquireMode(JwtDirectAcquireMode.DIRECT);
+        jwtBearerConfig.setIdentitySource(JwtDirectIdentitySource.CLAIMS);
+
+        new IdpServiceImpl().validateOAuth2Configs(List.of(config));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectDirectFlowWithoutAuthorizationEndpoint() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        config.getJwtBearerConfig().setAcquireMode(JwtDirectAcquireMode.DIRECT);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectMissingTicketExchangeUrl() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        JwtBearerConfig jwtBearerConfig = config.getJwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setAcquireMode(JwtDirectAcquireMode.TICKET_EXCHANGE);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectInvalidTicketExchangeUrl() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        JwtBearerConfig jwtBearerConfig = config.getJwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setAcquireMode(JwtDirectAcquireMode.TICKET_VALIDATE);
+        jwtBearerConfig.setTicketExchangeUrl("cas.example.com/exchange");
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectTrustedProxyHostnameCidr() {
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("trusted-header");
+        config.setName("Trusted Header");
+        config.setGrantType(GrantType.TRUSTED_HEADER);
+
+        TrustedHeaderConfig trustedHeaderConfig = new TrustedHeaderConfig();
+        trustedHeaderConfig.setEnabled(true);
+        trustedHeaderConfig.setTrustedProxyCidrs(List.of("example.com/24"));
+        config.setTrustedHeaderConfig(trustedHeaderConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectUserInfoModeWithoutEndpoint() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        JwtBearerConfig jwtBearerConfig = config.getJwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setIdentitySource(JwtDirectIdentitySource.USERINFO);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldAllowTicketValidateWithoutJwtVerificationConfig() {
+        JwtBearerConfig jwtBearerConfig = new JwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setAcquireMode(JwtDirectAcquireMode.TICKET_VALIDATE);
+        jwtBearerConfig.setTicketExchangeUrl("https://cas.example.com/oauth2/validate");
+
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("cas-jwt");
+        config.setName("CAS JWT");
+        config.setGrantType(GrantType.JWT_BEARER);
+        config.setJwtBearerConfig(jwtBearerConfig);
+
+        new IdpServiceImpl().validateOAuth2Configs(List.of(config));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectUserInfoWithTicketValidate() {
+        JwtBearerConfig jwtBearerConfig = new JwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setAcquireMode(JwtDirectAcquireMode.TICKET_VALIDATE);
+        jwtBearerConfig.setTicketExchangeUrl("https://cas.example.com/oauth2/validate");
+        jwtBearerConfig.setIdentitySource(JwtDirectIdentitySource.USERINFO);
+        jwtBearerConfig.setUserInfoEndpoint("https://cas.example.com/oauth2/userinfo");
+
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("cas-jwt");
+        config.setName("CAS JWT");
+        config.setGrantType(GrantType.JWT_BEARER);
+        config.setJwtBearerConfig(jwtBearerConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectBodyTokenSourceForBrowserLogin() {
+        OAuth2Config config = createStandardJwtBearerConfig();
+        JwtBearerConfig jwtBearerConfig = config.getJwtBearerConfig();
+        jwtBearerConfig.setAuthorizationEndpoint("https://cas.example.com/oauth2/authorize");
+        jwtBearerConfig.setTokenSource(JwtDirectTokenSource.BODY);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldAcceptTrustedHeaderConfig() {
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("trusted-header");
+        config.setName("Trusted Header");
+        config.setGrantType(GrantType.TRUSTED_HEADER);
+
+        TrustedHeaderConfig trustedHeaderConfig = new TrustedHeaderConfig();
+        trustedHeaderConfig.setEnabled(true);
+        trustedHeaderConfig.setTrustedProxyCidrs(List.of("127.0.0.1/32"));
+        trustedHeaderConfig.setUserIdHeader("X-Auth-User");
+        trustedHeaderConfig.setUserNameHeader("X-Auth-Name");
+        trustedHeaderConfig.setEmailHeader("X-Auth-Email");
+        trustedHeaderConfig.setGroupsHeader("X-Auth-Groups");
+        trustedHeaderConfig.setRolesHeader("X-Auth-Roles");
+        config.setTrustedHeaderConfig(trustedHeaderConfig);
+
+        new IdpServiceImpl().validateOAuth2Configs(List.of(config));
+    }
+
+    @Test
+    void validateOAuth2ConfigsShouldRejectTrustedHeaderWithoutProxyAllowlist() {
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("trusted-header");
+        config.setName("Trusted Header");
+        config.setGrantType(GrantType.TRUSTED_HEADER);
+
+        TrustedHeaderConfig trustedHeaderConfig = new TrustedHeaderConfig();
+        trustedHeaderConfig.setEnabled(true);
+        trustedHeaderConfig.setUserIdHeader("X-Auth-User");
+        config.setTrustedHeaderConfig(trustedHeaderConfig);
+
+        assertThrows(
+                BusinessException.class,
+                () -> new IdpServiceImpl().validateOAuth2Configs(List.of(config)));
+    }
+
+    private OAuth2Config createStandardJwtBearerConfig() {
+        JwtBearerConfig jwtBearerConfig = new JwtBearerConfig();
+        jwtBearerConfig.setIssuer("https://cas.example.com/oauth2");
+        jwtBearerConfig.setJwkSetUri("https://cas.example.com/oauth2/jwks");
+        jwtBearerConfig.setAudiences(List.of("himarket-api"));
+
+        OAuth2Config config = new OAuth2Config();
+        config.setProvider("cas-jwt");
+        config.setName("CAS JWT");
+        config.setGrantType(GrantType.JWT_BEARER);
+        config.setJwtBearerConfig(jwtBearerConfig);
+        return config;
     }
 
     private static class JsonHandler implements HttpHandler {

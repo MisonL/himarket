@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.lang.Validator;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
@@ -29,6 +30,9 @@ import com.alibaba.himarket.core.exception.ErrorCode;
 import com.alibaba.himarket.service.IdpService;
 import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.support.enums.GrantType;
+import com.alibaba.himarket.support.enums.JwtDirectAcquireMode;
+import com.alibaba.himarket.support.enums.JwtDirectIdentitySource;
+import com.alibaba.himarket.support.enums.JwtDirectTokenSource;
 import com.alibaba.himarket.support.enums.PublicKeyFormat;
 import com.alibaba.himarket.support.portal.AuthCodeConfig;
 import com.alibaba.himarket.support.portal.CasConfig;
@@ -37,6 +41,7 @@ import com.alibaba.himarket.support.portal.LdapConfig;
 import com.alibaba.himarket.support.portal.OAuth2Config;
 import com.alibaba.himarket.support.portal.OidcConfig;
 import com.alibaba.himarket.support.portal.PublicKeyConfig;
+import com.alibaba.himarket.support.portal.TrustedHeaderConfig;
 import com.alibaba.himarket.support.portal.cas.CasLoginConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasProxyConfig;
@@ -55,6 +60,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +72,8 @@ import org.springframework.web.client.RestTemplate;
 @RequiredArgsConstructor
 @Slf4j
 public class IdpServiceImpl implements IdpService {
+
+    private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_.-]*$");
 
     private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
 
@@ -324,6 +332,10 @@ public class IdpServiceImpl implements IdpService {
                 config -> {
                     if (GrantType.JWT_BEARER.equals(config.getGrantType())) {
                         validateJwtBearerConfig(config);
+                        return;
+                    }
+                    if (GrantType.TRUSTED_HEADER.equals(config.getGrantType())) {
+                        validateTrustedHeaderConfig(config);
                     }
                 });
     }
@@ -338,10 +350,11 @@ public class IdpServiceImpl implements IdpService {
                             config.getProvider()));
         }
 
+        boolean jwtVerificationRequired = requiresJwtVerification(jwtBearerConfig);
         boolean hasJwks = StrUtil.isNotBlank(jwtBearerConfig.getJwkSetUri());
         List<PublicKeyConfig> publicKeys = jwtBearerConfig.getPublicKeys();
         boolean hasPublicKeys = CollUtil.isNotEmpty(publicKeys);
-        if (!hasJwks && !hasPublicKeys) {
+        if (jwtVerificationRequired && !hasJwks && !hasPublicKeys) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER,
                     StrUtil.format(
@@ -349,7 +362,7 @@ public class IdpServiceImpl implements IdpService {
                             config.getProvider()));
         }
 
-        if (hasJwks) {
+        if (jwtVerificationRequired && hasJwks) {
             if (StrUtil.isBlank(jwtBearerConfig.getIssuer())) {
                 throw new BusinessException(
                         ErrorCode.INVALID_PARAMETER,
@@ -367,7 +380,7 @@ public class IdpServiceImpl implements IdpService {
             validateUrl(jwtBearerConfig.getJwkSetUri(), "JWT JWK set URI");
         }
 
-        if (hasPublicKeys) {
+        if (jwtVerificationRequired && hasPublicKeys) {
             if (publicKeys.stream()
                             .map(
                                     key -> {
@@ -383,6 +396,228 @@ public class IdpServiceImpl implements IdpService {
                                 "OAuth2 config {} has duplicate public key IDs",
                                 config.getProvider()));
             }
+        }
+
+        validateJwtDirectConfig(config, jwtBearerConfig);
+    }
+
+    private void validateJwtDirectConfig(OAuth2Config config, JwtBearerConfig jwtBearerConfig) {
+        if (!isJwtDirectFlowConfigured(jwtBearerConfig)) {
+            return;
+        }
+
+        validateUrl(
+                requireNonBlank(
+                        config.getProvider(),
+                        jwtBearerConfig.getAuthorizationEndpoint(),
+                        "JWT direct authorization endpoint"),
+                "JWT direct authorization endpoint");
+        validateFieldName(
+                config.getProvider(),
+                jwtBearerConfig.resolveAuthorizationServiceField(),
+                "JWT direct authorization service field");
+
+        JwtDirectAcquireMode acquireMode = jwtBearerConfig.resolveAcquireMode();
+        JwtDirectTokenSource tokenSource = jwtBearerConfig.resolveTokenSource();
+        if (acquireMode == JwtDirectAcquireMode.TICKET_EXCHANGE
+                || acquireMode == JwtDirectAcquireMode.TICKET_VALIDATE) {
+            validateUrl(
+                    requireNonBlank(
+                            config.getProvider(),
+                            jwtBearerConfig.getTicketExchangeUrl(),
+                            "JWT direct ticket exchange URL"),
+                    "JWT direct ticket exchange URL");
+            validateHttpMethod(
+                    config.getProvider(),
+                    jwtBearerConfig.resolveTicketExchangeMethod(),
+                    "JWT direct ticket exchange method");
+            validateFieldName(
+                    config.getProvider(),
+                    jwtBearerConfig.resolveTicketExchangeTicketField(),
+                    "JWT direct ticket field");
+            validateFieldName(
+                    config.getProvider(),
+                    jwtBearerConfig.resolveTicketExchangeTokenField(),
+                    "JWT direct token field");
+            validateFieldName(
+                    config.getProvider(),
+                    jwtBearerConfig.resolveTicketExchangeServiceField(),
+                    "JWT direct service field");
+        }
+
+        if (tokenSource == JwtDirectTokenSource.BODY) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} cannot use BODY token source for browser login",
+                            config.getProvider()));
+        }
+
+        JwtDirectIdentitySource identitySource = jwtBearerConfig.resolveIdentitySource();
+        if (acquireMode == JwtDirectAcquireMode.TICKET_VALIDATE
+                && identitySource == JwtDirectIdentitySource.USERINFO) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} cannot use USERINFO with ticket validate mode",
+                            config.getProvider()));
+        }
+        if (identitySource == JwtDirectIdentitySource.USERINFO) {
+            validateUrl(
+                    requireNonBlank(
+                            config.getProvider(),
+                            jwtBearerConfig.getUserInfoEndpoint(),
+                            "JWT direct user info endpoint"),
+                    "JWT direct user info endpoint");
+        } else if (StrUtil.isNotBlank(jwtBearerConfig.getUserInfoEndpoint())) {
+            validateUrl(jwtBearerConfig.getUserInfoEndpoint(), "JWT direct user info endpoint");
+        }
+    }
+
+    private boolean isJwtDirectFlowConfigured(JwtBearerConfig jwtBearerConfig) {
+        return StrUtil.isNotBlank(jwtBearerConfig.getAuthorizationEndpoint())
+                || StrUtil.isNotBlank(jwtBearerConfig.getAuthorizationServiceField())
+                || jwtBearerConfig.getAcquireMode() != null
+                || StrUtil.isNotBlank(jwtBearerConfig.getTicketExchangeUrl())
+                || StrUtil.isNotBlank(jwtBearerConfig.getTicketExchangeMethod())
+                || StrUtil.isNotBlank(jwtBearerConfig.getTicketExchangeTicketField())
+                || StrUtil.isNotBlank(jwtBearerConfig.getTicketExchangeTokenField())
+                || StrUtil.isNotBlank(jwtBearerConfig.getTicketExchangeServiceField())
+                || StrUtil.isNotBlank(jwtBearerConfig.getUserInfoEndpoint())
+                || jwtBearerConfig.getIdentitySource() != null;
+    }
+
+    private boolean requiresJwtVerification(JwtBearerConfig jwtBearerConfig) {
+        if (!isJwtDirectFlowConfigured(jwtBearerConfig)) {
+            return true;
+        }
+        return jwtBearerConfig.resolveAcquireMode() != JwtDirectAcquireMode.TICKET_VALIDATE;
+    }
+
+    private void validateTrustedHeaderConfig(OAuth2Config config) {
+        TrustedHeaderConfig trustedHeaderConfig = config.getTrustedHeaderConfig();
+        if (trustedHeaderConfig == null || !trustedHeaderConfig.resolveEnabled()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} missing trusted header config",
+                            config.getProvider()));
+        }
+
+        boolean hasTrustedProxyCidrs =
+                CollUtil.isNotEmpty(trustedHeaderConfig.getTrustedProxyCidrs());
+        boolean hasTrustedProxyHosts =
+                CollUtil.isNotEmpty(trustedHeaderConfig.getTrustedProxyHosts());
+        if (!hasTrustedProxyCidrs && !hasTrustedProxyHosts) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} missing trusted proxy allowlist",
+                            config.getProvider()));
+        }
+
+        if (hasTrustedProxyCidrs) {
+            trustedHeaderConfig
+                    .getTrustedProxyCidrs()
+                    .forEach(cidr -> validateTrustedProxyCidr(config.getProvider(), cidr));
+        }
+        if (hasTrustedProxyHosts
+                && trustedHeaderConfig.getTrustedProxyHosts().stream().anyMatch(StrUtil::isBlank)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} has blank trusted proxy host", config.getProvider()));
+        }
+
+        validateFieldName(
+                config.getProvider(),
+                trustedHeaderConfig.resolveUserIdHeader(),
+                "trusted header user ID header");
+        validateFieldName(
+                config.getProvider(),
+                trustedHeaderConfig.resolveUserNameHeader(),
+                "trusted header user name header");
+        validateFieldName(
+                config.getProvider(),
+                trustedHeaderConfig.resolveEmailHeader(),
+                "trusted header email header");
+        validateFieldName(
+                config.getProvider(),
+                trustedHeaderConfig.resolveGroupsHeader(),
+                "trusted header groups header");
+        validateFieldName(
+                config.getProvider(),
+                trustedHeaderConfig.resolveRolesHeader(),
+                "trusted header roles header");
+        requireNonBlank(
+                config.getProvider(),
+                trustedHeaderConfig.resolveValueSeparator(),
+                "trusted header value separator");
+    }
+
+    private void validateTrustedProxyCidr(String provider, String cidr) {
+        if (StrUtil.isBlank(cidr)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("OAuth2 config {} has blank trusted proxy CIDR", provider));
+        }
+        String[] cidrParts = cidr.split("/", 2);
+        if (cidrParts.length != 2) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("OAuth2 config {} has invalid trusted proxy CIDR", provider));
+        }
+        try {
+            int prefixLength = Integer.parseInt(cidrParts[1]);
+            int maxPrefixLength = resolveIpLiteralBitLength(cidrParts[0]);
+            if (prefixLength < 0 || prefixLength > maxPrefixLength) {
+                throw new BusinessException(
+                        ErrorCode.INVALID_PARAMETER,
+                        StrUtil.format(
+                                "OAuth2 config {} has invalid trusted proxy CIDR", provider));
+            }
+        } catch (NumberFormatException ex) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("OAuth2 config {} has invalid trusted proxy CIDR", provider));
+        }
+    }
+
+    private int resolveIpLiteralBitLength(String addressLiteral) {
+        if (Validator.isIpv4(addressLiteral)) {
+            return 32;
+        }
+        if (Validator.isIpv6(addressLiteral)) {
+            return 128;
+        }
+        throw new NumberFormatException("Invalid IP literal");
+    }
+
+    private String requireNonBlank(String provider, String value, String label) {
+        if (StrUtil.isBlank(value)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("OAuth2 config {} missing {}", provider, label));
+        }
+        return value;
+    }
+
+    private void validateFieldName(String provider, String value, String label) {
+        if (StrUtil.isBlank(value) || !FIELD_NAME_PATTERN.matcher(value).matches()) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("OAuth2 config {} has invalid {}", provider, label));
+        }
+    }
+
+    private void validateHttpMethod(String provider, String value, String label) {
+        if (!HttpMethod.POST.matches(value) && !HttpMethod.GET.matches(value)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format(
+                            "OAuth2 config {} has invalid {}: only GET/POST are supported",
+                            provider,
+                            label));
         }
     }
 

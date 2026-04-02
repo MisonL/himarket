@@ -19,7 +19,13 @@
 
 package com.alibaba.himarket.service;
 
+import com.alibaba.himarket.dto.params.idp.OAuth2BrowserLoginParam;
+import com.alibaba.himarket.dto.params.idp.OAuth2DirectLoginParam;
 import com.alibaba.himarket.dto.result.common.AuthResult;
+import com.alibaba.himarket.dto.result.idp.IdpAuthorizeResult;
+import com.alibaba.himarket.dto.result.idp.IdpResult;
+import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
 
 public interface OAuth2Service {
 
@@ -31,4 +37,14 @@ public interface OAuth2Service {
      * @return
      */
     AuthResult authenticate(String grantType, String jwtToken);
+
+    AuthResult authenticateDirect(OAuth2DirectLoginParam param);
+
+    IdpAuthorizeResult buildAuthorizationResult(String provider, String apiPrefix);
+
+    AuthResult completeBrowserLogin(OAuth2BrowserLoginParam param);
+
+    AuthResult authenticateTrustedHeader(String provider, HttpServletRequest request);
+
+    List<IdpResult> getAvailableProviders();
 }

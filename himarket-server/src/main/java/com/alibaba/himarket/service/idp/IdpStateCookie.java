@@ -72,6 +72,25 @@ public final class IdpStateCookie {
         assertCookieMatches(request, IdpConstants.CAS_STATE_COOKIE_NAME, state);
     }
 
+    public static void writeOauth2StateCookie(
+            HttpServletRequest request, HttpServletResponse response, String state) {
+        writeCookie(
+                request,
+                response,
+                IdpConstants.OAUTH2_STATE_COOKIE_NAME,
+                state,
+                IdpConstants.IDP_STATE_COOKIE_MAX_AGE_SECONDS);
+    }
+
+    public static void clearOauth2StateCookie(
+            HttpServletRequest request, HttpServletResponse response) {
+        clearCookie(request, response, IdpConstants.OAUTH2_STATE_COOKIE_NAME);
+    }
+
+    public static void assertOauth2StateCookieMatches(HttpServletRequest request, String state) {
+        assertCookieMatches(request, IdpConstants.OAUTH2_STATE_COOKIE_NAME, state);
+    }
+
     public static void writeAdminCasStateCookie(
             HttpServletRequest request, HttpServletResponse response, String state) {
         writeCookie(

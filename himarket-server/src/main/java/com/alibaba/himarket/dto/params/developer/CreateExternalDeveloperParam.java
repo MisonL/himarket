@@ -40,4 +40,6 @@ public class CreateExternalDeveloperParam implements InputConverter<DeveloperExt
     private String avatarUrl;
 
     private DeveloperAuthType authType;
+
+    private String rawInfoJson;
 }

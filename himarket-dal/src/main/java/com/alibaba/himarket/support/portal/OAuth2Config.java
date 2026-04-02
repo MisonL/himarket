@@ -51,6 +51,11 @@ public class OAuth2Config {
     private JwtBearerConfig jwtBearerConfig;
 
     /**
+     * Trusted header login config
+     */
+    private TrustedHeaderConfig trustedHeaderConfig;
+
+    /**
      * Identity mapping
      */
     private IdentityMapping identityMapping = new IdentityMapping();

@@ -92,6 +92,8 @@ public class IdpConstants {
 
     public static final String CAS_STATE_COOKIE_NAME = "hm_cas_state";
 
+    public static final String OAUTH2_STATE_COOKIE_NAME = "hm_oauth2_state";
+
     public static final String ADMIN_CAS_STATE_COOKIE_NAME = "hm_admin_cas_state";
 
     /**

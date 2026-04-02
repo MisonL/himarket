@@ -86,7 +86,7 @@ public class CasTicketValidator {
         if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1) {
             return restTemplate
                     .exchange(
-                            buildSamlValidateUrl(config, serviceUrl),
+                            buildSamlValidateUrl(config, serviceUrl, ticket),
                             HttpMethod.POST,
                             buildSamlValidationRequest(ticket),
                             String.class)
@@ -121,9 +121,10 @@ public class CasTicketValidator {
         return URI.create(url.toString());
     }
 
-    private URI buildSamlValidateUrl(CasConfig config, String serviceUrl) {
+    private URI buildSamlValidateUrl(CasConfig config, String serviceUrl, String ticket) {
         StringBuilder url = new StringBuilder(buildValidateUrl(config));
         appendQueryParam(url, "TARGET", serviceUrl);
+        appendQueryParam(url, IdpConstants.TICKET, ticket);
         return URI.create(url.toString());
     }
 
@@ -136,17 +137,26 @@ public class CasTicketValidator {
     private String buildSamlValidationEnvelope(String ticket) {
         String requestId = "_" + UUID.randomUUID().toString().replace("-", "");
         String issueInstant = DateTimeFormatter.ISO_INSTANT.format(Instant.now());
+        String escapedTicket = escapeXml(ticket);
         return """
         <SOAP-ENV:Envelope xmlns:SOAP-ENV="http://schemas.xmlsoap.org/soap/envelope/">
           <SOAP-ENV:Header/>
           <SOAP-ENV:Body>
-            <saml1p:Request xmlns:saml1p="urn:oasis:names:tc:SAML:1.0:protocol" MajorVersion="1" MinorVersion="1" RequestID="%s" IssueInstant="%s">
-              <saml1p:AssertionArtifact>%s</saml1p:AssertionArtifact>
-            </saml1p:Request>
+            <samlp:Request xmlns:samlp="urn:oasis:names:tc:SAML:1.0:protocol" MajorVersion="1" MinorVersion="1" RequestID="%s" IssueInstant="%s">
+              <samlp:AssertionArtifact>%s</samlp:AssertionArtifact>
+            </samlp:Request>
           </SOAP-ENV:Body>
         </SOAP-ENV:Envelope>
         """
-                .formatted(requestId, issueInstant, ticket);
+                .formatted(requestId, issueInstant, escapedTicket);
+    }
+
+    private String escapeXml(String value) {
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     private String buildValidateUrl(CasConfig config) {

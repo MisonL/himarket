@@ -19,6 +19,8 @@
 
 package com.alibaba.himarket.support.enums;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Arrays;
 import lombok.Getter;
 
 @Getter
@@ -33,11 +35,30 @@ public enum GrantType {
      * JWT BEARER, OAuth2.0 extension
      */
     JWT_BEARER("urn:ietf:params:oauth:grant-type:jwt-bearer"),
+
+    /**
+     * Trusted header based enterprise SSO
+     */
+    TRUSTED_HEADER("trusted_header"),
     ;
 
     private final String type;
 
     GrantType(String type) {
         this.type = type;
+    }
+
+    @JsonCreator
+    public static GrantType fromValue(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Grant type must not be blank");
+        }
+        return Arrays.stream(values())
+                .filter(
+                        grantType ->
+                                grantType.name().equalsIgnoreCase(value)
+                                        || grantType.type.equalsIgnoreCase(value))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown grant type: " + value));
     }
 }

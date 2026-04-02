@@ -191,6 +191,7 @@ public class DeveloperServiceImpl implements DeveloperService {
                         .subject(param.getSubject())
                         .displayName(param.getDisplayName())
                         .authType(param.getAuthType())
+                        .rawInfoJson(param.getRawInfoJson())
                         .developer(developer)
                         .build();
 
@@ -386,6 +387,12 @@ public class DeveloperServiceImpl implements DeveloperService {
     @Override
     public void updateExternalDeveloperProfile(
             String provider, String subject, String displayName, String email) {
+        updateExternalDeveloperProfile(provider, subject, displayName, email, null);
+    }
+
+    @Override
+    public void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email, String rawInfoJson) {
         externalRepository
                 .findByProviderAndSubject(provider, subject)
                 .ifPresent(
@@ -398,6 +405,12 @@ public class DeveloperServiceImpl implements DeveloperService {
                             }
                             if (!StrUtil.equals(externalIdentity.getDisplayName(), displayName)) {
                                 externalIdentity.setDisplayName(displayName);
+                                changed = true;
+                            }
+                            if (rawInfoJson != null
+                                    && !StrUtil.equals(
+                                            externalIdentity.getRawInfoJson(), rawInfoJson)) {
+                                externalIdentity.setRawInfoJson(rawInfoJson);
                                 changed = true;
                             }
                             if (changed) {

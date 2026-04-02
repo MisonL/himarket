@@ -77,11 +77,57 @@ class CasTicketValidatorTest {
         assertEquals("POST", methodHolder[0]);
         assertEquals(
                 "https://portal.example.com/callback", extractQueryValue(queryHolder[0], "TARGET"));
+        assertEquals("ST-SAML-1", extractQueryValue(queryHolder[0], "ticket"));
         assertTrue(bodyHolder[0].contains("ST-SAML-1"));
         assertTrue(bodyHolder[0].contains("RequestID=\"_"));
         assertTrue(bodyHolder[0].contains("IssueInstant=\""));
+        assertTrue(
+                bodyHolder[0].contains(
+                        "<samlp:AssertionArtifact>ST-SAML-1</samlp:AssertionArtifact>"));
         assertEquals("alice", attributes.get("user"));
         assertEquals("alice@example.com", attributes.get("mail"));
+    }
+
+    @Test
+    void validateShouldEscapeSamlAssertionArtifact() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String[] bodyHolder = new String[1];
+        server.createContext(
+                "/cas/samlValidate",
+                exchange -> {
+                    bodyHolder[0] =
+                            new String(
+                                    exchange.getRequestBody().readAllBytes(),
+                                    StandardCharsets.UTF_8);
+                    byte[] bytes =
+                            CasSamlTicketValidationParserTest.successResponse()
+                                    .getBytes(StandardCharsets.UTF_8);
+                    exchange.getResponseHeaders().add("Content-Type", "text/xml");
+                    exchange.sendResponseHeaders(200, bytes.length);
+                    try (OutputStream outputStream = exchange.getResponseBody()) {
+                        outputStream.write(bytes);
+                    }
+                });
+        server.start();
+
+        CasConfig config = new CasConfig();
+        config.setProvider("cas");
+        config.setServerUrl("http://localhost:" + server.getAddress().getPort() + "/cas");
+        CasValidationConfig validationConfig = new CasValidationConfig();
+        validationConfig.setProtocolVersion(CasProtocolVersion.SAML1);
+        config.setValidation(validationConfig);
+
+        CasTicketValidator validator =
+                new CasTicketValidator(
+                        new CasTicketValidationParser(),
+                        new CasJsonTicketValidationParser(),
+                        new CasSamlTicketValidationParser());
+
+        validator.validate(config, "ST-SAML-&<>'\"", "https://portal.example.com/callback");
+
+        assertTrue(
+                bodyHolder[0].contains(
+                        "<samlp:AssertionArtifact>ST-SAML-&amp;&lt;&gt;&apos;&quot;</samlp:AssertionArtifact>"));
     }
 
     private static final class SamlHandler implements HttpHandler {

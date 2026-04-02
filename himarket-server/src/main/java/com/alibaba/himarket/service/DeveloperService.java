@@ -172,4 +172,9 @@ public interface DeveloperService {
      */
     void updateExternalDeveloperProfile(
             String provider, String subject, String displayName, String email);
+
+    default void updateExternalDeveloperProfile(
+            String provider, String subject, String displayName, String email, String rawInfoJson) {
+        updateExternalDeveloperProfile(provider, subject, displayName, email);
+    }
 }
