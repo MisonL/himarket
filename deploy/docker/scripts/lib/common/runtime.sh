@@ -24,6 +24,19 @@ prepare_cas_modules() {
   log "cas modules prepared"
 }
 
+docker_compose() {
+  if docker compose version >/dev/null 2>&1; then
+    docker compose "$@"
+    return 0
+  fi
+  if command -v docker-compose >/dev/null 2>&1; then
+    docker-compose "$@"
+    return 0
+  fi
+  err "docker compose is not available"
+  exit 1
+}
+
 wait_http_ok() {
   local name="$1"
   local url="$2"
@@ -70,6 +83,32 @@ wait_openldap_ready() {
     sleep "${interval}"
   done
   err "service not ready: openldap"
+  return 1
+}
+
+wait_mysql_sql_ready() {
+  local max_wait="${1:-180}"
+  local interval=3
+  local start_ts
+  start_ts="$(date +%s)"
+  local database="${MYSQL_DATABASE:-portal_db}"
+  local username="${MYSQL_USER:-portal_user}"
+  local password="${MYSQL_PASSWORD:-himarket_app_2024}"
+  log "wait service: mysql sql database=${database} user=${username}"
+  while true; do
+    local elapsed
+    elapsed=$(( $(date +%s) - start_ts ))
+    if (( elapsed >= max_wait )); then
+      break
+    fi
+    if docker exec himarket-mysql sh -lc \
+      "mysql -h127.0.0.1 -P3306 -u'${username}' -p'${password}' '${database}' -e 'SELECT 1' >/dev/null 2>&1"; then
+      log "service ready: mysql sql"
+      return 0
+    fi
+    sleep "${interval}"
+  done
+  err "service not ready: mysql sql"
   return 1
 }
 
@@ -274,17 +313,48 @@ maybe_build_artifacts() {
   (cd "${REPO_DIR}/himarket-web/himarket-admin" && npm run build)
 }
 
-start_docker_services() {
+needs_ldap_runtime() {
+  phase_selected "ldap"
+}
+
+start_infra_services() {
   if [[ "${SKIP_DOCKER_UP}" == "1" ]]; then
     log "skip docker compose up"
     return 0
   fi
-  log "start docker services"
+  local services=(
+    mysql
+    redis-stack-server
+    cas
+    jwks-server
+    sandbox-shared
+    himarket-mcp-mock
+  )
+  if needs_ldap_runtime; then
+    services+=(openldap)
+  else
+    log "skip openldap bootstrap for selected phases: ${SELECTED_PHASES[*]}"
+  fi
+  log "start infrastructure services"
   (
     cd "${DOCKER_DIR}"
     export COMPOSE_PROFILES=builtin-mysql
-    docker compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml \
-      up -d --build mysql redis-stack-server himarket-server himarket-frontend himarket-admin cas openldap jwks-server
+    docker_compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml \
+      up -d --build "${services[@]}"
+  )
+}
+
+start_application_services() {
+  if [[ "${SKIP_DOCKER_UP}" == "1" ]]; then
+    log "skip docker compose up"
+    return 0
+  fi
+  log "start application services"
+  (
+    cd "${DOCKER_DIR}"
+    export COMPOSE_PROFILES=builtin-mysql
+    docker_compose --env-file "${ENV_FILE}" -f docker-compose.yml -f docker-compose.local.yml -f docker-compose.auth.yml \
+      up -d --build himarket-server himarket-frontend himarket-admin
   )
 }
 
@@ -294,10 +364,7 @@ bootstrap_runtime() {
   require_cmd jq
   require_cmd node
   prepare_cas_modules
-  if ! docker compose version >/dev/null 2>&1; then
-    err "docker compose is not available"
-    exit 1
-  fi
+  docker_compose version >/dev/null
   init_runtime_context
   prepare_docker_shared_mounts
   start_mock_oidc
@@ -305,14 +372,18 @@ bootstrap_runtime() {
   maybe_build_artifacts
   log "prepare jwks files"
   node_generate_jwks "${JWK_DIR}"
-  start_docker_services
+  start_infra_services
   ensure_cas_modules_loaded
+  wait_mysql_sql_ready 180
+  start_application_services
   wait_http_ok "himarket-server" "http://localhost:8081/portal/swagger-ui.html" 180
   wait_http_ok "himarket-frontend" "http://localhost:${HIMARKET_FRONTEND_PORT:-5173}/login" 120
   wait_http_ok "himarket-admin" "http://localhost:${HIMARKET_ADMIN_PORT:-5174}/login" 120
   wait_cas_ready "${CAS_READY_TIMEOUT}"
   wait_http_ok "jwks-server" "http://localhost:${JWKS_HTTP_PORT:-8091}/jwks.json" 60
   wait_http_ok "mock-oidc" "http://localhost:${MOCK_OIDC_PORT}/.well-known/openid-configuration" 60
-  wait_openldap_ready 120
-  seed_openldap_users
+  if needs_ldap_runtime; then
+    wait_openldap_ready 120
+    seed_openldap_users
+  fi
 }

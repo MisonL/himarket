@@ -11,6 +11,17 @@ phase_registered() {
   return 1
 }
 
+phase_selected() {
+  local target="$1"
+  local selected
+  for selected in "${SELECTED_PHASES[@]}"; do
+    if [[ "${selected}" == "${target}" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
 init_phase_selection() {
   local requested_raw="${AUTH_HARNESS_PHASES:-all}"
   local dedup=()
