@@ -22,8 +22,8 @@ export function buildFormFieldsFromConfig(
     const oidcConfig = config as OidcConfig & { type: AuthenticationType.OIDC };
     const hasManualEndpoints = Boolean(
       oidcConfig.authCodeConfig?.authorizationEndpoint &&
-        oidcConfig.authCodeConfig?.tokenEndpoint &&
-        oidcConfig.authCodeConfig?.userInfoEndpoint
+      oidcConfig.authCodeConfig?.tokenEndpoint &&
+      oidcConfig.authCodeConfig?.userInfoEndpoint
     );
 
     return {
@@ -62,6 +62,41 @@ export function buildFormFieldsFromConfig(
       oauth2Issuer: oauth2Config.jwtBearerConfig?.issuer,
       oauth2JwkSetUri: oauth2Config.jwtBearerConfig?.jwkSetUri,
       oauth2Audiences: oauth2Config.jwtBearerConfig?.audiences || [],
+      oauth2AuthorizationEndpoint:
+        oauth2Config.jwtBearerConfig?.authorizationEndpoint,
+      oauth2AuthorizationServiceField:
+        oauth2Config.jwtBearerConfig?.authorizationServiceField,
+      oauth2AcquireMode: oauth2Config.jwtBearerConfig?.acquireMode || "DIRECT",
+      oauth2TicketExchangeUrl: oauth2Config.jwtBearerConfig?.ticketExchangeUrl,
+      oauth2TicketExchangeMethod:
+        oauth2Config.jwtBearerConfig?.ticketExchangeMethod || "POST",
+      oauth2TicketExchangeTicketField:
+        oauth2Config.jwtBearerConfig?.ticketExchangeTicketField || "ticket",
+      oauth2TicketExchangeTokenField:
+        oauth2Config.jwtBearerConfig?.ticketExchangeTokenField ||
+        "access_token",
+      oauth2TicketExchangeServiceField:
+        oauth2Config.jwtBearerConfig?.ticketExchangeServiceField || "service",
+      oauth2IdentitySource:
+        oauth2Config.jwtBearerConfig?.identitySource || "CLAIMS",
+      oauth2UserInfoEndpoint: oauth2Config.jwtBearerConfig?.userInfoEndpoint,
+      oauth2TokenSource: oauth2Config.jwtBearerConfig?.tokenSource || "QUERY",
+      trustedProxyCidrs:
+        oauth2Config.trustedHeaderConfig?.trustedProxyCidrs || [],
+      trustedProxyHosts:
+        oauth2Config.trustedHeaderConfig?.trustedProxyHosts || [],
+      trustedUserIdHeader:
+        oauth2Config.trustedHeaderConfig?.userIdHeader || "X-Forwarded-User",
+      trustedUserNameHeader:
+        oauth2Config.trustedHeaderConfig?.userNameHeader || "X-Forwarded-Name",
+      trustedEmailHeader:
+        oauth2Config.trustedHeaderConfig?.emailHeader || "X-Forwarded-Email",
+      trustedGroupsHeader:
+        oauth2Config.trustedHeaderConfig?.groupsHeader || "X-Forwarded-Groups",
+      trustedRolesHeader:
+        oauth2Config.trustedHeaderConfig?.rolesHeader || "X-Forwarded-Roles",
+      trustedValueSeparator:
+        oauth2Config.trustedHeaderConfig?.valueSeparator || ",",
       userIdField: oauth2Config.identityMapping?.userIdField,
       userNameField: oauth2Config.identityMapping?.userNameField,
       emailField: oauth2Config.identityMapping?.emailField,
@@ -85,7 +120,8 @@ export function buildFormFieldsFromConfig(
       loginRenew: casConfig.login?.renew ?? false,
       loginWarn: casConfig.login?.warn ?? false,
       loginRememberMe: casConfig.login?.rememberMe ?? false,
-      validationProtocolVersion: casConfig.validation?.protocolVersion || "CAS3",
+      validationProtocolVersion:
+        casConfig.validation?.protocolVersion || "CAS3",
       validationResponseFormat: casConfig.validation?.responseFormat || "XML",
       proxyEnabled: casConfig.proxy?.enabled ?? false,
       proxyCallbackPath: casConfig.proxy?.callbackPath,
@@ -125,11 +161,12 @@ export function buildFormFieldsFromConfig(
         casConfig.accessStrategy?.rejectedAttributes
       ),
       delegatedAllowedProviders: formatCommaSeparated(
-        casConfig.accessStrategy?.delegatedAuthenticationPolicy?.allowedProviders
+        casConfig.accessStrategy?.delegatedAuthenticationPolicy
+          ?.allowedProviders
       ),
       delegatedPermitUndefined:
-        casConfig.accessStrategy?.delegatedAuthenticationPolicy?.permitUndefined ??
-        true,
+        casConfig.accessStrategy?.delegatedAuthenticationPolicy
+          ?.permitUndefined ?? true,
       delegatedExclusive:
         casConfig.accessStrategy?.delegatedAuthenticationPolicy?.exclusive ??
         false,
@@ -143,7 +180,8 @@ export function buildFormFieldsFromConfig(
       attributeReleaseAllowedAttributes: formatCommaSeparated(
         casConfig.attributeRelease?.allowedAttributes
       ),
-      attributeReleaseMode: casConfig.attributeRelease?.mode || "RETURN_ALLOWED",
+      attributeReleaseMode:
+        casConfig.attributeRelease?.mode || "RETURN_ALLOWED",
       multifactorProviders: formatCommaSeparated(
         casConfig.multifactorPolicy?.providers
       ),

@@ -5,6 +5,22 @@ export function buildDefaultFormValues(type: AuthenticationType) {
     return {
       oauth2GrantType: GrantType.JWT_BEARER,
       oauth2JwtValidationMode: "PUBLIC_KEYS",
+      oauth2AcquireMode: "DIRECT",
+      oauth2IdentitySource: "CLAIMS",
+      oauth2TokenSource: "QUERY",
+      oauth2AuthorizationServiceField: "service",
+      oauth2TicketExchangeMethod: "POST",
+      oauth2TicketExchangeTicketField: "ticket",
+      oauth2TicketExchangeTokenField: "access_token",
+      oauth2TicketExchangeServiceField: "service",
+      trustedUserIdHeader: "X-Forwarded-User",
+      trustedUserNameHeader: "X-Forwarded-Name",
+      trustedEmailHeader: "X-Forwarded-Email",
+      trustedGroupsHeader: "X-Forwarded-Groups",
+      trustedRolesHeader: "X-Forwarded-Roles",
+      trustedValueSeparator: ",",
+      trustedProxyCidrs: [],
+      trustedProxyHosts: [],
       enabled: true,
     };
   }

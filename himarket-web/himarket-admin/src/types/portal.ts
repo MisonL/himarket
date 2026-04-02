@@ -10,8 +10,6 @@ export interface AuthCodeConfig {
   issuer?: string;
   // 可选的身份映射配置
   identityMapping?: IdentityMapping;
-  // 自定义回调地址（可选，不配置则自动构建）
-  redirectUri?: string;
 }
 
 export interface OidcConfig {
@@ -175,6 +173,7 @@ export enum AuthenticationType {
 export enum GrantType {
   AUTHORIZATION_CODE = "AUTHORIZATION_CODE",
   JWT_BEARER = "JWT_BEARER",
+  TRUSTED_HEADER = "TRUSTED_HEADER",
 }
 
 export enum PublicKeyFormat {
@@ -193,7 +192,30 @@ export interface JwtBearerConfig {
   issuer?: string;
   jwkSetUri?: string;
   audiences?: string[];
+  authorizationEndpoint?: string;
+  authorizationServiceField?: string;
+  acquireMode?: "DIRECT" | "TICKET_EXCHANGE" | "TICKET_VALIDATE";
+  ticketExchangeUrl?: string;
+  ticketExchangeMethod?: "GET" | "POST";
+  ticketExchangeTicketField?: string;
+  ticketExchangeTokenField?: string;
+  ticketExchangeServiceField?: string;
+  userInfoEndpoint?: string;
+  identitySource?: "CLAIMS" | "USERINFO";
+  tokenSource?: "QUERY" | "FRAGMENT" | "BODY";
   publicKeys?: PublicKeyConfig[];
+}
+
+export interface TrustedHeaderConfig {
+  enabled?: boolean;
+  trustedProxyCidrs?: string[];
+  trustedProxyHosts?: string[];
+  userIdHeader?: string;
+  userNameHeader?: string;
+  emailHeader?: string;
+  groupsHeader?: string;
+  rolesHeader?: string;
+  valueSeparator?: string;
 }
 
 export interface IdentityMapping {
@@ -210,6 +232,7 @@ export interface OAuth2Config {
   enabled: boolean;
   grantType: GrantType;
   jwtBearerConfig?: JwtBearerConfig;
+  trustedHeaderConfig?: TrustedHeaderConfig;
   identityMapping?: IdentityMapping;
 }
 

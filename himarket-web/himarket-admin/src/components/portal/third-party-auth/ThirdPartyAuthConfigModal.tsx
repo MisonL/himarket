@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Select,
   Button,
   Card,
   Divider,
@@ -10,9 +9,9 @@ import {
   Modal,
   Space,
   Steps,
-  Switch,
   Collapse,
   Empty,
+  Switch,
   type FormInstance,
 } from "antd";
 import { SearchOutlined, RightOutlined } from "@ant-design/icons";
@@ -71,44 +70,90 @@ export function ThirdPartyAuthConfigModal({
   onSave,
 }: ThirdPartyAuthConfigModalProps) {
   const [searchText, setSearchText] = useState("");
+  const [selectedAuthType, setSelectedAuthType] = useState<string | null>(null);
+  const [typeTouched, setTypeTouched] = useState(false);
+  const authTypeOptions = [
+    {
+      value: AUTH_TYPES.OIDC,
+      title: "OIDC",
+      description: "适用于支持 OpenID Connect 的身份提供商。",
+    },
+    {
+      value: AUTH_TYPES.CAS,
+      title: "CAS",
+      description: "适用于兼容 CAS 协议的企业单点登录。",
+    },
+    {
+      value: AUTH_TYPES.LDAP,
+      title: "LDAP",
+      description: "适用于企业目录服务账号密码登录。",
+    },
+    {
+      value: AUTH_TYPES.OAUTH2,
+      title: "OAuth2 / Enterprise SSO",
+      description: "适用于 JWT Direct、Ticket Exchange、Trusted Header。",
+    },
+  ];
+
+  useEffect(() => {
+    if (!modalVisible) {
+      setSearchText("");
+      setSelectedAuthType(null);
+      setTypeTouched(false);
+      return;
+    }
+
+    const currentType = form.getFieldValue("type");
+    setSelectedAuthType(typeof currentType === "string" ? currentType : null);
+    setTypeTouched(Boolean(currentType));
+  }, [currentStep, form, modalVisible]);
+
+  const handleSelectAuthType = (authType: string) => {
+    setSelectedAuthType(authType);
+    setTypeTouched(true);
+    form.setFieldsValue({ type: authType });
+    form.setFields([{ name: "type", errors: [] }]);
+  };
 
   const renderTypeSelector = () => (
-    <Form.Item
-      name="type"
-      label="认证类型"
-      rules={[{ required: true, message: "请选择认证类型" }]}
-    >
-      <Select placeholder="请选择认证方式" size="large">
-        <Select.Option value={AUTH_TYPES.OIDC}>
-          <div className="py-2">
-            <div className="font-medium">
-              OIDC（适用于支持OpenID Connect的身份提供商认证）
-            </div>
-          </div>
-        </Select.Option>
-        <Select.Option value={AUTH_TYPES.CAS}>
-          <div className="py-2">
-            <div className="font-medium">
-              CAS（适用于兼容 CAS 协议的单点登录）
-            </div>
-          </div>
-        </Select.Option>
-        <Select.Option value={AUTH_TYPES.LDAP}>
-          <div className="py-2">
-            <div className="font-medium">
-              LDAP（适用于企业目录服务登录）
-            </div>
-          </div>
-        </Select.Option>
-        <Select.Option value={AUTH_TYPES.OAUTH2}>
-          <div className="py-2">
-            <div className="font-medium">
-              OAuth2（适用于服务间集成）
-            </div>
-          </div>
-        </Select.Option>
-      </Select>
-    </Form.Item>
+    <>
+      <Form.Item
+        name="type"
+        rules={[{ required: true, message: "请选择认证类型" }]}
+        hidden
+      >
+        <Input />
+      </Form.Item>
+      <Form.Item
+        label="认证类型"
+        required
+        validateStatus={!typeTouched || selectedAuthType ? undefined : "error"}
+        help={!typeTouched || selectedAuthType ? undefined : "请选择认证类型"}
+      >
+        <div className="space-y-3">
+          {authTypeOptions.map(option => {
+            const isSelected = selectedAuthType === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => handleSelectAuthType(option.value)}
+                className={`w-full rounded-lg border px-4 py-4 text-left transition ${
+                  isSelected
+                    ? "border-blue-500 bg-blue-50 shadow-sm"
+                    : "border-gray-200 bg-white hover:border-blue-300 hover:bg-gray-50"
+                }`}
+              >
+                <div className="font-medium text-gray-900">{option.title}</div>
+                <div className="mt-1 text-sm leading-6 text-gray-500">
+                  {option.description}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Form.Item>
+    </>
   );
 
   const casSections = useMemo(
@@ -145,7 +190,7 @@ export function ThirdPartyAuthConfigModal({
       },
       {
         id: "strategy",
-        label: "访问访问策略 (Access)",
+        label: "访问策略 (Access)",
         keywords: ["strategy", "access", "unauthorized", "redirect"],
         component: <CasAccessStrategySection />,
       },
@@ -361,15 +406,15 @@ export function ThirdPartyAuthConfigModal({
                 label="显示名称"
                 rules={[{ required: true, message: "请输入显示名称" }]}
               >
-                <Input id="auth_config_name" autoComplete="off" placeholder="如: Google登录、公司SSO" />
+                <Input
+                  id="auth_config_name"
+                  autoComplete="off"
+                  placeholder="如: Google登录、公司SSO"
+                />
               </Form.Item>
             </div>
 
-            <Form.Item
-              name="enabled"
-              label="启用状态"
-              valuePropName="checked"
-            >
+            <Form.Item name="enabled" label="启用状态" valuePropName="checked">
               <Switch />
             </Form.Item>
 

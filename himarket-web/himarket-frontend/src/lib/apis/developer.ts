@@ -12,6 +12,8 @@ export interface IIdpProvider {
   displayName?: string;
   sloEnabled?: boolean;
   interactiveBrowserLogin?: boolean;
+  directTokenLogin?: boolean;
+  trustedHeaderLogin?: boolean;
 }
 
 export interface IAuthResult {
@@ -66,6 +68,12 @@ export function getCasProviders() {
   );
 }
 
+export function getOAuth2Providers() {
+  return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
+    "/developers/oauth2/providers"
+  );
+}
+
 export function getLdapProviders() {
   return request.get<RespI<IIdpProvider[]>, RespI<IIdpProvider[]>>(
     "/developers/ldap/providers"
@@ -90,6 +98,31 @@ export function handleOidcCallback(params: OidcCallbackParams) {
 export function exchangeCasCode(params: CasExchangeParams) {
   return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
     "/developers/cas/exchange",
+    params
+  );
+}
+
+interface OAuth2BrowserLoginParams {
+  provider?: string;
+  state: string;
+  jwt?: string;
+  ticket?: string;
+}
+
+interface OAuth2TrustedHeaderLoginParams {
+  provider: string;
+}
+
+export function completeOAuth2BrowserLogin(params: OAuth2BrowserLoginParams) {
+  return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
+    "/developers/oauth2/complete",
+    params
+  );
+}
+
+export function loginWithTrustedHeader(params: OAuth2TrustedHeaderLoginParams) {
+  return request.post<RespI<IAuthResult>, RespI<IAuthResult>>(
+    "/developers/oauth2/trusted-header",
     params
   );
 }

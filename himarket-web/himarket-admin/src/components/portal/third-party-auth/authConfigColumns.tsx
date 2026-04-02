@@ -7,6 +7,7 @@ import {
 import { Button, Space } from "antd";
 import {
   AuthenticationType,
+  CasConfig,
   GrantType,
   OAuth2Config,
   ThirdPartyAuthConfig,
@@ -50,7 +51,9 @@ function renderActions(
       {actions.onPreviewCasServiceDefinition ? (
         <Button
           type="link"
-          onClick={() => actions.onPreviewCasServiceDefinition?.(record.provider)}
+          onClick={() =>
+            actions.onPreviewCasServiceDefinition?.(record.provider)
+          }
         >
           预览定义
         </Button>
@@ -71,6 +74,27 @@ function renderActions(
         删除
       </Button>
     </Space>
+  );
+}
+
+function renderCasProtocol(record: ThirdPartyAuthConfig) {
+  if (record.type !== AuthenticationType.CAS) {
+    return <span className="text-gray-600">-</span>;
+  }
+
+  const casConfig = record as CasConfig & { type: AuthenticationType.CAS };
+  if (casConfig.serviceDefinition?.responseType === "HEADER") {
+    return <span className="text-gray-600">Header</span>;
+  }
+
+  const protocolVersion = casConfig.validation?.protocolVersion || "CAS3";
+  const responseFormat = casConfig.validation?.responseFormat;
+  return (
+    <span className="text-gray-600">
+      {responseFormat
+        ? `${protocolVersion} / ${responseFormat}`
+        : protocolVersion}
+    </span>
   );
 }
 
@@ -138,9 +162,11 @@ export function createOAuth2Columns(actions: AuthColumnActions) {
           };
           return (
             <span className="text-gray-600">
-              {oauth2Config.grantType === GrantType.JWT_BEARER
-                ? "JWT断言"
-                : "授权码模式"}
+              {oauth2Config.grantType === GrantType.TRUSTED_HEADER
+                ? "Trusted Header"
+                : oauth2Config.grantType === GrantType.JWT_BEARER
+                  ? "JWT断言"
+                  : "授权码模式"}
             </span>
           );
         }
@@ -160,7 +186,13 @@ export function createOAuth2Columns(actions: AuthColumnActions) {
           type: AuthenticationType.OAUTH2;
         };
         if (!oauth2Config.jwtBearerConfig) {
-          return <span className="text-gray-600">-</span>;
+          return (
+            <span className="text-gray-600">
+              {oauth2Config.grantType === GrantType.TRUSTED_HEADER
+                ? "无需验签"
+                : "-"}
+            </span>
+          );
         }
 
         return (
@@ -206,7 +238,7 @@ export function createCasColumns(actions: AuthColumnActions) {
       title: "协议",
       key: "protocol",
       width: 120,
-      render: () => <span className="text-gray-600">CAS Ticket</span>,
+      render: (record: ThirdPartyAuthConfig) => renderCasProtocol(record),
     },
     {
       title: "状态",

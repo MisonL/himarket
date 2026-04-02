@@ -23,11 +23,11 @@ const ModelDetail = lazy(() => import("./pages/ModelDetail"));
 const Callback = lazy(() => import("./pages/Callback"));
 const CasCallback = lazy(() => import("./pages/CasCallback"));
 const OidcCallback = lazy(() => import("./pages/OidcCallback"));
+const OAuth2Callback = lazy(() => import("./pages/OAuth2Callback"));
 const Square = lazy(() => import("./pages/Square"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Coding = lazy(() => import("./pages/Coding"));
 const SkillDetail = lazy(() => import("./pages/SkillDetail"));
-const WorkerDetail = lazy(() => import("./pages/WorkerDetail"));
 
 function withSuspense(node: ReactNode) {
   return <Suspense fallback={null}>{node}</Suspense>;
@@ -44,9 +44,7 @@ function MenuRedirectGuard() {
   const { isMenuVisible, firstVisiblePath, loading } = usePortalConfig();
 
   useEffect(() => {
-    if (loading) {
-      return;
-    }
+    if (loading) return;
 
     const pathToKeyMap: Record<string, string> = {
       "/chat": "chat",
@@ -56,14 +54,13 @@ function MenuRedirectGuard() {
       "/models": "models",
       "/apis": "apis",
       "/skills": "skills",
-      "/workers": "workers",
     };
 
     const menuKey = pathToKeyMap[location.pathname];
     if (menuKey && !isMenuVisible(menuKey)) {
       navigate(firstVisiblePath, { replace: true });
     }
-  }, [location.pathname, isMenuVisible, firstVisiblePath, loading, navigate]);
+  }, [firstVisiblePath, isMenuVisible, loading, location.pathname, navigate]);
 
   return null;
 }
@@ -98,14 +95,6 @@ export function Router() {
           path="/skills/:skillProductId"
           element={withSuspense(<SkillDetail />)}
         />
-        <Route
-          path="/workers"
-          element={withSuspense(<Square activeType="WORKER" />)}
-        />
-        <Route
-          path="/workers/:workerProductId"
-          element={withSuspense(<WorkerDetail />)}
-        />
         <Route path="/chat" element={withSuspense(<Chat />)} />
         <Route path="/quest" element={<Navigate to="/coding" />} />
         <Route path="/coding" element={withSuspense(<Coding />)} />
@@ -113,7 +102,10 @@ export function Router() {
           path="/getting-started"
           element={withSuspense(<GettingStarted />)}
         />
-        <Route path="/apis/:apiProductId" element={withSuspense(<ApiDetail />)} />
+        <Route
+          path="/apis/:apiProductId"
+          element={withSuspense(<ApiDetail />)}
+        />
         <Route
           path="/consumers/:consumerId"
           element={withSuspense(
@@ -130,7 +122,10 @@ export function Router() {
             </RequireAuth>
           )}
         />
-        <Route path="/mcp/:mcpProductId" element={withSuspense(<McpDetail />)} />
+        <Route
+          path="/mcp/:mcpProductId"
+          element={withSuspense(<McpDetail />)}
+        />
         <Route path="/agents" element={withSuspense(<Agent />)} />
         <Route
           path="/agents/:agentProductId"
@@ -152,7 +147,16 @@ export function Router() {
         />
         <Route path="/callback" element={withSuspense(<Callback />)} />
         <Route path="/cas/callback" element={withSuspense(<CasCallback />)} />
-        <Route path="/oidc/callback" element={withSuspense(<OidcCallback />)} />
+        <Route
+          path="/oauth2/callback"
+          element={withSuspense(<OAuth2Callback />)}
+        />
+        <Route
+          path="/oidc/callback"
+          element={withSuspense(<OidcCallback />)}
+        />
+
+        {/* 其他页面可继续添加 */}
       </Routes>
     </>
   );
