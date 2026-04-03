@@ -138,9 +138,9 @@ export default defineConfig(({ mode }) => {
     build: {
       rollupOptions: {
         output: {
-          entryFileNames: "index.js",
-          chunkFileNames: "chunk-[name].js",
-          assetFileNames: "assets/[name].[ext]",
+          entryFileNames: "assets/[name]-[hash].js",
+          chunkFileNames: "assets/chunk-[name]-[hash].js",
+          assetFileNames: "assets/[name]-[hash].[ext]",
           manualChunks,
         },
       },
