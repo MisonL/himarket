@@ -28,6 +28,7 @@ export function AuthConfigTableCard({
         rowKey="provider"
         pagination={false}
         size="small"
+        scroll={{ x: 880 }}
         locale={{
           emptyText,
         }}

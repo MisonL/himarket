@@ -1,6 +1,7 @@
-import { Card, Form, Input, Switch, Divider, message } from "antd";
-import { useMemo } from "react";
+import { Card, Divider, Form, Input, Spin, Switch, message } from "antd";
+import { useMemo, useState } from "react";
 import {
+  AuthenticationType,
   Portal,
   ThirdPartyAuthConfig,
   CasConfig,
@@ -11,24 +12,27 @@ import {
 import { portalApi } from "@/lib/api";
 import { ThirdPartyAuthManager } from "./ThirdPartyAuthManager";
 
-// 强制本地定义认证类型字符串，防止枚举引用异常
-const AUTH_TYPES = {
-  OIDC: "OIDC",
-  CAS: "CAS",
-  LDAP: "LDAP",
-  OAUTH2: "OAUTH2",
-};
-
 interface PortalSecurityProps {
   portal: Portal;
   onRefresh?: () => void;
 }
 
+function omitType<T extends ThirdPartyAuthConfig>(config: T): Omit<T, "type"> {
+  const rest = { ...config };
+  delete rest.type;
+  return rest;
+}
+
 export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
   const [form] = Form.useForm();
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsStatusText, setSettingsStatusText] =
+    useState("修改后会自动保存。");
 
   const handleSave = async () => {
     try {
+      setSavingSettings(true);
+      setSettingsStatusText("正在保存安全配置...");
       const values = await form.validateFields();
 
       await portalApi.updatePortal(portal.portalId, {
@@ -46,9 +50,13 @@ export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
       });
 
       message.success("安全设置保存成功");
+      setSettingsStatusText("安全配置已保存。");
       onRefresh?.();
-    } catch (error) {
+    } catch {
       message.error("保存安全设置失败");
+      setSettingsStatusText("保存失败，请检查输入后重试。");
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -68,34 +76,35 @@ export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
         (currentValues.frontendRedirectUrl as string | undefined)?.trim() ||
         undefined;
 
-      // 使用硬编码字符串过滤，防止类型不匹配
       const oidcConfigs = configs
-        .filter(config => String(config.type) === AUTH_TYPES.OIDC)
-        .map(config => {
-          const { type, ...rest } = config;
-          return rest;
-        });
+        .filter(
+          (config): config is OidcConfig & { type: AuthenticationType.OIDC } =>
+            config.type === AuthenticationType.OIDC
+        )
+        .map(omitType);
 
       const casConfigs = configs
-        .filter(config => String(config.type) === AUTH_TYPES.CAS)
-        .map(config => {
-          const { type, ...rest } = config;
-          return rest;
-        });
+        .filter(
+          (config): config is CasConfig & { type: AuthenticationType.CAS } =>
+            config.type === AuthenticationType.CAS
+        )
+        .map(omitType);
 
       const oauth2Configs = configs
-        .filter(config => String(config.type) === AUTH_TYPES.OAUTH2)
-        .map(config => {
-          const { type, ...rest } = config;
-          return rest;
-        });
+        .filter(
+          (
+            config
+          ): config is OAuth2Config & { type: AuthenticationType.OAUTH2 } =>
+            config.type === AuthenticationType.OAUTH2
+        )
+        .map(omitType);
 
       const ldapConfigs = configs
-        .filter(config => String(config.type) === AUTH_TYPES.LDAP)
-        .map(config => {
-          const { type, ...rest } = config;
-          return rest;
-        });
+        .filter(
+          (config): config is LdapConfig & { type: AuthenticationType.LDAP } =>
+            config.type === AuthenticationType.LDAP
+        )
+        .map(omitType);
 
       const updateData = {
         ...portal,
@@ -124,25 +133,25 @@ export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
 
     if (portal.portalSettingConfig?.oidcConfigs) {
       portal.portalSettingConfig.oidcConfigs.forEach(c => {
-        configs.push({ ...c, type: AUTH_TYPES.OIDC } as any);
+        configs.push({ ...c, type: AuthenticationType.OIDC });
       });
     }
 
     if (portal.portalSettingConfig?.casConfigs) {
       portal.portalSettingConfig.casConfigs.forEach(c => {
-        configs.push({ ...c, type: AUTH_TYPES.CAS } as any);
+        configs.push({ ...c, type: AuthenticationType.CAS });
       });
     }
 
     if (portal.portalSettingConfig?.oauth2Configs) {
       portal.portalSettingConfig.oauth2Configs.forEach(c => {
-        configs.push({ ...c, type: AUTH_TYPES.OAUTH2 } as any);
+        configs.push({ ...c, type: AuthenticationType.OAUTH2 });
       });
     }
 
     if (portal.portalSettingConfig?.ldapConfigs) {
       portal.portalSettingConfig.ldapConfigs.forEach(c => {
-        configs.push({ ...c, type: AUTH_TYPES.LDAP } as any);
+        configs.push({ ...c, type: AuthenticationType.LDAP });
       });
     }
 
@@ -170,28 +179,45 @@ export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
       >
         <Card>
           <div className="space-y-6">
-            <h3 className="text-lg font-medium">基本安全配置</h3>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-medium">基本安全配置</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  {settingsStatusText}
+                </p>
+              </div>
+              {savingSettings ? <Spin size="small" /> : null}
+            </div>
             <div className="grid grid-cols-2 gap-6">
               <Form.Item
                 name="builtinAuthEnabled"
                 label="账号密码登录"
                 valuePropName="checked"
               >
-                <Switch onChange={() => handleSettingUpdate()} />
+                <Switch
+                  disabled={savingSettings}
+                  onChange={() => handleSettingUpdate()}
+                />
               </Form.Item>
               <Form.Item
                 name="autoApproveDevelopers"
                 label="开发者自动审批"
                 valuePropName="checked"
               >
-                <Switch onChange={() => handleSettingUpdate()} />
+                <Switch
+                  disabled={savingSettings}
+                  onChange={() => handleSettingUpdate()}
+                />
               </Form.Item>
               <Form.Item
                 name="autoApproveSubscriptions"
                 label="订阅自动审批"
                 valuePropName="checked"
               >
-                <Switch onChange={() => handleSettingUpdate()} />
+                <Switch
+                  disabled={savingSettings}
+                  onChange={() => handleSettingUpdate()}
+                />
               </Form.Item>
             </div>
 
@@ -203,6 +229,7 @@ export function PortalSecurity({ portal, onRefresh }: PortalSecurityProps) {
             >
               <Input
                 placeholder="https://portal.example.com"
+                disabled={savingSettings}
                 onBlur={() => handleSettingUpdate()}
               />
             </Form.Item>
