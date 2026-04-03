@@ -1,94 +1,112 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { message, Spin } from 'antd'
-import { handleOidcCallback } from '../lib/apis'
+import React, { useEffect, useState, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Button } from "antd";
+import { handleOidcCallback, type AuthResult } from "../lib/api";
+import { AuthStatusCard } from "../components/auth/AuthStatusCard";
+import {
+  buildStoredAuthRoute,
+  consumeStoredReturnUrl,
+} from "../lib/authReturnUrl";
 
 const OidcCallback: React.FC = () => {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const [, setLoading] = useState(true)
-  const processedRef = useRef(false)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState<"processing" | "success" | "error">(
+    "processing"
+  );
+  const [statusMessage, setStatusMessage] = useState("正在校验企业身份信息…");
+  const processedRef = useRef(false);
 
   useEffect(() => {
-    // 防止重复执行：使用ref标记是否已经处理过
     if (!processedRef.current) {
-      processedRef.current = true
-      handleOidcCallbackProcess()
+      processedRef.current = true;
+      void handleOidcCallbackProcess();
     }
-  }, [location.search]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleOidcCallbackProcess = async () => {
     try {
-      setLoading(true)
+      setStatus("processing");
+      setStatusMessage("正在校验企业身份信息…");
 
-      // 1. 从URL提取参数
-      const searchParams = new URLSearchParams(location.search)
-      const code = searchParams.get('code')
-      const state = searchParams.get('state')
-      const error = searchParams.get('error')
-      const errorDescription = searchParams.get('error_description')
+      const searchParams = new URLSearchParams(location.search);
+      const code = searchParams.get("code");
+      const state = searchParams.get("state");
+      const error = searchParams.get("error");
+      const errorDescription = searchParams.get("error_description");
 
-      // 处理授权错误
       if (error) {
-        message.error(`登录失败: ${errorDescription || error}`)
-        navigate('/login', { replace: true })
-        return
+        setStatus("error");
+        setStatusMessage(`登录失败：${errorDescription || error}`);
+        return;
       }
 
-      // 检查必要参数
       if (!code || !state) {
-        message.error('回调参数不完整，请重试')
-        navigate('/login', { replace: true })
-        return
+        setStatus("error");
+        setStatusMessage("回调参数不完整，请重新发起登录。");
+        return;
       }
 
-      // 2. 调用后端API
-      const authResult = await handleOidcCallback({ code, state })
+      const authResult: AuthResult = await handleOidcCallback(code, state);
       if (!authResult?.data?.access_token) {
-        throw new Error('未获取到访问令牌')
+        throw new Error("未获取到访问令牌");
       }
 
-      // 3. 存储token
-      localStorage.setItem('access_token', authResult.data.access_token)
-
-      // 4. 用户反馈
-      message.success('登录成功！')
-
-      // 5. 页面跳转
-      navigate('/', { replace: true })
-
+      localStorage.setItem("access_token", authResult.data.access_token);
+      setStatus("success");
+      setStatusMessage("登录成功，正在进入 HiMarket…");
+      window.setTimeout(() => {
+        navigate(consumeStoredReturnUrl("/"), { replace: true });
+      }, 800);
     } catch (error) {
-
-      let errorMessage = '登录失败，请重试'
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status: number } }
+      let errorMessage = "登录失败，请重试";
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status: number } };
         if (axiosError.response?.status === 400) {
-          errorMessage = '授权码无效或已过期'
+          errorMessage = "授权码无效或已过期";
         } else if (axiosError.response?.status === 404) {
-          errorMessage = 'OIDC配置不存在'
+          errorMessage = "OIDC配置不存在";
         }
       } else if (error instanceof Error && error.message) {
-        errorMessage = error.message
+        errorMessage = error.message;
       }
 
-      message.error(errorMessage)
-      navigate('/login', { replace: true })
-
-    } finally {
-      setLoading(false)
+      setStatus("error");
+      setStatusMessage(errorMessage);
     }
-  }
+  };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center">
-        <Spin size="large" />
-        <div className="mt-4 text-gray-600">
-          正在处理登录信息...
-        </div>
-      </div>
-    </div>
-  )
-}
+    <AuthStatusCard
+      status={status}
+      title={
+        status === "processing"
+          ? "正在处理 OIDC 登录"
+          : status === "success"
+            ? "登录成功"
+            : "OIDC 登录未完成"
+      }
+      message={statusMessage}
+      actions={
+        status === "error"
+          ? [
+              <Button
+                key="login"
+                type="primary"
+                onClick={() =>
+                  navigate(buildStoredAuthRoute("/login"), { replace: true })
+                }
+              >
+                返回登录页
+              </Button>,
+              <Button key="retry" onClick={() => window.location.reload()}>
+                重新处理当前回调
+              </Button>,
+            ]
+          : []
+      }
+    />
+  );
+};
 
-export default OidcCallback
+export default OidcCallback;

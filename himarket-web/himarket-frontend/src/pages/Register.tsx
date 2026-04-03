@@ -1,51 +1,63 @@
-import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Form, Input, Button, message } from 'antd'
-import { UserOutlined, LockOutlined } from '@ant-design/icons'
-import { useTranslation } from 'react-i18next'
-import request from '../lib/request'
-import { Layout } from '../components/Layout'
+import React, { useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Form, Input, Button, message } from "antd";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import api from "../lib/api";
+import { Layout } from "../components/Layout";
+import {
+  buildAuthRouteFromSearch,
+  getSearchReturnUrl,
+} from "../lib/authReturnUrl";
 
 const Register: React.FC = () => {
-  const { t } = useTranslation('register');
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
-  // const location = useLocation()
-  // const searchParams = new URLSearchParams(location.search)
-  // const portalId = searchParams.get('portalId') || ''
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const handleRegister = async (values: { username: string; password: string; confirmPassword: string }) => {
-    setLoading(true)
+  const handleRegister = async (values: {
+    username: string;
+    password: string;
+    confirmPassword: string;
+  }) => {
+    setLoading(true);
     try {
-      // 这里需要根据实际API调整
-      await request.post('/developers', {
+      await api.post("/developers", {
         username: values.username,
         password: values.password,
-      })
-      message.success(t('registerSuccess'))
-      // 注册成功后跳转到登录页
-      navigate('/login')
+      });
+      message.success("注册成功！");
+      navigate(buildAuthRouteFromSearch("/login", searchParams), {
+        replace: true,
+      });
     } catch {
-      message.error(t('registerFailed'))
+      message.error("注册失败，请重试");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Layout>
-      <div className="min-h-[calc(100vh-96px)] flex items-center justify-center " style={{
-        backdropFilter: 'blur(204px)',
-        WebkitBackdropFilter: 'blur(204px)',
-      }}>
+      <div
+        className="min-h-[calc(100vh-96px)] flex items-center justify-center "
+        style={{
+          backdropFilter: "blur(204px)",
+          WebkitBackdropFilter: "blur(204px)",
+        }}
+      >
         <div className="w-full max-w-md mx-4">
-          <div className='bg-white backdrop-blur-sm rounded-2xl p-8 shadow-lg'>
+          <div className="bg-white backdrop-blur-sm rounded-2xl p-8 shadow-lg">
             <div className="mb-8">
               <h2 className="text-[32px] flex text-gray-900">
-                <span className="text-colorPrimary">{t('greeting')}</span>
-                {t('hello')}
+                <span className="text-colorPrimary">嗨，</span>
+                您好
               </h2>
-              <p className="text-sm text-[#85888D]">{t('welcomeMessage')}</p>
+              <p className="text-sm text-[#85888D]">欢迎来到 HiMarket</p>
+              {getSearchReturnUrl(searchParams) && (
+                <p className="mt-3 text-xs leading-5 text-gray-500">
+                  注册完成后会回到登录页，并保留原始访问目标。
+                </p>
+              )}
             </div>
 
             <Form
@@ -57,29 +69,32 @@ const Register: React.FC = () => {
             >
               <Form.Item
                 name="username"
+                label="账号"
                 rules={[
-                  { required: true, message: t('usernameRequired') },
-                  { min: 3, message: t('usernameMinLength') }
+                  { required: true, message: "请输入账号" },
+                  { min: 3, message: "账号至少3个字符" },
                 ]}
               >
                 <Input
-                  prefix={<UserOutlined className='text-gray-400' />}
-                  placeholder={t('usernamePlaceholder')}
+                  prefix={<UserOutlined className="text-gray-400" />}
+                  placeholder="请输入账号…"
                   autoComplete="username"
+                  spellCheck={false}
                   className="rounded-lg"
                 />
               </Form.Item>
 
               <Form.Item
                 name="password"
+                label="密码"
                 rules={[
-                  { required: true, message: t('passwordRequired') },
-                  { min: 6, message: t('passwordMinLength') }
+                  { required: true, message: "请输入密码" },
+                  { min: 6, message: "密码至少6个字符" },
                 ]}
               >
                 <Input.Password
-                  prefix={<LockOutlined className='text-gray-400' />}
-                  placeholder={t('passwordPlaceholder')}
+                  prefix={<LockOutlined className="text-gray-400" />}
+                  placeholder="请输入密码…"
                   autoComplete="new-password"
                   className="rounded-lg"
                 />
@@ -87,22 +102,23 @@ const Register: React.FC = () => {
 
               <Form.Item
                 name="confirmPassword"
-                dependencies={['password']}
+                label="确认密码"
+                dependencies={["password"]}
                 rules={[
-                  { required: true, message: t('confirmPasswordRequired') },
+                  { required: true, message: "请确认密码" },
                   ({ getFieldValue }) => ({
                     validator(_, value) {
-                      if (!value || getFieldValue('password') === value) {
-                        return Promise.resolve()
+                      if (!value || getFieldValue("password") === value) {
+                        return Promise.resolve();
                       }
-                      return Promise.reject(new Error(t('passwordMismatch')))
+                      return Promise.reject(new Error("两次输入的密码不一致"));
                     },
                   }),
                 ]}
               >
                 <Input.Password
-                  prefix={<LockOutlined className='text-gray-400' />}
-                  placeholder={t('confirmPasswordPlaceholder')}
+                  prefix={<LockOutlined className="text-gray-400" />}
+                  placeholder="请再次输入密码…"
                   autoComplete="new-password"
                   className="rounded-lg"
                 />
@@ -116,19 +132,25 @@ const Register: React.FC = () => {
                   className="rounded-lg w-full"
                   size="large"
                 >
-                  {loading ? t('registering') : t('register')}
+                  {loading ? "注册中…" : "注册"}
                 </Button>
               </Form.Item>
             </Form>
 
             <div className="text-center text-subTitle">
-              {t('hasAccount')}<Link to="/login" className="text-colorPrimary hover:text-colorPrimary hover:underline">{t('loginLink')}</Link>
+              已有账号？
+              <Link
+                to={buildAuthRouteFromSearch("/login", searchParams)}
+                className="text-colorPrimary hover:text-colorPrimary hover:underline"
+              >
+                登录
+              </Link>
             </div>
           </div>
         </div>
       </div>
     </Layout>
-  )
-}
+  );
+};
 
-export default Register
+export default Register;

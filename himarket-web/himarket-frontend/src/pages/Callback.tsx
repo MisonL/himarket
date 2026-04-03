@@ -1,11 +1,21 @@
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { message, Spin } from "antd";
-import request from "../lib/request";
+import { Button } from "antd";
+import api from "../lib/api";
+import { AuthStatusCard } from "../components/auth/AuthStatusCard";
+import {
+  buildStoredAuthRoute,
+  consumeStoredReturnUrl,
+} from "../lib/authReturnUrl";
 
 const Callback: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [status, setStatus] = React.useState<
+    "processing" | "success" | "error"
+  >("processing");
+  const [statusMessage, setStatusMessage] =
+    React.useState("正在完成登录信息处理…");
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -13,33 +23,59 @@ const Callback: React.FC = () => {
     const state = searchParams.get("state");
 
     if (!code || !state) {
-      message.error("缺少 code 或 state 参数");
+      setStatus("error");
+      setStatusMessage("缺少 code 或 state 参数，请重新发起登录。");
       return;
     }
 
-    // 调用后端获取token
-    request
+    api
       .post<{ access_token: string }>("/developers/token", { code, state })
-      .then((res) => {
+      .then(res => {
         if (res && res.data && res.data.access_token) {
-          message.success("登录成功！");
-          // 存储access_token
-          localStorage.setItem('access_token', res.data.access_token);
-          // 跳转首页
-          navigate('/');
+          localStorage.setItem("access_token", res.data.access_token);
+          setStatus("success");
+          setStatusMessage("登录成功，正在进入 HiMarket…");
+          window.setTimeout(() => {
+            navigate(consumeStoredReturnUrl("/"), { replace: true });
+          }, 800);
         } else {
-          message.error("登录失败，未获取到 access_token");
+          setStatus("error");
+          setStatusMessage("登录失败，未获取到访问令牌。");
         }
       })
       .catch(() => {
-        message.error("登录失败，请重试");
+        setStatus("error");
+        setStatusMessage("登录失败，请重试。");
       });
   }, [location.search, navigate]);
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Spin tip="登录中，请稍候..." />
-    </div>
+    <AuthStatusCard
+      status={status}
+      title={
+        status === "processing"
+          ? "正在处理登录"
+          : status === "success"
+            ? "登录成功"
+            : "登录未完成"
+      }
+      message={statusMessage}
+      actions={
+        status === "error"
+          ? [
+              <Button
+                key="login"
+                type="primary"
+                onClick={() =>
+                  navigate(buildStoredAuthRoute("/login"), { replace: true })
+                }
+              >
+                返回登录页
+              </Button>,
+            ]
+          : []
+      }
+    />
   );
 };
 
