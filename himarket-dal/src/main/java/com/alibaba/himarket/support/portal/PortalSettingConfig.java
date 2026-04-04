@@ -71,4 +71,19 @@ public class PortalSettingConfig {
      * null means not configured
      */
     private SearchEngineConfig searchEngineConfig;
+
+    public void normalizeEmptyAuthConfigs() {
+        if (oidcConfigs != null && oidcConfigs.isEmpty()) {
+            oidcConfigs = null;
+        }
+        if (casConfigs != null && casConfigs.isEmpty()) {
+            casConfigs = null;
+        }
+        if (ldapConfigs != null && ldapConfigs.isEmpty()) {
+            ldapConfigs = null;
+        }
+        if (oauth2Configs != null && oauth2Configs.isEmpty()) {
+            oauth2Configs = null;
+        }
+    }
 }

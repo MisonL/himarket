@@ -20,6 +20,7 @@
 package com.alibaba.himarket.service.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -106,6 +107,33 @@ class PortalServiceImplTest {
         assertEquals(
                 "https://portal.example.com",
                 portal.getPortalSettingConfig().getFrontendRedirectUrl());
+    }
+
+    @Test
+    void updatePortalShouldNormalizeEmptyThirdPartyAuthConfigsToNull() {
+        Portal portal = buildPortal();
+        PortalSettingConfig setting = new PortalSettingConfig();
+        setting.setBuiltinAuthEnabled(true);
+        setting.setOidcConfigs(Collections.emptyList());
+        setting.setCasConfigs(Collections.emptyList());
+        setting.setLdapConfigs(Collections.emptyList());
+        setting.setOauth2Configs(Collections.emptyList());
+
+        UpdatePortalParam param = new UpdatePortalParam();
+        param.setPortalSettingConfig(setting);
+
+        when(portalRepository.findByPortalId("portal-1")).thenReturn(Optional.of(portal));
+        when(portalRepository.saveAndFlush(any(Portal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(portalDomainRepository.findAllByPortalId("portal-1"))
+                .thenReturn(Collections.emptyList());
+
+        portalService.updatePortal("portal-1", param);
+
+        assertNull(portal.getPortalSettingConfig().getOidcConfigs());
+        assertNull(portal.getPortalSettingConfig().getCasConfigs());
+        assertNull(portal.getPortalSettingConfig().getLdapConfigs());
+        assertNull(portal.getPortalSettingConfig().getOauth2Configs());
     }
 
     private Portal buildPortal() {

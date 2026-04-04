@@ -201,6 +201,7 @@ public class PortalServiceImpl implements PortalService {
         param.update(portal);
 
         PortalSettingConfig setting = portal.getPortalSettingConfig();
+        setting.normalizeEmptyAuthConfigs();
         if (StrUtil.isNotBlank(setting.getFrontendRedirectUrl())) {
             setting.setFrontendRedirectUrl(
                     StrUtil.removeSuffix(setting.getFrontendRedirectUrl(), "/"));
