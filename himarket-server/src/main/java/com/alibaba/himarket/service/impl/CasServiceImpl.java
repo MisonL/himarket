@@ -74,6 +74,11 @@ import org.springframework.web.util.UriUtils;
 @RequiredArgsConstructor
 public class CasServiceImpl implements CasService {
 
+    private static final java.time.Duration PROXY_CALLBACK_WAIT_TIMEOUT =
+            java.time.Duration.ofSeconds(5);
+
+    private static final long PROXY_CALLBACK_POLL_INTERVAL_MILLIS = 100L;
+
     private final PortalService portalService;
 
     private final DeveloperService developerService;
@@ -471,9 +476,7 @@ public class CasServiceImpl implements CasService {
         if (StrUtil.isBlank(loginContext.getProxyGrantingTicketIou())) {
             return;
         }
-        String pgtId =
-                authSessionStore.consumeCasProxyGrantingTicket(
-                        loginContext.getProxyGrantingTicketIou());
+        String pgtId = awaitProxyGrantingTicket(loginContext.getProxyGrantingTicketIou());
         if (StrUtil.isBlank(pgtId)) {
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST,
@@ -485,6 +488,25 @@ public class CasServiceImpl implements CasService {
                 loginContext.getUserId(),
                 loginContext.getSessionIndex(),
                 pgtId);
+    }
+
+    private String awaitProxyGrantingTicket(String pgtIou) {
+        long deadline = System.nanoTime() + PROXY_CALLBACK_WAIT_TIMEOUT.toNanos();
+        while (true) {
+            String pgtId = authSessionStore.consumeCasProxyGrantingTicket(pgtIou);
+            if (StrUtil.isNotBlank(pgtId)) {
+                return pgtId;
+            }
+            if (System.nanoTime() >= deadline) {
+                return null;
+            }
+            try {
+                Thread.sleep(PROXY_CALLBACK_POLL_INTERVAL_MILLIS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
     }
 
     private void assertProxyEnabled(CasConfig config) {

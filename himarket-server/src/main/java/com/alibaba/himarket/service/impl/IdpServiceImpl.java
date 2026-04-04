@@ -75,7 +75,7 @@ public class IdpServiceImpl implements IdpService {
 
     private static final Pattern FIELD_NAME_PATTERN = Pattern.compile("^[A-Za-z][A-Za-z0-9_.-]*$");
 
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
+    private final RestTemplate restTemplate = HTTPClientFactory.createIdpRestTemplate();
 
     @Override
     public void validateOidcConfigs(List<OidcConfig> oidcConfigs) {

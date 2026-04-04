@@ -34,16 +34,39 @@ public class HTTPClientFactory {
 
     private static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(5);
 
+    private static final Duration DEFAULT_IDP_CONNECT_TIMEOUT = Duration.ofSeconds(5);
+
+    private static final Duration DEFAULT_IDP_READ_TIMEOUT = Duration.ofSeconds(60);
+
     public static RestTemplate createRestTemplate() {
+        return createRestTemplate(
+                "http.client.connect-timeout",
+                DEFAULT_CONNECT_TIMEOUT,
+                "http.client.read-timeout",
+                DEFAULT_READ_TIMEOUT);
+    }
+
+    public static RestTemplate createIdpRestTemplate() {
+        return createRestTemplate(
+                "idp.http.client.connect-timeout",
+                DEFAULT_IDP_CONNECT_TIMEOUT,
+                "idp.http.client.read-timeout",
+                DEFAULT_IDP_READ_TIMEOUT);
+    }
+
+    public static RestTemplate createRestTemplate(
+            String connectTimeoutPropertyName,
+            Duration defaultConnectTimeout,
+            String readTimeoutPropertyName,
+            Duration defaultReadTimeout) {
         HttpClient httpClient =
                 HttpClient.newBuilder()
                         .connectTimeout(
-                                resolveDuration(
-                                        "http.client.connect-timeout", DEFAULT_CONNECT_TIMEOUT))
+                                resolveDuration(connectTimeoutPropertyName, defaultConnectTimeout))
                         .build();
 
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
-        factory.setReadTimeout(resolveDuration("http.client.read-timeout", DEFAULT_READ_TIMEOUT));
+        factory.setReadTimeout(resolveDuration(readTimeoutPropertyName, defaultReadTimeout));
 
         return new RestTemplate(factory);
     }

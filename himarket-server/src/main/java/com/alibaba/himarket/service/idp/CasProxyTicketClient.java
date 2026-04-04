@@ -39,7 +39,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @RequiredArgsConstructor
 public class CasProxyTicketClient {
 
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
+    private final RestTemplate restTemplate = HTTPClientFactory.createIdpRestTemplate();
 
     private final CasProxyTicketParser casProxyTicketParser;
 

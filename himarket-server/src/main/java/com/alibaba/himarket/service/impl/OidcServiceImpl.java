@@ -80,7 +80,7 @@ public class OidcServiceImpl implements OidcService {
 
     private final DeveloperService developerService;
 
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
+    private final RestTemplate restTemplate = HTTPClientFactory.createIdpRestTemplate();
 
     private final ContextHolder contextHolder;
 

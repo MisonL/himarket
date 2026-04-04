@@ -614,6 +614,102 @@ class CasServiceImplTest {
     }
 
     @Test
+    void exchangeCodeShouldWaitForProxyGrantingTicketCallback() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String serverUrl = "http://localhost:" + server.getAddress().getPort() + "/cas";
+        String[] expectedServiceHolder = new String[1];
+        String[] expectedPgtUrlHolder = new String[1];
+        server.createContext(
+                "/cas/p3/serviceValidate",
+                new ValidateHandler(
+                        expectedServiceHolder,
+                        expectedPgtUrlHolder,
+                        "alice",
+                        "alice@example.com",
+                        "PGTIOU-DELAYED"));
+        server.start();
+
+        CasConfig casConfig = new CasConfig();
+        casConfig.setProvider("cas");
+        casConfig.setName("CAS");
+        casConfig.setServerUrl(serverUrl);
+        casConfig.setLoginEndpoint(serverUrl + "/login");
+        casConfig.setValidateEndpoint(serverUrl + "/p3/serviceValidate");
+        casConfig.setIdentityMapping(defaultIdentityMapping());
+        CasProxyConfig proxyConfig = new CasProxyConfig();
+        proxyConfig.setEnabled(true);
+        casConfig.setProxy(proxyConfig);
+
+        PortalSettingConfig portalSettingConfig = new PortalSettingConfig();
+        portalSettingConfig.setCasConfigs(List.of(casConfig));
+        portalSettingConfig.setFrontendRedirectUrl("https://portal.example.com/");
+        PortalResult portalResult = new PortalResult();
+        portalResult.setPortalSettingConfig(portalSettingConfig);
+
+        when(contextHolder.getPortal()).thenReturn("portal-1");
+        when(portalService.getPortal("portal-1")).thenReturn(portalResult);
+        when(developerService.getExternalDeveloper("cas", "alice")).thenReturn(null);
+
+        DeveloperResult developerResult = new DeveloperResult();
+        developerResult.setDeveloperId("dev-1");
+        when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
+
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
+        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+
+        MemoryAuthSessionStore authSessionStore =
+                new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
+        CasServiceImpl casService =
+                new CasServiceImpl(
+                        portalService,
+                        developerService,
+                        contextHolder,
+                        new AuthSessionConfig(),
+                        authSessionStore,
+                        new com.alibaba.himarket.service.idp.CasTicketValidator(
+                                new CasTicketValidationParser(),
+                                new CasJsonTicketValidationParser(),
+                                new CasSamlTicketValidationParser()),
+                        new CasProxyTicketClient(new CasProxyTicketParser()),
+                        new CasLogoutRequestParser(),
+                        new PortalFrontendUrlResolver(portalService, contextHolder),
+                        new IdpStateCodec());
+        MockHttpServletRequest request = buildRequest(server.getAddress().getPort());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        IdpAuthorizeResult authorizeResult =
+                casService.buildAuthorizationResult("cas", "/api/v1", null, request);
+        String serviceUrl =
+                splitQueryValue(
+                        URI.create(authorizeResult.getRedirectUrl()).getRawQuery(), "service");
+        String state = authorizeResult.getState();
+        expectedServiceHolder[0] = serviceUrl;
+        expectedPgtUrlHolder[0] = "https://portal.example.com/api/v1/developers/cas/proxy-callback";
+        request.setCookies(new Cookie(IdpConstants.CAS_STATE_COOKIE_NAME, state));
+
+        String redirectUrl = casService.handleCallback("ST-1", state, request, response);
+        String code = splitQueryValue(URI.create(redirectUrl).getQuery(), IdpConstants.CODE);
+
+        Thread callbackThread =
+                new Thread(
+                        () -> {
+                            try {
+                                Thread.sleep(200L);
+                            } catch (InterruptedException ex) {
+                                Thread.currentThread().interrupt();
+                            }
+                            casService.handleProxyCallback("PGTIOU-DELAYED", "PGT-DELAYED");
+                        });
+        callbackThread.start();
+
+        AuthResult authResult = casService.exchangeCode(code);
+        callbackThread.join();
+
+        assertNotNull(authResult);
+        assertNotNull(authResult.getAccessToken());
+    }
+
+    @Test
     void issueProxyTicketShouldRejectDisallowedDeveloperTargetService() {
         CasConfig casConfig = new CasConfig();
         casConfig.setProvider("cas");

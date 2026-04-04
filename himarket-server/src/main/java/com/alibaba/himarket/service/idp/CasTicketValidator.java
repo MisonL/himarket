@@ -49,7 +49,7 @@ import org.springframework.web.util.UriUtils;
 @RequiredArgsConstructor
 public class CasTicketValidator {
 
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
+    private final RestTemplate restTemplate = HTTPClientFactory.createIdpRestTemplate();
 
     private final CasTicketValidationParser casTicketValidationParser;
 

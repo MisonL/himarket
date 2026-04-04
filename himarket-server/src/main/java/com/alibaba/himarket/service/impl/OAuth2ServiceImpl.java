@@ -122,7 +122,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
 
     private final CasSamlTicketValidationParser casSamlTicketValidationParser;
 
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
+    private final RestTemplate restTemplate = HTTPClientFactory.createIdpRestTemplate();
 
     @Override
     public AuthResult authenticate(String grantType, String jwtToken) {
