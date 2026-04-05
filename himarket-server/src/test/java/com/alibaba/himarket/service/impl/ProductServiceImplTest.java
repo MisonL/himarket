@@ -42,6 +42,8 @@ import com.alibaba.himarket.service.GatewayService;
 import com.alibaba.himarket.service.NacosService;
 import com.alibaba.himarket.service.PortalService;
 import com.alibaba.himarket.service.ProductCategoryService;
+import com.alibaba.himarket.service.SkillService;
+import com.alibaba.himarket.service.WorkerService;
 import com.alibaba.himarket.service.hichat.manager.ToolManager;
 import com.alibaba.himarket.support.enums.ConsumerCredentialType;
 import com.alibaba.himarket.support.enums.ProductType;
@@ -78,6 +80,10 @@ class ProductServiceImplTest {
 
     @Mock private ToolManager toolManager;
 
+    @Mock private WorkerService workerService;
+
+    @Mock private SkillService skillService;
+
     private ProductServiceImpl productService;
 
     @BeforeEach
@@ -94,7 +100,9 @@ class ProductServiceImplTest {
                         consumerRepository,
                         nacosService,
                         productCategoryService,
-                        toolManager);
+                        toolManager,
+                        workerService,
+                        skillService);
     }
 
     @Test

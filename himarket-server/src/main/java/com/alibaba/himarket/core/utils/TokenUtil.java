@@ -137,7 +137,9 @@ public class TokenUtil {
                                                             cookie ->
                                                                     CommonConstants
                                                                             .AUTH_TOKEN_COOKIE
-                                                                            .equals(cookie.getName()))
+                                                                            .equals(
+                                                                                    cookie
+                                                                                            .getName()))
                                                     .map(Cookie::getValue)
                                                     .findFirst())
                             .orElse(null);
