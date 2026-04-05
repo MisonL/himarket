@@ -20,6 +20,7 @@
 package com.alibaba.himarket.core.constant;
 
 public class IdpConstants {
+    public static final long SECONDS_PER_DAY = 24L * 60 * 60;
 
     /**
      * Grant type
@@ -105,6 +106,8 @@ public class IdpConstants {
     public static final String TICKET = "ticket";
 
     public static final String PGT = "pgt";
+
+    public static final String SAML_ART = "SAMLArt";
 
     public static final String PGT_ID = "pgtId";
 

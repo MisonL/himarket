@@ -3,6 +3,7 @@ services:
     build:
       context: ./mcp-mock
     image: himarket-mcp-mock:dev
+    pull_policy: never
     container_name: himarket-mcp-mock
     environment:
       - PORT=3000
@@ -25,9 +26,10 @@ services:
       args:
         INSTALL_ARTHAS: "false"
     image: himarket-server-local:dev
+    pull_policy: never
     networks:
       himarket-network:
-        ipv4_address: 172.24.0.11
+        ipv4_address: ${HIMARKET_SERVER_IP:-172.24.0.11}
     environment:
       - DB_HOST=${DB_HOST:-mysql}
       - DB_PORT=${DB_PORT:-3306}
@@ -53,7 +55,7 @@ services:
       # Internal URL for server-to-server ticket validation.
       - ADMIN_AUTH_CAS_CONFIGS_0_VALIDATE_ENDPOINT=http://cas:8080/cas/p3/serviceValidate
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_ENABLED=true
-      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://172.24.0.11:8080/admins/cas/proxy-callback
+      - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_CALLBACK_PATH=http://himarket-server:8080/admins/cas/proxy-callback
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_TARGET_SERVICE_PATTERN=^http://localhost:5174/.*$
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_PROXY_ENDPOINT=http://cas:8080/cas/proxy
       - ADMIN_AUTH_CAS_CONFIGS_0_PROXY_POLICY_MODE=REST
@@ -197,8 +199,10 @@ services:
     build:
       context: ../../himarket-web/himarket-admin
     image: himarket-admin-local:dev
+    pull_policy: never
 
   himarket-frontend:
     build:
       context: ../../himarket-web/himarket-frontend
     image: himarket-frontend-local:dev
+    pull_policy: never

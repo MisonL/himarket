@@ -23,40 +23,40 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
-import com.alibaba.himarket.service.gateway.factory.HTTPClientFactory;
 import com.alibaba.himarket.support.portal.CasConfig;
 import com.alibaba.himarket.support.portal.cas.CasProtocolVersion;
 import com.alibaba.himarket.support.portal.cas.CasValidationConfig;
 import com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat;
+import java.net.HttpURLConnection;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriUtils;
 
 @Component
 @Slf4j
 @RequiredArgsConstructor
 public class CasTicketValidator {
-
-    private final RestTemplate restTemplate = HTTPClientFactory.createRestTemplate();
-
     private final CasTicketValidationParser casTicketValidationParser;
 
     private final CasJsonTicketValidationParser casJsonTicketValidationParser;
 
     private final CasSamlTicketValidationParser casSamlTicketValidationParser;
+
+    private final Duration connectTimeout = Duration.ofSeconds(5);
+
+    private final Duration readTimeout = Duration.ofSeconds(5);
 
     public Map<String, Object> validate(CasConfig config, String ticket, String serviceUrl) {
         return validate(config, ticket, serviceUrl, null);
@@ -85,22 +85,10 @@ public class CasTicketValidator {
             String serviceUrl,
             String proxyCallbackUrl) {
         if (validationConfig.getProtocolVersion() == CasProtocolVersion.SAML1) {
-            return restTemplate
-                    .exchange(
-                            buildSamlValidateUrl(config, serviceUrl),
-                            HttpMethod.POST,
-                            buildSamlValidationRequest(ticket),
-                            String.class)
-                    .getBody();
+            return executeSamlValidationRequest(config, serviceUrl, ticket);
         }
-        return restTemplate
-                .exchange(
-                        buildValidateGetUrl(
-                                config, validationConfig, ticket, serviceUrl, proxyCallbackUrl),
-                        HttpMethod.GET,
-                        null,
-                        String.class)
-                .getBody();
+        return executeGetValidationRequest(
+                config, validationConfig, ticket, serviceUrl, proxyCallbackUrl);
     }
 
     private URI buildValidateGetUrl(
@@ -122,16 +110,33 @@ public class CasTicketValidator {
         return URI.create(url.toString());
     }
 
-    private URI buildSamlValidateUrl(CasConfig config, String serviceUrl) {
+    private URI buildSamlValidateUrl(CasConfig config, String serviceUrl, String ticket) {
         StringBuilder url = new StringBuilder(buildValidateUrl(config));
         appendQueryParam(url, "TARGET", serviceUrl);
+        appendQueryParam(url, IdpConstants.SAML_ART, ticket);
         return URI.create(url.toString());
     }
 
-    private HttpEntity<String> buildSamlValidationRequest(String ticket) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.TEXT_XML);
-        return new HttpEntity<>(buildSamlValidationEnvelope(ticket), headers);
+    private String executeGetValidationRequest(
+            CasConfig config,
+            CasValidationConfig validationConfig,
+            String ticket,
+            String serviceUrl,
+            String proxyCallbackUrl) {
+        return executeHttpRequest(
+                buildValidateGetUrl(config, validationConfig, ticket, serviceUrl, proxyCallbackUrl),
+                HttpMethod.GET,
+                null,
+                resolveAcceptHeader(validationConfig));
+    }
+
+    private String executeSamlValidationRequest(
+            CasConfig config, String serviceUrl, String ticket) {
+        return executeHttpRequest(
+                buildSamlValidateUrl(config, serviceUrl, ticket),
+                HttpMethod.POST,
+                buildSamlValidationEnvelope(ticket).getBytes(StandardCharsets.UTF_8),
+                MediaType.TEXT_XML_VALUE);
     }
 
     private String buildSamlValidationEnvelope(String ticket) {
@@ -154,6 +159,51 @@ public class CasTicketValidator {
         String endpoint =
                 StrUtil.blankToDefault(config.getValidateEndpoint(), defaultValidatePath(config));
         return joinUrl(config.getServerUrl(), endpoint);
+    }
+
+    private String executeHttpRequest(
+            URI uri, HttpMethod method, byte[] requestBody, String acceptHeader) {
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) uri.toURL().openConnection();
+            connection.setRequestMethod(method.name());
+            connection.setConnectTimeout((int) connectTimeout.toMillis());
+            connection.setReadTimeout((int) readTimeout.toMillis());
+            if (StrUtil.isNotBlank(acceptHeader)) {
+                connection.setRequestProperty(HttpHeaders.ACCEPT, acceptHeader);
+            }
+            if (requestBody != null) {
+                connection.setDoOutput(true);
+                connection.setRequestProperty(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_XML_VALUE);
+                connection.setFixedLengthStreamingMode(requestBody.length);
+                try (java.io.OutputStream outputStream = connection.getOutputStream()) {
+                    outputStream.write(requestBody);
+                }
+            }
+            java.io.InputStream inputStream =
+                    connection.getResponseCode() >= 400
+                            ? connection.getErrorStream()
+                            : connection.getInputStream();
+            if (inputStream == null) {
+                return null;
+            }
+            try (inputStream) {
+                return new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            }
+        } catch (java.io.IOException e) {
+            throw new RestClientException("CAS ticket validation request failed", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private String resolveAcceptHeader(CasValidationConfig validationConfig) {
+        if (validationConfig.getResponseFormat() == CasValidationResponseFormat.JSON) {
+            return MediaType.APPLICATION_JSON_VALUE;
+        }
+        return MediaType.TEXT_XML_VALUE;
     }
 
     private String defaultValidatePath(CasConfig config) {

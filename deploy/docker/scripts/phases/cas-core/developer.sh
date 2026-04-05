@@ -123,13 +123,13 @@ verify_cas_browser_flow() {
 
   if [[ "${name}" == "developer cas" ]]; then
     log "developer cas proxy ticket"
-    curl -fsS -X POST "http://localhost:8081/developers/cas/proxy-ticket" \
+    curl -fsS -X POST "${HIMARKET_BASE_URL}/developers/cas/proxy-ticket" \
       -H "Authorization: Bearer ${token}" \
       -H 'Content-Type: application/json' \
       -d '{"provider":"cas","targetService":"http://localhost:5173/proxy-target"}' \
       | jq -e '.data.proxyTicket | startswith("PT-")' >/dev/null
     local reject_resp
-    reject_resp="$(curl_json POST "http://localhost:8081/developers/cas/proxy-ticket" '{"provider":"cas","targetService":"http://localhost:5174/forbidden"}' "Authorization: Bearer ${token}")"
+    reject_resp="$(curl_json POST "${HIMARKET_BASE_URL}/developers/cas/proxy-ticket" '{"provider":"cas","targetService":"http://localhost:5174/forbidden"}' "Authorization: Bearer ${token}")"
     [[ "$(echo "${reject_resp}" | head -n 1)" == "400" ]] || {
       err "developer cas proxy target policy should reject forbidden target service"
       echo "${reject_resp}" | tail -n +2 >&2
@@ -155,9 +155,9 @@ verify_developer_cas_protocol_flows() {
   log "developer cas authorize (capture state cookie and service url)"
   verify_cas_browser_flow \
     "developer cas" \
-    "http://localhost:8081/developers/cas/authorize?provider=cas" \
-    "http://localhost:8081/developers/cas/exchange" \
-    "http://localhost:8081/developers/profile" \
+    "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas" \
+    "${HIMARKET_BASE_URL}/developers/cas/exchange" \
+    "${HIMARKET_BASE_URL}/sessions" \
     "alice" \
     "alice" \
     "front" \
@@ -166,9 +166,9 @@ verify_developer_cas_protocol_flows() {
   log "developer cas saml1 authorize"
   verify_cas_browser_flow \
     "developer cas saml1" \
-    "http://localhost:8081/developers/cas/authorize?provider=cas-saml1" \
-    "http://localhost:8081/developers/cas/exchange" \
-    "http://localhost:8081/developers/profile" \
+    "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas-saml1" \
+    "${HIMARKET_BASE_URL}/developers/cas/exchange" \
+    "${HIMARKET_BASE_URL}/sessions" \
     "alice" \
     "alice" \
     "front" \
@@ -177,9 +177,9 @@ verify_developer_cas_protocol_flows() {
   log "developer cas1 authorize"
   verify_cas_browser_flow \
     "developer cas1" \
-    "http://localhost:8081/developers/cas/authorize?provider=cas1" \
-    "http://localhost:8081/developers/cas/exchange" \
-    "http://localhost:8081/developers/profile" \
+    "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas1" \
+    "${HIMARKET_BASE_URL}/developers/cas/exchange" \
+    "${HIMARKET_BASE_URL}/sessions" \
     "alice" \
     "alice" \
     "back" \
@@ -188,9 +188,9 @@ verify_developer_cas_protocol_flows() {
   log "developer cas2 authorize"
   verify_cas_browser_flow \
     "developer cas2" \
-    "http://localhost:8081/developers/cas/authorize?provider=cas2" \
-    "http://localhost:8081/developers/cas/exchange" \
-    "http://localhost:8081/developers/profile" \
+    "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas2" \
+    "${HIMARKET_BASE_URL}/developers/cas/exchange" \
+    "${HIMARKET_BASE_URL}/sessions" \
     "alice" \
     "alice" \
     "back" \

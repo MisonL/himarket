@@ -78,7 +78,7 @@ detect_expected_cas_service_count() {
     printf '%s\n' "${CAS_READY_EXPECTED_SERVICE_COUNT}"
     return 0
   fi
-  if docker ps --format '{{.Names}}' | grep -qx 'himarket-cas'; then
+  if [[ "$(docker inspect -f '{{.State.Running}}' himarket-cas 2>/dev/null || true)" == "true" ]]; then
     find "${DOCKER_DIR}/auth/cas/services" -maxdepth 1 -name '*.json' | wc -l | tr -d ' '
     return 0
   fi
@@ -100,11 +100,14 @@ extract_loaded_service_count() {
 
 cas_runtime_ready_once() {
   local expected_services="${1:-0}"
-  if ! docker ps --format '{{.Names}}' | grep -qx 'himarket-cas'; then
+  if [[ "$(docker inspect -f '{{.State.Running}}' himarket-cas 2>/dev/null || true)" != "true" ]]; then
     return 0
   fi
   local cas_logs
   cas_logs="$(get_cas_logs_since_start)"
+  if [[ -z "${cas_logs}" ]]; then
+    return 0
+  fi
   if ! grep -q "Ready to process requests" <<<"${cas_logs}"; then
     return 1
   fi
@@ -156,7 +159,7 @@ wait_cas_ready() {
 }
 
 ensure_cas_modules_loaded() {
-  if ! docker ps --format '{{.Names}}' | grep -qx 'himarket-cas'; then
+  if [[ "$(docker inspect -f '{{.State.Running}}' himarket-cas 2>/dev/null || true)" != "true" ]]; then
     return 0
   fi
   if docker exec himarket-cas sh -lc 'ls /tmp/cas-exploded/WEB-INF/lib | grep -q "cas-server-support-pac4j-webflow-7.0.0.jar" && ls /tmp/cas-exploded/WEB-INF/lib | grep -q "pac4j-oidc-6.0.0.jar" && ls /tmp/cas-exploded/WEB-INF/lib | grep -q "cas-server-support-simple-mfa-7.0.0.jar"' >/dev/null 2>&1; then
@@ -242,6 +245,8 @@ init_runtime_context() {
   ADMIN_PASS="${ADMIN_PASSWORD:-admin}"
   PORTAL_NAME="${PORTAL_NAME:-demo-portal}"
   FRONTEND_REDIRECT_URL="${FRONTEND_REDIRECT_URL:-http://localhost:${HIMARKET_FRONTEND_PORT:-5173}}"
+  HIMARKET_SERVER_PORT="${HIMARKET_SERVER_PORT:-}"
+  HIMARKET_BASE_URL="${HIMARKET_BASE_URL:-}"
   CAS_HTTP_PORT="${CAS_HTTP_PORT:-8083}"
   CAS_READY_TIMEOUT="${CAS_READY_TIMEOUT:-900}"
   SKIP_BUILD="${SKIP_BUILD:-0}"
@@ -250,6 +255,20 @@ init_runtime_context() {
   MOCK_OIDC_HOST="${MOCK_OIDC_HOST:-mock-oidc.local}"
   MOCK_OIDC_PORT="${MOCK_OIDC_PORT:-8092}"
   JWK_DIR="${DATA_DIR}/jwt-bearer"
+}
+
+resolve_himarket_runtime_base_url() {
+  if [[ -z "${HIMARKET_BASE_URL}" && -z "${HIMARKET_SERVER_PORT}" ]]; then
+    HIMARKET_SERVER_PORT="$(
+      docker inspect -f '{{(index (index .NetworkSettings.Ports "8080/tcp") 0).HostPort}}' \
+        himarket-server 2>/dev/null || true
+    )"
+  fi
+  if [[ -z "${HIMARKET_BASE_URL}" ]]; then
+    HIMARKET_SERVER_PORT="${HIMARKET_SERVER_PORT:-8081}"
+    HIMARKET_BASE_URL="http://localhost:${HIMARKET_SERVER_PORT}"
+  fi
+  log "use himarket base url: ${HIMARKET_BASE_URL}"
 }
 
 maybe_build_artifacts() {
@@ -315,8 +334,9 @@ bootstrap_runtime() {
   log "prepare jwks files"
   node_generate_jwks "${JWK_DIR}"
   start_docker_services
+  resolve_himarket_runtime_base_url
   ensure_cas_modules_loaded
-  wait_http_ok "himarket-server" "http://localhost:8081/portal/swagger-ui.html" 180
+  wait_http_ok "himarket-server" "${HIMARKET_BASE_URL}/portal/swagger-ui.html" 180
   wait_http_ok "himarket-frontend" "http://localhost:${HIMARKET_FRONTEND_PORT:-5173}/login" 120
   wait_http_ok "himarket-admin" "http://localhost:${HIMARKET_ADMIN_PORT:-5174}/login" 120
   wait_cas_ready "${CAS_READY_TIMEOUT}"

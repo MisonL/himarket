@@ -77,11 +77,54 @@ class CasTicketValidatorTest {
         assertEquals("POST", methodHolder[0]);
         assertEquals(
                 "https://portal.example.com/callback", extractQueryValue(queryHolder[0], "TARGET"));
+        assertEquals("ST-SAML-1", extractQueryValue(queryHolder[0], "SAMLArt"));
         assertTrue(bodyHolder[0].contains("ST-SAML-1"));
         assertTrue(bodyHolder[0].contains("RequestID=\"_"));
         assertTrue(bodyHolder[0].contains("IssueInstant=\""));
         assertEquals("alice", attributes.get("user"));
         assertEquals("alice@example.com", attributes.get("mail"));
+    }
+
+    @Test
+    void validateShouldUseGetFlowForCas3Json() throws Exception {
+        server = HttpServer.create(new InetSocketAddress(0), 0);
+        String[] methodHolder = new String[1];
+        String[] queryHolder = new String[1];
+        server.createContext("/cas/p3/serviceValidate", new JsonHandler(methodHolder, queryHolder));
+        server.start();
+
+        CasConfig config = new CasConfig();
+        config.setProvider("cas");
+        config.setServerUrl("http://localhost:" + server.getAddress().getPort() + "/cas");
+        CasValidationConfig validationConfig = new CasValidationConfig();
+        validationConfig.setProtocolVersion(CasProtocolVersion.CAS3);
+        validationConfig.setResponseFormat(
+                com.alibaba.himarket.support.portal.cas.CasValidationResponseFormat.JSON);
+        config.setValidation(validationConfig);
+
+        CasTicketValidator validator =
+                new CasTicketValidator(
+                        new CasTicketValidationParser(),
+                        new CasJsonTicketValidationParser(),
+                        new CasSamlTicketValidationParser());
+
+        Map<String, Object> attributes =
+                validator.validate(
+                        config,
+                        "ST-JSON-1",
+                        "https://portal.example.com/callback",
+                        "https://portal.example.com/proxy-callback");
+
+        assertEquals("GET", methodHolder[0]);
+        assertEquals(
+                "https://portal.example.com/callback",
+                extractQueryValue(queryHolder[0], "service"));
+        assertEquals("ST-JSON-1", extractQueryValue(queryHolder[0], "ticket"));
+        assertEquals(
+                "https://portal.example.com/proxy-callback",
+                extractQueryValue(queryHolder[0], "pgtUrl"));
+        assertEquals("JSON", extractQueryValue(queryHolder[0], "format"));
+        assertEquals("alice", attributes.get("user"));
     }
 
     private static final class SamlHandler implements HttpHandler {
@@ -108,6 +151,34 @@ class CasTicketValidatorTest {
                     CasSamlTicketValidationParserTest.successResponse()
                             .getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/xml");
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (OutputStream outputStream = exchange.getResponseBody()) {
+                outputStream.write(bytes);
+            }
+        }
+    }
+
+    private static final class JsonHandler implements HttpHandler {
+
+        private final String[] methodHolder;
+
+        private final String[] queryHolder;
+
+        private JsonHandler(String[] methodHolder, String[] queryHolder) {
+            this.methodHolder = methodHolder;
+            this.queryHolder = queryHolder;
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            methodHolder[0] = exchange.getRequestMethod();
+            queryHolder[0] = exchange.getRequestURI().getRawQuery();
+            byte[] bytes =
+                    """
+                    {"serviceResponse":{"authenticationSuccess":{"user":"alice","attributes":{"mail":"alice@example.com"}}}}
+                    """
+                            .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, bytes.length);
             try (OutputStream outputStream = exchange.getResponseBody()) {
                 outputStream.write(bytes);

@@ -78,11 +78,14 @@ services:
       - "mock-oidc.local:host-gateway"
     networks:
       himarket-network:
-        ipv4_address: 172.24.0.9
+        ipv4_address: ${CAS_CONTAINER_IP:-172.24.0.9}
+        aliases:
+          - cas
 
   openldap:
     image: ${OPENLDAP_IMAGE:-osixia/openldap:1.5.0}
     container_name: himarket-openldap
+    hostname: openldap.example.org
     environment:
       - LDAP_ORGANISATION=${LDAP_ORGANISATION:-Example}
       - LDAP_DOMAIN=${LDAP_DOMAIN:-example.org}
@@ -92,7 +95,9 @@ services:
     ports:
       - "${LDAP_PORT:-3890}:389"
     networks:
-      - himarket-network
+      himarket-network:
+        aliases:
+          - openldap
 
   jwks-server:
     image: ${JWKS_SERVER_IMAGE:-nginx:alpine}

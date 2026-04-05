@@ -3,7 +3,7 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.24.0.0/16
+        - subnet: ${HIMARKET_DOCKER_SUBNET:-172.24.0.0/16}
 
 services:
   # ============================================================
@@ -27,7 +27,9 @@ services:
       - ./init-nacos-db.sh:/docker-entrypoint-initdb.d/02-init-nacos-db.sh:ro
       - ../helm/nacos/sql:/nacos-sql:ro
     networks:
-      - himarket-network
+      himarket-network:
+        aliases:
+          - mysql
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-himarket_root_2024}"]
       interval: 10s

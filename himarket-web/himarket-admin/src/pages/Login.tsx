@@ -7,7 +7,6 @@ import { setLastAuthState } from "@/lib/authStorage";
 interface IdpProvider {
   provider: string;
   name?: string;
-  type?: string;
   sloEnabled?: boolean;
   interactiveBrowserLogin?: boolean;
 }
@@ -33,7 +32,6 @@ const Login: React.FC = () => {
         if (!needInit) {
           await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
         }
-<<<<<<< HEAD
       } catch {
         setIsRegister(false);
         await Promise.all([fetchCasProviders(), fetchLdapProviders()]);
@@ -79,7 +77,10 @@ const Login: React.FC = () => {
       provider: provider.provider,
       sloEnabled: !!provider.sloEnabled,
     });
-    window.location.href = buildAuthorizeUrl("/admins/cas/authorize", provider.provider);
+    window.location.href = buildAuthorizeUrl(
+      "/admins/cas/authorize",
+      provider.provider
+    );
   };
 
   const handleLogin = async (values: {
@@ -138,6 +139,7 @@ const Login: React.FC = () => {
       setLoading(false);
       return;
     }
+
     try {
       const response = await api.post("/admins/init", {
         username: values.username,
@@ -156,36 +158,44 @@ const Login: React.FC = () => {
   return (
     <div className="flex min-h-screen">
       <div
-        className="hidden md:flex w-1/2 items-center justify-center relative overflow-hidden"
-        style={{ background: "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)" }}
+        className="relative hidden w-1/2 items-center justify-center overflow-hidden md:flex"
+        style={{
+          background:
+            "linear-gradient(135deg, #6366F1 0%, #4F46E5 50%, #818CF8 100%)",
+        }}
       >
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-white" />
-          <div className="absolute bottom-32 right-16 w-48 h-48 rounded-full bg-white" />
-          <div className="absolute top-1/2 left-1/3 w-24 h-24 rounded-full bg-white" />
+          <div className="absolute left-10 top-20 h-32 w-32 rounded-full bg-white" />
+          <div className="absolute bottom-32 right-16 h-48 w-48 rounded-full bg-white" />
+          <div className="absolute left-1/3 top-1/2 h-24 w-24 rounded-full bg-white" />
         </div>
-        <div className="text-center text-white relative z-10">
-          <img src="/logo.png" alt="Logo" className="w-20 h-20 mx-auto mb-6 drop-shadow-lg" />
-          <h1 className="text-3xl font-bold mb-3">HiMarket</h1>
+        <div className="relative z-10 text-center text-white">
+          <img
+            src="/logo.png"
+            alt="Logo"
+            className="mx-auto mb-6 h-20 w-20 drop-shadow-lg"
+          />
+          <h1 className="mb-3 text-3xl font-bold">HiMarket</h1>
           <p className="text-lg opacity-80">企业级 AI 开放平台管理后台</p>
         </div>
       </div>
 
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white md:bg-white">
+      <div className="flex w-full items-center justify-center bg-gradient-to-br from-indigo-50 to-white md:w-1/2 md:bg-white">
         <div className="w-full max-w-md px-8">
-          <div className="md:hidden mb-6 text-center">
-            <img src="/logo.png" alt="Logo" className="w-16 h-16 mx-auto mb-4" />
+          <div className="mb-6 text-center md:hidden">
+            <img src="/logo.png" alt="Logo" className="mx-auto mb-4 h-16 w-16" />
           </div>
 
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">
+          <h2 className="mb-6 text-center text-2xl font-bold text-gray-900">
             {isRegister ? "注册Admin账号" : "登录HiMarket-后台"}
           </h2>
 
           {!isRegister && (
-            <Form className="w-full flex flex-col gap-4" layout="vertical" onFinish={handleLogin}>
+            <Form className="flex w-full flex-col gap-4" layout="vertical" onFinish={handleLogin}>
               {ldapProviders.length > 0 && (
                 <Form.Item name="loginMode" initialValue="builtin" label="登录方式">
                   <Select
+                    id="admin-login-mode"
                     options={[
                       { label: "内置账号", value: "builtin" },
                       ...ldapProviders.map(provider => ({
@@ -198,16 +208,18 @@ const Login: React.FC = () => {
               )}
               <Form.Item name="username" rules={[{ required: true, message: "请输入账号" }]}>
                 <Input
-                  autoComplete="username"
+                  id="admin-login-username"
                   name="username"
+                  autoComplete="username"
                   placeholder="账号"
                   size="large"
                 />
               </Form.Item>
               <Form.Item name="password" rules={[{ required: true, message: "请输入密码" }]}>
                 <Input.Password
-                  autoComplete="current-password"
+                  id="admin-login-password"
                   name="password"
+                  autoComplete="current-password"
                   placeholder="密码"
                   size="large"
                 />
@@ -248,22 +260,24 @@ const Login: React.FC = () => {
 
           {isRegister && (
             <Form
-              className="w-full flex flex-col gap-4"
+              className="flex w-full flex-col gap-4"
               layout="vertical"
               onFinish={handleRegister}
             >
               <Form.Item name="username" rules={[{ required: true, message: "请输入账号" }]}>
                 <Input
-                  autoComplete="username"
+                  id="admin-register-username"
                   name="username"
+                  autoComplete="username"
                   placeholder="账号"
                   size="large"
                 />
               </Form.Item>
               <Form.Item name="password" rules={[{ required: true, message: "请输入密码" }]}>
                 <Input.Password
-                  autoComplete="current-password"
+                  id="admin-register-password"
                   name="password"
+                  autoComplete="new-password"
                   placeholder="密码"
                   size="large"
                 />
@@ -273,8 +287,9 @@ const Login: React.FC = () => {
                 rules={[{ required: true, message: "请确认密码" }]}
               >
                 <Input.Password
-                  autoComplete="new-password"
+                  id="admin-register-confirm-password"
                   name="confirmPassword"
+                  autoComplete="new-password"
                   placeholder="确认密码"
                   size="large"
                 />

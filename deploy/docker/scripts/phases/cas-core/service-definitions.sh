@@ -2,16 +2,16 @@
 
 verify_admin_cas_service_definitions() {
   log "verify admin cas providers"
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-saml1")' >/dev/null
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas1")' >/dev/null
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas2")' >/dev/null
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-mfa")' >/dev/null
-  curl -fsS "http://localhost:8081/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-delegated")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-saml1")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas1")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas2")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-mfa")' >/dev/null
+  curl -fsS "${HIMARKET_BASE_URL}/admins/cas/providers" | jq -e '.data[]? | select(.provider=="cas-delegated")' >/dev/null
 
   log "preview admin cas service definition"
   local cas_definition
-  cas_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas/service-definition")"
+  cas_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas/service-definition")"
   echo "${cas_definition}" | jq -e '(.data.serviceId // .serviceId) | contains("/admins/cas/callback")' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.evaluationOrder // .evaluationOrder) == 9' >/dev/null
   echo "${cas_definition}" | jq -e '(.data.responseType // .responseType) == "POST"' >/dev/null
@@ -50,7 +50,7 @@ verify_admin_cas_service_definitions() {
 
   log "preview admin cas saml1 service definition"
   local saml1_definition
-  saml1_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas-saml1/service-definition")"
+  saml1_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas-saml1/service-definition")"
   echo "${saml1_definition}" | jq -e '(.data.evaluationOrder // .evaluationOrder) == 13' >/dev/null
   echo "${saml1_definition}" | jq -e '(.data.responseType // .responseType) == "POST"' >/dev/null
   echo "${saml1_definition}" | jq -e '(.data.logoutType // .logoutType) == "FRONT_CHANNEL"' >/dev/null
@@ -58,12 +58,12 @@ verify_admin_cas_service_definitions() {
   echo "${saml1_definition}" | jq -e '(.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="SAML1")' >/dev/null
 
   log "preview admin cas1 service definition"
-  curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas1/service-definition" \
+  curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas1/service-definition" \
     | jq -e '(.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS10")' >/dev/null
 
   log "preview admin cas2 service definition"
   local cas2_definition
-  cas2_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas2/service-definition")"
+  cas2_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas2/service-definition")"
   echo "${cas2_definition}" | jq -e '(.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS20")' >/dev/null
   echo "${cas2_definition}" | jq -e '((.data.authenticationPolicy // .authenticationPolicy).criteria // {})["@class"] == "org.apereo.cas.services.AllAuthenticationHandlersRegisteredServiceAuthenticationPolicyCriteria"' >/dev/null
   echo "${cas2_definition}" | jq -e '[(((.data.authenticationPolicy // .authenticationPolicy).criteria // {}).handlers // [])[1][]?] == ["AcceptUsersAuthenticationHandler", "LdapAuthenticationHandler"]' >/dev/null
@@ -71,14 +71,14 @@ verify_admin_cas_service_definitions() {
 
   log "preview admin cas header service definition"
   local header_definition
-  header_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas-header/service-definition")"
+  header_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas-header/service-definition")"
   echo "${header_definition}" | jq -e '(.data.evaluationOrder // .evaluationOrder) == 3' >/dev/null
   echo "${header_definition}" | jq -e '(.data.responseType // .responseType) == "HEADER"' >/dev/null
   echo "${header_definition}" | jq -e '(.data.supportedProtocols // .supportedProtocols)[1][]? | select(.=="CAS30")' >/dev/null
 
   log "preview admin cas mfa service definition"
   local mfa_definition
-  mfa_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas-mfa/service-definition")"
+  mfa_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas-mfa/service-definition")"
   echo "${mfa_definition}" | jq -e '(.data.evaluationOrder // .evaluationOrder) == 5' >/dev/null
   echo "${mfa_definition}" | jq -e '(.data.serviceId // .serviceId) | contains("provider=\\Qcas-mfa\\E")' >/dev/null
   echo "${mfa_definition}" | jq -e '((.data.multifactorPolicy // .multifactorPolicy).multifactorAuthenticationProviders // [])[1][]? | select(.=="mfa-simple")' >/dev/null
@@ -89,7 +89,7 @@ verify_admin_cas_service_definitions() {
 
   log "preview admin cas delegated service definition"
   local delegated_definition
-  delegated_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/admins/cas/cas-delegated/service-definition")"
+  delegated_definition="$(curl -fsS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/admins/cas/cas-delegated/service-definition")"
   echo "${delegated_definition}" | jq -e '(.data.serviceId // .serviceId) | contains("provider=\\Qcas-delegated\\E")' >/dev/null
   echo "${delegated_definition}" | jq -e '(((.data.accessStrategy // .accessStrategy).delegatedAuthenticationPolicy // {}).allowedProviders // [])[1][]? | select(.=="MockOidcClient")' >/dev/null
   echo "${delegated_definition}" | jq -e '(.data.accessStrategy // .accessStrategy)["@class"] == "org.apereo.cas.services.HttpRequestRegisteredServiceAccessStrategy"' >/dev/null

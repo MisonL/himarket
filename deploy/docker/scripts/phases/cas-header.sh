@@ -6,7 +6,7 @@ phase_cas_header() {
   local developer_header_headers
   developer_header_cookie="$(mktemp)"
   developer_header_headers="$(mktemp)"
-  curl -sS -D "${developer_header_headers}" -o /dev/null -c "${developer_header_cookie}" "http://localhost:8081/developers/cas/authorize?provider=cas-header" || true
+  curl -sS -D "${developer_header_headers}" -o /dev/null -c "${developer_header_cookie}" "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas-header" || true
   local developer_header_redirect
   developer_header_redirect="$(extract_header_value "$(cat "${developer_header_headers}")" "Location")"
   if [[ -z "${developer_header_redirect}" ]]; then
@@ -74,21 +74,21 @@ phase_cas_header() {
     exit 1
   fi
   local developer_header_token
-  developer_header_token="$(exchange_code_for_token "developer cas header" "http://localhost:8081/developers/cas/exchange" "${developer_header_code}")"
-  curl -fsS -H "Authorization: Bearer ${developer_header_token}" "http://localhost:8081/developers/profile" >/dev/null
+  developer_header_token="$(exchange_code_for_token "developer cas header" "${HIMARKET_BASE_URL}/developers/cas/exchange" "${developer_header_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_header_token}" "${HIMARKET_BASE_URL}/sessions" >/dev/null
 
   log "developer cas header back-channel logout"
   local developer_header_logout_request
   developer_header_logout_request="$(build_logout_request "${developer_header_ticket}")"
   curl -fsS -X POST "${developer_header_service_url}" --data-urlencode "logoutRequest=${developer_header_logout_request}" >/dev/null
-  expect_auth_rejected "developer cas header revoked token" "http://localhost:8081/developers/profile" "${developer_header_token}"
+  expect_auth_rejected "developer cas header revoked token" "${HIMARKET_BASE_URL}/sessions" "${developer_header_token}"
 
   log "admin cas header authorize"
   local admin_header_cookie
   local admin_header_headers
   admin_header_cookie="$(mktemp)"
   admin_header_headers="$(mktemp)"
-  curl -sS -D "${admin_header_headers}" -o /dev/null -c "${admin_header_cookie}" "http://localhost:8081/admins/cas/authorize?provider=cas-header" || true
+  curl -sS -D "${admin_header_headers}" -o /dev/null -c "${admin_header_cookie}" "${HIMARKET_BASE_URL}/admins/cas/authorize?provider=cas-header" || true
   local admin_header_redirect
   admin_header_redirect="$(extract_header_value "$(cat "${admin_header_headers}")" "Location")"
   if [[ -z "${admin_header_redirect}" ]]; then
@@ -156,12 +156,12 @@ phase_cas_header() {
     exit 1
   fi
   local admin_header_token
-  admin_header_token="$(exchange_code_for_token "admin cas header" "http://localhost:8081/admins/cas/exchange" "${admin_header_code}")"
-  curl -fsS -H "Authorization: Bearer ${admin_header_token}" "http://localhost:8081/admins" >/dev/null
+  admin_header_token="$(exchange_code_for_token "admin cas header" "${HIMARKET_BASE_URL}/admins/cas/exchange" "${admin_header_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_header_token}" "${HIMARKET_BASE_URL}/admins" >/dev/null
 
   log "admin cas header back-channel logout"
   local admin_header_logout_request
   admin_header_logout_request="$(build_logout_request "${admin_header_ticket}")"
   curl -fsS -X POST "${admin_header_service_url}" --data-urlencode "logoutRequest=${admin_header_logout_request}" >/dev/null
-  expect_auth_rejected "admin cas header revoked token" "http://localhost:8081/admins" "${admin_header_token}"
+  expect_auth_rejected "admin cas header revoked token" "${HIMARKET_BASE_URL}/admins" "${admin_header_token}"
 }

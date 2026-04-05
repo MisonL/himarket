@@ -10,8 +10,8 @@ source "${CAS_CORE_DIR}/service-definitions.sh"
 source "${CAS_CORE_DIR}/admin.sh"
 
 phase_cas_core() {
-  verify_cas_authorize_flags developer "http://localhost:8081/developers/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true"
-  verify_cas_authorize_flags admin "http://localhost:8081/admins/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true"
+  verify_cas_authorize_flags developer "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true"
+  verify_cas_authorize_flags admin "${HIMARKET_BASE_URL}/admins/cas/authorize?provider=cas&gateway=true&warn=true&rememberMe=true"
 
   verify_developer_cas_protocol_flows
   verify_admin_cas_service_definitions
