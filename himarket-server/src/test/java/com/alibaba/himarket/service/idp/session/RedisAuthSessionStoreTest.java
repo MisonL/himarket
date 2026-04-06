@@ -91,4 +91,19 @@ class RedisAuthSessionStoreTest {
                         CasSessionScope.DEVELOPER, "cas", "dev-1", "token-digest"));
         verify(valueOperations, never()).get("hm:auth:cas:pgt:DEVELOPER:cas:dev-1:ST-2");
     }
+
+    @Test
+    void consumeCasLoginContextShouldIgnoreUnknownScopeValue() {
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.getAndDelete("hm:auth:cas:code:code-1"))
+                .thenReturn("{\"scope\":\"LEGACY\",\"provider\":\"cas\",\"userId\":\"dev-1\"}");
+
+        RedisAuthSessionStore store = new RedisAuthSessionStore(redisTemplate);
+
+        CasLoginContext context = store.consumeCasLoginContext("code-1");
+
+        assertEquals("cas", context.getProvider());
+        assertEquals("dev-1", context.getUserId());
+        assertNull(context.getScope());
+    }
 }
