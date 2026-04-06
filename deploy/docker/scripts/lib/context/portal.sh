@@ -3,12 +3,12 @@
 ensure_localhost_portal() {
   log "get or create portal: ${portal_name}"
   local portals_json
-  portals_json="$(curl -sS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals?page=0&size=20")"
+  portals_json="$(curl -sS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/portals?page=0&size=20")"
   local localhost_portal_id
   localhost_portal_id="$(
     echo "${portals_json}" | jq -r '.data.content[]?.portalId' | while read -r candidate_portal_id; do
       [[ -z "${candidate_portal_id}" ]] && continue
-      if curl -sS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${candidate_portal_id}" \
+      if curl -sS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/portals/${candidate_portal_id}" \
         | jq -e '.data.portalDomainConfig[]? | select(.domain=="localhost")' >/dev/null; then
         echo "${candidate_portal_id}"
         break
@@ -23,7 +23,7 @@ ensure_localhost_portal() {
   fi
   if [[ -z "${portal_id}" || "${portal_id}" == "null" ]]; then
     local create_resp
-    create_resp="$(curl_json POST "http://localhost:8081/portals" "{\"name\":\"${portal_name}\"}" "Authorization: Bearer ${admin_token}")"
+    create_resp="$(curl_json POST "${HIMARKET_BASE_URL}/portals" "{\"name\":\"${portal_name}\"}" "Authorization: Bearer ${admin_token}")"
     local create_code
     create_code="$(echo "${create_resp}" | head -n 1)"
     if [[ "${create_code}" != 200 ]]; then
@@ -44,7 +44,7 @@ ensure_localhost_portal() {
     log "bind domain localhost to portal: ${portal_id}"
     local bind_body='{"domain":"localhost","type":"CUSTOM","protocol":"HTTP"}'
     local bind_resp
-    bind_resp="$(curl_json POST "http://localhost:8081/portals/${portal_id}/domains" "${bind_body}" "Authorization: Bearer ${admin_token}")"
+    bind_resp="$(curl_json POST "${HIMARKET_BASE_URL}/portals/${portal_id}/domains" "${bind_body}" "Authorization: Bearer ${admin_token}")"
     local bind_code
     bind_code="$(echo "${bind_resp}" | head -n 1)"
     if [[ "${bind_code}" != 200 && "${bind_code}" != 409 ]]; then
@@ -64,7 +64,7 @@ ensure_localhost_portal() {
 configure_portal_auth() {
   log "update portal auth configs"
   local portal_detail
-  portal_detail="$(curl -sS -H "Authorization: Bearer ${admin_token}" "http://localhost:8081/portals/${portal_id}")"
+  portal_detail="$(curl -sS -H "Authorization: Bearer ${admin_token}" "${HIMARKET_BASE_URL}/portals/${portal_id}")"
   local new_setting
   new_setting="$(echo "${portal_detail}" | jq \
     --arg frontendRedirectUrl "${frontend_redirect_url}" \
@@ -272,7 +272,7 @@ configure_portal_auth() {
   local update_payload
   update_payload="$(jq -n --argjson setting "${new_setting}" '{ portalSettingConfig: $setting }')"
   local update_resp
-  update_resp="$(curl_json PUT "http://localhost:8081/portals/${portal_id}" "${update_payload}" "Authorization: Bearer ${admin_token}")"
+  update_resp="$(curl_json PUT "${HIMARKET_BASE_URL}/portals/${portal_id}" "${update_payload}" "Authorization: Bearer ${admin_token}")"
   local update_code
   update_code="$(echo "${update_resp}" | head -n 1)"
   if [[ "${update_code}" != 200 ]]; then

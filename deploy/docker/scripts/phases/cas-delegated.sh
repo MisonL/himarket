@@ -6,7 +6,7 @@ phase_cas_delegated() {
   local developer_delegated_headers
   developer_delegated_cookie="$(mktemp)"
   developer_delegated_headers="$(mktemp)"
-  curl -sS -D "${developer_delegated_headers}" -o /dev/null -c "${developer_delegated_cookie}" "http://localhost:8081/developers/cas/authorize?provider=cas-delegated" || true
+  curl -sS -D "${developer_delegated_headers}" -o /dev/null -c "${developer_delegated_cookie}" "${HIMARKET_BASE_URL}/developers/cas/authorize?provider=cas-delegated" || true
   local developer_delegated_redirect
   developer_delegated_redirect="$(extract_header_value "$(cat "${developer_delegated_headers}")" "Location")"
   if [[ -z "${developer_delegated_redirect}" ]]; then
@@ -82,21 +82,21 @@ phase_cas_delegated() {
     exit 1
   fi
   local developer_delegated_token
-  developer_delegated_token="$(exchange_code_for_token "developer delegated" "http://localhost:8081/developers/cas/exchange" "${developer_delegated_code}")"
-  curl -fsS -H "Authorization: Bearer ${developer_delegated_token}" "http://localhost:8081/developers/profile" | jq -e '(.data.username // "") | contains("alice")' >/dev/null
+  developer_delegated_token="$(exchange_code_for_token "developer delegated" "${HIMARKET_BASE_URL}/developers/cas/exchange" "${developer_delegated_code}")"
+  curl -fsS -H "Authorization: Bearer ${developer_delegated_token}" "${HIMARKET_BASE_URL}/sessions" >/dev/null
 
   log "developer delegated back-channel logout"
   local developer_delegated_logout_request
   developer_delegated_logout_request="$(build_logout_request "${developer_delegated_ticket}")"
   curl -fsS -X POST "${developer_delegated_service_url}" --data-urlencode "logoutRequest=${developer_delegated_logout_request}" >/dev/null
-  expect_auth_rejected "developer delegated revoked token" "http://localhost:8081/developers/profile" "${developer_delegated_token}"
+  expect_auth_rejected "developer delegated revoked token" "${HIMARKET_BASE_URL}/sessions" "${developer_delegated_token}"
 
   log "admin cas delegated authorize"
   local admin_delegated_cookie
   local admin_delegated_headers
   admin_delegated_cookie="$(mktemp)"
   admin_delegated_headers="$(mktemp)"
-  curl -sS -D "${admin_delegated_headers}" -o /dev/null -c "${admin_delegated_cookie}" "http://localhost:8081/admins/cas/authorize?provider=cas-delegated" || true
+  curl -sS -D "${admin_delegated_headers}" -o /dev/null -c "${admin_delegated_cookie}" "${HIMARKET_BASE_URL}/admins/cas/authorize?provider=cas-delegated" || true
   local admin_delegated_redirect
   admin_delegated_redirect="$(extract_header_value "$(cat "${admin_delegated_headers}")" "Location")"
   if [[ -z "${admin_delegated_redirect}" ]]; then
@@ -172,12 +172,12 @@ phase_cas_delegated() {
     exit 1
   fi
   local admin_delegated_token
-  admin_delegated_token="$(exchange_code_for_token "admin delegated" "http://localhost:8081/admins/cas/exchange" "${admin_delegated_code}")"
-  curl -fsS -H "Authorization: Bearer ${admin_delegated_token}" "http://localhost:8081/admins" | jq -e '.data.username == "admin"' >/dev/null
+  admin_delegated_token="$(exchange_code_for_token "admin delegated" "${HIMARKET_BASE_URL}/admins/cas/exchange" "${admin_delegated_code}")"
+  curl -fsS -H "Authorization: Bearer ${admin_delegated_token}" "${HIMARKET_BASE_URL}/admins" | jq -e '.data.username == "admin"' >/dev/null
 
   log "admin delegated back-channel logout"
   local admin_delegated_logout_request
   admin_delegated_logout_request="$(build_logout_request "${admin_delegated_ticket}")"
   curl -fsS -X POST "${admin_delegated_service_url}" --data-urlencode "logoutRequest=${admin_delegated_logout_request}" >/dev/null
-  expect_auth_rejected "admin delegated revoked token" "http://localhost:8081/admins" "${admin_delegated_token}"
+  expect_auth_rejected "admin delegated revoked token" "${HIMARKET_BASE_URL}/admins" "${admin_delegated_token}"
 }
