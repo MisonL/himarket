@@ -105,6 +105,8 @@ cas_runtime_ready_once() {
   fi
   local cas_logs
   cas_logs="$(get_cas_logs_since_start)"
+  # Some local restarts resume a runnable CAS process without emitting fresh container logs.
+  # In that case the live HTTP probe in wait_cas_ready() is a stronger readiness signal.
   if [[ -z "${cas_logs}" ]]; then
     return 0
   fi
@@ -114,7 +116,7 @@ cas_runtime_ready_once() {
   if (( expected_services > 0 )); then
     local loaded_count
     loaded_count="$(extract_loaded_service_count "${cas_logs}")"
-    if [[ -z "${loaded_count}" || "${loaded_count}" != "${expected_services}" ]]; then
+    if [[ -z "${loaded_count}" || "${loaded_count}" -lt "${expected_services}" ]]; then
       return 1
     fi
   fi
