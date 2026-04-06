@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 import com.alibaba.himarket.config.AuthSessionConfig;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.security.ContextHolder;
-import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.idp.CasAuthorizeOptions;
 import com.alibaba.himarket.dto.result.common.AuthResult;
 import com.alibaba.himarket.dto.result.developer.DeveloperResult;
@@ -70,7 +69,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class CasServiceImplTest {
@@ -88,8 +86,8 @@ class CasServiceImplTest {
         if (server != null) {
             server.stop(0);
         }
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", null);
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 0L);
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -124,8 +122,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         CasServiceImpl casService =
                 new CasServiceImpl(
@@ -338,8 +336,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -568,8 +566,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());
@@ -654,8 +652,8 @@ class CasServiceImplTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "cas-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "cas-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MemoryAuthSessionStore authSessionStore =
                 new MemoryAuthSessionStore(new AuthSessionConfig().getCas().getLoginCodeTtl());

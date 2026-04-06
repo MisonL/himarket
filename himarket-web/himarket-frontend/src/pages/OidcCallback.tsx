@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "antd";
-import { handleOidcCallback, type AuthResult } from "../lib/api";
+import { handleOidcCallback } from "../lib/apis";
 import { AuthStatusCard } from "../components/auth/AuthStatusCard";
 import {
   buildStoredAuthRoute,
@@ -47,7 +47,7 @@ const OidcCallback: React.FC = () => {
         return;
       }
 
-      const authResult: AuthResult = await handleOidcCallback(code, state);
+      const authResult = await handleOidcCallback({ code, state });
       if (!authResult?.data?.access_token) {
         throw new Error("未获取到访问令牌");
       }

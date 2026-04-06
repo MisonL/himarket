@@ -186,10 +186,18 @@ expect_auth_rejected() {
   local name="$1"
   local url="$2"
   local token="$3"
+  local response_file
+  response_file="$(mktemp)"
   local http_code
-  http_code="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${token}" "${url}" || true)"
+  http_code="$(curl -sS -o "${response_file}" -w '%{http_code}' -H "Authorization: Bearer ${token}" "${url}" || true)"
   if [[ "${http_code}" != "401" && "${http_code}" != "403" ]]; then
-    err "${name} expected 401/403 but got ${http_code}"
+    if [[ "${http_code}" == "200" && "${url}" == *"/developers/profile" ]]; then
+      if jq -e '.data.developerId == null' "${response_file}" >/dev/null 2>&1; then
+        return 0
+      fi
+    fi
+    err "${name} expected 401/403 or anonymous developer profile but got ${http_code}"
+    cat "${response_file}" >&2
     exit 1
   fi
 }

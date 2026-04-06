@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DOCKER_DIR="${SCRIPT_DIR}"
+DOCKER_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_DIR="$(cd "${DOCKER_DIR}/../.." && pwd)"
 DATA_DIR="${DOCKER_DIR}/data"
 ENV_FILE="${DATA_DIR}/.env"

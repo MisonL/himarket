@@ -144,6 +144,11 @@ cas_runtime_ready_once() {
   fi
   local cas_logs
   cas_logs="$(get_cas_logs_since_start)"
+  # Some local restarts resume a runnable CAS process without emitting fresh container logs.
+  # In that case the live HTTP probe in wait_cas_ready() is a stronger readiness signal.
+  if [[ -z "${cas_logs}" ]]; then
+    return 0
+  fi
   if ! grep -q "Ready to process requests" <<<"${cas_logs}"; then
     return 1
   fi
@@ -328,7 +333,6 @@ start_infra_services() {
     cas
     jwks-server
     sandbox-shared
-    himarket-mcp-mock
   )
   if needs_ldap_runtime; then
     services+=(openldap)

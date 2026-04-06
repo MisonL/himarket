@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.security.ContextHolder;
-import com.alibaba.himarket.core.utils.TokenUtil;
 import com.alibaba.himarket.dto.params.developer.CreateExternalDeveloperParam;
 import com.alibaba.himarket.dto.params.idp.OAuth2BrowserLoginParam;
 import com.alibaba.himarket.dto.params.idp.OAuth2DirectLoginParam;
@@ -87,7 +86,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.util.UriUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -108,8 +106,8 @@ class OAuth2ServiceImplJwtBearerTest {
         if (server != null) {
             server.stop(0);
         }
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", null);
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 0L);
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Test
@@ -129,8 +127,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
 
@@ -189,8 +187,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         OAuth2DirectLoginParam param = new OAuth2DirectLoginParam();
@@ -239,8 +237,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         OAuth2DirectLoginParam param = new OAuth2DirectLoginParam();
@@ -287,8 +285,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("127.0.0.1");
@@ -491,8 +489,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =
@@ -543,8 +541,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =
@@ -593,8 +591,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =
@@ -654,8 +652,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =
@@ -714,8 +712,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =
@@ -774,8 +772,8 @@ class OAuth2ServiceImplJwtBearerTest {
         developerResult.setDeveloperId("dev-1");
         when(developerService.createExternalDeveloper(any())).thenReturn(developerResult);
 
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_SECRET", "oauth2-test-secret");
-        ReflectionTestUtils.setField(TokenUtil.class, "JWT_EXPIRE_MILLIS", 3600_000L);
+        System.setProperty("jwt.secret", "oauth2-test-secret");
+        System.setProperty("jwt.expiration", "3600000");
 
         OAuth2ServiceImpl service = createService();
         IdpAuthorizeResult authorizeResult =

@@ -34,6 +34,7 @@ import java.lang.reflect.Field;
 import java.util.HashSet;
 import java.util.Set;
 import net.jqwik.api.*;
+import org.junit.jupiter.api.AfterAll;
 
 /**
  * Property-based tests for token revocation persistence.
@@ -46,22 +47,15 @@ import net.jqwik.api.*;
  */
 class TokenRevocationPersistencePropertyTest {
 
-    /**
-     * One-time setup: inject JWT_SECRET and JWT_EXPIRE_MILLIS into TokenUtil via reflection, since
-     * there is no Spring context in this unit test.
-     */
     static {
-        try {
-            Field secretField = TokenUtil.class.getDeclaredField("JWT_SECRET");
-            secretField.setAccessible(true);
-            secretField.set(null, "YourJWTSecret");
+        System.setProperty("jwt.secret", "YourJWTSecret");
+        System.setProperty("jwt.expiration", String.valueOf(7L * 24 * 60 * 60 * 1000));
+    }
 
-            Field expireField = TokenUtil.class.getDeclaredField("JWT_EXPIRE_MILLIS");
-            expireField.setAccessible(true);
-            expireField.setLong(null, 7L * 24 * 60 * 60 * 1000); // 7 days in millis
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to initialize TokenUtil fields via reflection", e);
-        }
+    @AfterAll
+    static void clearJwtProperties() {
+        System.clearProperty("jwt.secret");
+        System.clearProperty("jwt.expiration");
     }
 
     @Provide
