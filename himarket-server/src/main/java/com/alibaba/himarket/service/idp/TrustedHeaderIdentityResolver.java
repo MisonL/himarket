@@ -30,6 +30,7 @@ import com.alibaba.himarket.support.portal.TrustedHeaderConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
@@ -201,8 +202,10 @@ public class TrustedHeaderIdentityResolver {
             BigInteger network = new BigInteger(1, networkAddress.getAddress());
             BigInteger remote = new BigInteger(1, remoteAddress.getAddress());
             return network.and(mask).equals(remote.and(mask));
-        } catch (Exception ignored) {
-            return false;
+        } catch (NumberFormatException | UnknownHostException e) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_PARAMETER,
+                    StrUtil.format("Trusted proxy CIDR {} is invalid", cidr));
         }
     }
 }

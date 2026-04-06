@@ -54,7 +54,7 @@ public class RedisAuthSessionStore implements AuthSessionStore {
     @Override
     public CasLoginContext consumeCasLoginContext(String code) {
         String value = redisTemplate.opsForValue().getAndDelete(loginCodeKey(code));
-        return value == null ? null : JSONUtil.toBean(value, CasLoginContext.class);
+        return value == null ? null : parseCasLoginContext(value);
     }
 
     @Override
@@ -192,6 +192,18 @@ public class RedisAuthSessionStore implements AuthSessionStore {
 
     private String loginCodeKey(String code) {
         return LOGIN_CODE_PREFIX + code;
+    }
+
+    private CasLoginContext parseCasLoginContext(String value) {
+        cn.hutool.json.JSONObject jsonObject = JSONUtil.parseObj(value);
+        String scopeValue = jsonObject.getStr("scope");
+        return new CasLoginContext(
+                scopeValue == null ? null : CasSessionScope.valueOf(scopeValue),
+                jsonObject.getStr("provider"),
+                jsonObject.getStr("userId"),
+                jsonObject.getStr("sessionIndex"),
+                jsonObject.getStr("proxyGrantingTicketIou"),
+                jsonObject.getLong("tokenExpiresIn"));
     }
 
     private String sessionKey(CasSessionScope scope, String sessionIndex) {

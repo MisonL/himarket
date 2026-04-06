@@ -22,11 +22,13 @@ package com.alibaba.himarket.service.idp;
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
+import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -35,6 +37,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 @Component
 public class CasLogoutRequestParser {
@@ -82,7 +85,7 @@ public class CasLogoutRequestParser {
             factory.setExpandEntityReferences(false);
             factory.setXIncludeAware(false);
             return factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        } catch (Exception e) {
+        } catch (ParserConfigurationException | SAXException | IOException e) {
             log.error("Failed to parse CAS logoutRequest", e);
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid CAS logoutRequest");
         }

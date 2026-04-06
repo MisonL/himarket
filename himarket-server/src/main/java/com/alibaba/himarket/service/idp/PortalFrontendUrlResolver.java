@@ -73,7 +73,7 @@ public class PortalFrontendUrlResolver {
             if (StrUtil.isBlank(uri.getHost())) {
                 throw new IllegalArgumentException("Missing host");
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER,
                     "Portal frontend redirect URL must be an absolute http/https URL");

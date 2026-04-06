@@ -24,8 +24,10 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.EnumUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONException;
 import cn.hutool.json.JSONUtil;
 import cn.hutool.jwt.JWT;
+import cn.hutool.jwt.JWTException;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSigner;
 import cn.hutool.jwt.signers.JWTSignerUtil;
@@ -88,6 +90,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.springframework.web.util.UriUtils;
@@ -147,7 +150,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     private JWT parseJwtUnverified(String jwtToken) {
         try {
             return JWTUtil.parseToken(jwtToken);
-        } catch (Exception e) {
+        } catch (JWTException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid JWT");
         }
     }
@@ -617,7 +620,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
             return response.getBody();
         } catch (BusinessException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (RestClientException | IllegalArgumentException ex) {
             log.error("OAuth2 upstream request failed, url={}", uri, ex);
             throw new BusinessException(
                     ErrorCode.INVALID_REQUEST, "OAuth2 upstream request failed");
@@ -642,7 +645,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
             return new HashMap<>(JSONUtil.parseObj(response.getBody()));
         } catch (BusinessException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (RestClientException | JSONException ex) {
             log.error(
                     "Failed to fetch OAuth2 user info, endpoint={}",
                     jwtBearerConfig.getUserInfoEndpoint(),

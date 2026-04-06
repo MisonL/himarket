@@ -434,13 +434,14 @@ public class CasServiceImpl implements CasService {
             String proxyGrantingTicketIou,
             java.time.Duration lease) {
         String code = cn.hutool.core.util.IdUtil.fastSimpleUUID();
-        CasLoginContext context = new CasLoginContext();
-        context.setScope(CasSessionScope.DEVELOPER);
-        context.setProvider(provider);
-        context.setUserId(developerId);
-        context.setSessionIndex(sessionIndex);
-        context.setProxyGrantingTicketIou(proxyGrantingTicketIou);
-        context.setTokenExpiresIn(lease.toSeconds());
+        CasLoginContext context =
+                new CasLoginContext(
+                        CasSessionScope.DEVELOPER,
+                        provider,
+                        developerId,
+                        sessionIndex,
+                        proxyGrantingTicketIou,
+                        lease.toSeconds());
 
         authSessionStore.saveCasLoginContext(code, context, lease);
         return code;
