@@ -196,14 +196,24 @@ public class RedisAuthSessionStore implements AuthSessionStore {
 
     private CasLoginContext parseCasLoginContext(String value) {
         cn.hutool.json.JSONObject jsonObject = JSONUtil.parseObj(value);
-        String scopeValue = jsonObject.getStr("scope");
         return new CasLoginContext(
-                scopeValue == null ? null : CasSessionScope.valueOf(scopeValue),
+                resolveScope(jsonObject.getStr("scope")),
                 jsonObject.getStr("provider"),
                 jsonObject.getStr("userId"),
                 jsonObject.getStr("sessionIndex"),
                 jsonObject.getStr("proxyGrantingTicketIou"),
                 jsonObject.getLong("tokenExpiresIn"));
+    }
+
+    private CasSessionScope resolveScope(String scopeValue) {
+        if (scopeValue == null) {
+            return null;
+        }
+        try {
+            return CasSessionScope.valueOf(scopeValue);
+        } catch (IllegalArgumentException ignored) {
+            return null;
+        }
     }
 
     private String sessionKey(CasSessionScope scope, String sessionIndex) {
