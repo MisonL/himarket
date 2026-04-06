@@ -22,6 +22,7 @@ package com.alibaba.himarket.service.idp;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONException;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.alibaba.himarket.core.constant.IdpConstants;
@@ -59,7 +60,7 @@ public class CasJsonTicketValidationParser {
             return extractAttributes(success);
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (JSONException e) {
             log.error("Failed to parse CAS JSON validation response", e);
             throw new BusinessException(
                     ErrorCode.INTERNAL_ERROR, "Failed to parse CAS validation response");

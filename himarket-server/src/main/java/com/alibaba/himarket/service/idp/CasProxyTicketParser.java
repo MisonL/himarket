@@ -23,9 +23,11 @@ import cn.hutool.core.util.StrUtil;
 import com.alibaba.himarket.core.constant.IdpConstants;
 import com.alibaba.himarket.core.exception.BusinessException;
 import com.alibaba.himarket.core.exception.ErrorCode;
+import java.io.IOException;
 import java.io.StringReader;
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
@@ -33,6 +35,7 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 @Component
 @Slf4j
@@ -69,7 +72,7 @@ public class CasProxyTicketParser {
             factory.setXIncludeAware(false);
             return factory.newDocumentBuilder()
                     .parse(new InputSource(new StringReader(responseBody)));
-        } catch (Exception e) {
+        } catch (ParserConfigurationException | SAXException | IOException e) {
             log.error("Failed to parse CAS proxy response", e);
             throw new BusinessException(
                     ErrorCode.INTERNAL_ERROR, "Failed to parse CAS proxy response");

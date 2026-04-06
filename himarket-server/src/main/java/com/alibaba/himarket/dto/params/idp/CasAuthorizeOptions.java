@@ -19,18 +19,21 @@
 
 package com.alibaba.himarket.dto.params.idp;
 
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class CasAuthorizeOptions {
 
-    private Boolean gateway;
+    private final Boolean gateway;
 
-    private Boolean renew;
+    private final Boolean renew;
 
-    private Boolean warn;
+    private final Boolean warn;
 
-    private Boolean rememberMe;
+    private final Boolean rememberMe;
 }
