@@ -58,7 +58,7 @@ public class AdminFrontendUrlResolver {
             if (StrUtil.isBlank(uri.getHost())) {
                 throw new IllegalArgumentException("Missing host");
             }
-        } catch (Exception e) {
+        } catch (IllegalArgumentException e) {
             throw new BusinessException(
                     ErrorCode.INVALID_PARAMETER,
                     "Admin frontend redirect URL must be an absolute http/https URL");

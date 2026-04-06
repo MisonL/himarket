@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -58,7 +59,7 @@ public class CasProxyTicketClient {
             return casProxyTicketParser.parse(response);
         } catch (BusinessException e) {
             throw e;
-        } catch (Exception e) {
+        } catch (RestClientException | IllegalArgumentException e) {
             log.error(
                     "Failed to request CAS proxy ticket for provider {}", config.getProvider(), e);
             throw new BusinessException(

@@ -24,6 +24,7 @@ import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.EnumUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.jwt.JWT;
+import cn.hutool.jwt.JWTException;
 import cn.hutool.jwt.JWTUtil;
 import cn.hutool.jwt.signers.JWTSigner;
 import cn.hutool.jwt.signers.JWTSignerUtil;
@@ -88,7 +89,7 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     private JWT parseJwtUnverified(String jwtToken) {
         try {
             return JWTUtil.parseToken(jwtToken);
-        } catch (Exception e) {
+        } catch (JWTException e) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "Invalid JWT");
         }
     }
